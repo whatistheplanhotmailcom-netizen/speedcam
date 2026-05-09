@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v12</title>
+<title>Road Alert v15</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -696,6 +696,734 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 </script>
 
+<script id="olc-js">
+// ===== Open Location Code (Plus Codes) library — inlined =====
+(function() {
+  var exports = {};
+  var module = { exports: exports };
+  // Copyright 2014 Google Inc. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the 'License');
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an 'AS IS' BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+  Convert locations to and from short codes.
+
+  Open Location Codes are short, 10-11 character codes that can be used instead
+  of street addresses. The codes can be generated and decoded offline, and use
+  a reduced character set that minimises the chance of codes including words.
+
+  Codes are able to be shortened relative to a nearby location. This means that
+  in many cases, only four to seven characters of the code are needed.
+  To recover the original code, the same location is not required, as long as
+  a nearby location is provided.
+
+  Codes represent rectangular areas rather than points, and the longer the
+  code, the smaller the area. A 10 character code represents a 13.5x13.5
+  meter area (at the equator. An 11 character code represents approximately
+  a 2.8x3.5 meter area.
+
+  Two encoding algorithms are used. The first 10 characters are pairs of
+  characters, one for latitude and one for latitude, using base 20. Each pair
+  reduces the area of the code by a factor of 400. Only even code lengths are
+  sensible, since an odd-numbered length would have sides in a ratio of 20:1.
+
+  At position 11, the algorithm changes so that each character selects one
+  position from a 4x5 grid. This allows single-character refinements.
+
+  Examples:
+  
+  var OpenLocationCode = require('open-location-code').OpenLocationCode;
+	var openLocationCode = new OpenLocationCode();
+  
+  // Encode a location, default accuracy:
+	var code = openLocationCode.encode(47.365590, 8.524997);
+	console.log(code);
+  
+  // Encode a location using one stage of additional refinement:
+  code = openLocationCode.encode(47.365590, 8.524997, 11);
+  console.log(code);
+  
+  //Decode a full code:
+	var coord = openLocationCode.decode(code);
+  var msg = 'Center is ' + coord.latitudeCenter + ',' + coord.longitudeCenter;
+	console.log(msg);
+   
+  // Attempt to trim the first characters from a code:
+	var shortCode = openLocationCode.shorten('8FVC9G8F+6X', 47.5, 8.5);
+	console.log(shortCode);
+
+  // Recover the full code from a short code:
+  var nearestCode = openLocationCode.recoverNearest('9G8F+6X', 47.4, 8.6);
+	console.log(nearestCode);
+  nearestCode = openLocationCode.recoverNearest('8F+6X', 47.4, 8.6);
+  console.log(nearestCode);
+    
+ */
+
+ 
+var OpenLocationCode = function () {};
+
+  // A separator used to break the code into two parts to aid memorability.
+  var SEPARATOR_ = '+';
+
+  // The number of characters to place before the separator.
+  var SEPARATOR_POSITION_ = 8;
+
+  // The character used to pad codes.
+  var PADDING_CHARACTER_ = '0';
+
+  // The character set used to encode the values.
+  var CODE_ALPHABET_ = '23456789CFGHJMPQRVWX';
+
+  // The base to use to convert numbers to/from.
+  var ENCODING_BASE_ = CODE_ALPHABET_.length;
+
+  // The maximum value for latitude in degrees.
+  var LATITUDE_MAX_ = 90;
+
+  // The maximum value for longitude in degrees.
+  var LONGITUDE_MAX_ = 180;
+
+  // Maxiumum code length using lat/lng pair encoding. The area of such a
+  // code is approximately 13x13 meters (at the equator), and should be suitable
+  // for identifying buildings. This excludes prefix and separator characters.
+  var PAIR_CODE_LENGTH_ = 10;
+
+  // The resolution values in degrees for each position in the lat/lng pair
+  // encoding. These give the place value of each position, and therefore the
+  // dimensions of the resulting area.
+  var PAIR_RESOLUTIONS_ = [20.0, 1.0, .05, .0025, .000125];
+
+  // Number of columns in the grid refinement method.
+  var GRID_COLUMNS_ = 4;
+
+  // Number of rows in the grid refinement method.
+  var GRID_ROWS_ = 5;
+
+  // Size of the initial grid in degrees.
+  var GRID_SIZE_DEGREES_ = 0.000125;
+
+  // Minimum length of a code that can be shortened.
+  var MIN_TRIMMABLE_CODE_LEN_ = 6;
+
+  /**
+    Determines if a code is valid.
+
+    To be valid, all characters must be from the Open Location Code character
+    set with at most one separator. The separator can be in any even-numbered
+    position up to the eighth digit.
+   */
+  OpenLocationCode.prototype.isValid = function(code) {
+    if (!code) {
+      return false;
+    }
+    // The separator is required.
+    if (code.indexOf(SEPARATOR_) == -1) {
+      return false;
+    }
+    if (code.indexOf(SEPARATOR_) != code.lastIndexOf(SEPARATOR_)) {
+      return false;
+    }
+    // Is it the only character?
+    if (code.length == 1) {
+      return false;
+    }
+    // Is it in an illegal position?
+    if (code.indexOf(SEPARATOR_) > SEPARATOR_POSITION_ ||
+        code.indexOf(SEPARATOR_) % 2 == 1) {
+      return false;
+    }
+    // We can have an even number of padding characters before the separator,
+    // but then it must be the final character.
+    if (code.indexOf(PADDING_CHARACTER_) > -1) {
+      // Not allowed to start with them!
+      if (code.indexOf(PADDING_CHARACTER_) == 0) {
+        return false;
+      }
+      // There can only be one group and it must have even length.
+      var padMatch = code.match(new RegExp('(' + PADDING_CHARACTER_ + '+)', 'g'));
+      if (padMatch.length > 1 || padMatch[0].length % 2 == 1 ||
+          padMatch[0].length > SEPARATOR_POSITION_ - 2) {
+        return false;
+      }
+      // If the code is long enough to end with a separator, make sure it does.
+      if (code.charAt(code.length - 1) != SEPARATOR_) {
+        return false;
+      }
+    }
+    // If there are characters after the separator, make sure there isn't just
+    // one of them (not legal).
+    if (code.length - code.indexOf(SEPARATOR_) - 1 == 1) {
+      return false;
+    }
+
+    // Strip the separator and any padding characters.
+    code = code.replace(new RegExp('\\' + SEPARATOR_ + '+'), '')
+        .replace(new RegExp(PADDING_CHARACTER_ + '+'), '');
+    // Check the code contains only valid characters.
+    for (var i = 0, len = code.length; i < len; i++) {
+      var character = code.charAt(i).toUpperCase();
+      if (character != SEPARATOR_ && CODE_ALPHABET_.indexOf(character) == -1) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  /**
+    Determines if a code is a valid short code.
+
+    A short Open Location Code is a sequence created by removing four or more
+    digits from an Open Location Code. It must include a separator
+    character.
+   */
+  OpenLocationCode.prototype.isShort = function(code) {
+    // Check it's valid.
+    if (!this.isValid(code)) {
+      return false;
+    }
+    // If there are less characters than expected before the SEPARATOR.
+    if (code.indexOf(SEPARATOR_) >= 0 &&
+        code.indexOf(SEPARATOR_) < SEPARATOR_POSITION_) {
+      return true;
+    }
+    return false;
+  };
+
+  /**
+    Determines if a code is a valid full Open Location Code.
+
+    Not all possible combinations of Open Location Code characters decode to
+    valid latitude and longitude values. This checks that a code is valid
+    and also that the latitude and longitude values are legal. If the prefix
+    character is present, it must be the first character. If the separator
+    character is present, it must be after four characters.
+   */
+  OpenLocationCode.prototype.isFull = function(code) {
+    if (!this.isValid(code)) {
+      return false;
+    }
+    // If it's short, it's not full.
+    if (this.isShort(code)) {
+      return false;
+    }
+
+    // Work out what the first latitude character indicates for latitude.
+    var firstLatValue = CODE_ALPHABET_.indexOf(
+        code.charAt(0).toUpperCase()) * ENCODING_BASE_;
+    if (firstLatValue >= LATITUDE_MAX_ * 2) {
+      // The code would decode to a latitude of >= 90 degrees.
+      return false;
+    }
+    if (code.length > 1) {
+      // Work out what the first longitude character indicates for longitude.
+      var firstLngValue = CODE_ALPHABET_.indexOf(
+          code.charAt(1).toUpperCase()) * ENCODING_BASE_;
+      if (firstLngValue >= LONGITUDE_MAX_ * 2) {
+        // The code would decode to a longitude of >= 180 degrees.
+        return false;
+      }
+    }
+    return true;
+  };
+
+  /**
+    Encode a location into an Open Location Code.
+
+    Produces a code of the specified length, or the default length if no length
+    is provided.
+
+    The length determines the accuracy of the code. The default length is
+    10 characters, returning a code of approximately 13.5x13.5 meters. Longer
+    codes represent smaller areas, but lengths > 14 are sub-centimetre and so
+    11 or 12 are probably the limit of useful codes.
+
+    Args:
+      latitude: A latitude in signed decimal degrees. Will be clipped to the
+          range -90 to 90.
+      longitude: A longitude in signed decimal degrees. Will be normalised to
+          the range -180 to 180.
+      codeLength: The number of significant digits in the output code, not
+          including any separator characters.
+   */
+  OpenLocationCode.prototype.encode = function(latitude,
+      longitude, codeLength) {
+    if (typeof codeLength == 'undefined') {
+      codeLength = PAIR_CODE_LENGTH_;
+    }
+    if (codeLength < 2 ||
+        (codeLength < SEPARATOR_POSITION_ && codeLength % 2 == 1)) {
+      throw 'IllegalArgumentException: Invalid Open Location Code length';
+    }
+    // Ensure that latitude and longitude are valid.
+    latitude = clipLatitude(latitude);
+    longitude = normalizeLongitude(longitude);
+    // Latitude 90 needs to be adjusted to be just less, so the returned code
+    // can also be decoded.
+    if (latitude == 90) {
+      latitude = latitude - computeLatitudePrecision(codeLength);
+    }
+    var code = encodePairs(
+        latitude, longitude, Math.min(codeLength, PAIR_CODE_LENGTH_));
+    // If the requested length indicates we want grid refined codes.
+    if (codeLength > PAIR_CODE_LENGTH_) {
+      code += encodeGrid(
+          latitude, longitude, codeLength - PAIR_CODE_LENGTH_);
+    }
+    return code;
+  };
+
+  /**
+    Decodes an Open Location Code into the location coordinates.
+
+    Returns a CodeArea object that includes the coordinates of the bounding
+    box - the lower left, center and upper right.
+
+    Args:
+      code: The Open Location Code to decode.
+
+    Returns:
+      A CodeArea object that provides the latitude and longitude of two of the
+      corners of the area, the center, and the length of the original code.
+   */
+  OpenLocationCode.prototype.decode = function(code) {
+    if (!this.isFull(code)) {
+      throw ('IllegalArgumentException: ' +
+          'Passed Open Location Code is not a valid full code: ' + code);
+    }
+    // Strip out separator character (we've already established the code is
+    // valid so the maximum is one), padding characters and convert to upper
+    // case.
+    code = code.replace(SEPARATOR_, '');
+    code = code.replace(new RegExp(PADDING_CHARACTER_ + '+'), '');
+    code = code.toUpperCase();
+    // Decode the lat/lng pair component.
+    var codeArea = decodePairs(code.substring(0, PAIR_CODE_LENGTH_));
+    // If there is a grid refinement component, decode that.
+    if (code.length <= PAIR_CODE_LENGTH_) {
+      return codeArea;
+    }
+    var gridArea = decodeGrid(code.substring(PAIR_CODE_LENGTH_));
+    return CodeArea(
+      codeArea.latitudeLo + gridArea.latitudeLo,
+      codeArea.longitudeLo + gridArea.longitudeLo,
+      codeArea.latitudeLo + gridArea.latitudeHi,
+      codeArea.longitudeLo + gridArea.longitudeHi,
+      codeArea.codeLength + gridArea.codeLength);
+  };
+
+  /**
+    Recover the nearest matching code to a specified location.
+
+    Given a short Open Location Code of between four and seven characters,
+    this recovers the nearest matching full code to the specified location.
+
+    The number of characters that will be prepended to the short code, depends
+    on the length of the short code and whether it starts with the separator.
+
+    If it starts with the separator, four characters will be prepended. If it
+    does not, the characters that will be prepended to the short code, where S
+    is the supplied short code and R are the computed characters, are as
+    follows:
+    SSSS    -> RRRR.RRSSSS
+    SSSSS   -> RRRR.RRSSSSS
+    SSSSSS  -> RRRR.SSSSSS
+    SSSSSSS -> RRRR.SSSSSSS
+    Note that short codes with an odd number of characters will have their
+    last character decoded using the grid refinement algorithm.
+
+    Args:
+      shortCode: A valid short OLC character sequence.
+      referenceLatitude: The latitude (in signed decimal degrees) to use to
+          find the nearest matching full code.
+      referenceLongitude: The longitude (in signed decimal degrees) to use
+          to find the nearest matching full code.
+
+    Returns:
+      The nearest full Open Location Code to the reference location that matches
+      the short code. Note that the returned code may not have the same
+      computed characters as the reference location. This is because it returns
+      the nearest match, not necessarily the match within the same cell. If the
+      passed code was not a valid short code, but was a valid full code, it is
+      returned unchanged.
+   */
+  OpenLocationCode.prototype.recoverNearest = function(
+      shortCode, referenceLatitude, referenceLongitude) {
+    if (!this.isShort(shortCode)) {
+      if (this.isFull(shortCode)) {
+        return shortCode;
+      } else {
+        throw 'ValueError: Passed short code is not valid: ' + shortCode;
+      }
+    }
+    // Ensure that latitude and longitude are valid.
+    referenceLatitude = clipLatitude(referenceLatitude);
+    referenceLongitude = normalizeLongitude(referenceLongitude);
+
+    // Clean up the passed code.
+    shortCode = shortCode.toUpperCase();
+    // Compute the number of digits we need to recover.
+    var paddingLength = SEPARATOR_POSITION_ - shortCode.indexOf(SEPARATOR_);
+    // The resolution (height and width) of the padded area in degrees.
+    var resolution = Math.pow(20, 2 - (paddingLength / 2));
+    // Distance from the center to an edge (in degrees).
+    var areaToEdge = resolution / 2.0;
+
+    // Now round down the reference latitude and longitude to the resolution.
+    var roundedLatitude = Math.floor(referenceLatitude / resolution) *
+        resolution;
+    var roundedLongitude = Math.floor(referenceLongitude / resolution) *
+        resolution;
+
+    // Use the reference location to pad the supplied short code and decode it.
+    var codeArea = this.decode(
+        this.encode(roundedLatitude, roundedLongitude).substr(0, paddingLength)
+        + shortCode);
+    // How many degrees latitude is the code from the reference? If it is more
+    // than half the resolution, we need to move it east or west.
+    var degreesDifference = codeArea.latitudeCenter - referenceLatitude;
+    if (degreesDifference > areaToEdge) {
+      // If the center of the short code is more than half a cell east,
+      // then the best match will be one position west.
+      codeArea.latitudeCenter -= resolution;
+    } else if (degreesDifference < -areaToEdge) {
+      // If the center of the short code is more than half a cell west,
+      // then the best match will be one position east.
+      codeArea.latitudeCenter += resolution;
+    }
+
+    // How many degrees longitude is the code from the reference?
+    degreesDifference = codeArea.longitudeCenter - referenceLongitude;
+    if (degreesDifference > areaToEdge) {
+      codeArea.longitudeCenter -= resolution;
+    } else if (degreesDifference < -areaToEdge) {
+      codeArea.longitudeCenter += resolution;
+    }
+
+    return this.encode(
+        codeArea.latitudeCenter, codeArea.longitudeCenter, codeArea.codeLength);
+  };
+
+  /**
+    Remove characters from the start of an OLC code.
+
+    This uses a reference location to determine how many initial characters
+    can be removed from the OLC code. The number of characters that can be
+    removed depends on the distance between the code center and the reference
+    location.
+
+    The minimum number of characters that will be removed is four. If more than
+    four characters can be removed, the additional characters will be replaced
+    with the padding character. At most eight characters will be removed.
+
+    The reference location must be within 50% of the maximum range. This ensures
+    that the shortened code will be able to be recovered using slightly different
+    locations.
+
+    Args:
+      code: A full, valid code to shorten.
+      latitude: A latitude, in signed decimal degrees, to use as the reference
+          point.
+      longitude: A longitude, in signed decimal degrees, to use as the reference
+          point.
+
+    Returns:
+      Either the original code, if the reference location was not close enough,
+      or the .
+   */
+  OpenLocationCode.prototype.shorten = function(
+      code, latitude, longitude) {
+    if (!this.isFull(code)) {
+      throw 'ValueError: Passed code is not valid and full: ' + code;
+    }
+    if (code.indexOf(PADDING_CHARACTER_) != -1) {
+      throw 'ValueError: Cannot shorten padded codes: ' + code;
+    }
+    var code = code.toUpperCase();
+    var codeArea = this.decode(code);
+    if (codeArea.codeLength < MIN_TRIMMABLE_CODE_LEN_) {
+      throw 'ValueError: Code length must be at least ' +
+          MIN_TRIMMABLE_CODE_LEN_;
+    }
+    // Ensure that latitude and longitude are valid.
+    latitude = clipLatitude(latitude);
+    longitude = normalizeLongitude(longitude);
+    // How close are the latitude and longitude to the code center.
+    var range = Math.max(
+        Math.abs(codeArea.latitudeCenter - latitude),
+        Math.abs(codeArea.longitudeCenter - longitude));
+    for (var i = PAIR_RESOLUTIONS_.length - 2; i >= 1; i--) {
+      // Check if we're close enough to shorten. The range must be less than 1/2
+      // the resolution to shorten at all, and we want to allow some safety, so
+      // use 0.3 instead of 0.5 as a multiplier.
+      if (range < (PAIR_RESOLUTIONS_[i] * 0.3)) {
+        // Trim it.
+        return code.substring((i + 1) * 2);
+      }
+    }
+    return code;
+  };
+
+  /**
+    Clip a latitude into the range -90 to 90.
+
+    Args:
+      latitude: A latitude in signed decimal degrees.
+   */
+  var clipLatitude = function(latitude) {
+    return Math.min(90, Math.max(-90, latitude));
+  };
+
+  /**
+    Compute the latitude precision value for a given code length. Lengths <=
+    10 have the same precision for latitude and longitude, but lengths > 10
+    have different precisions due to the grid method having fewer columns than
+    rows.
+   */
+  var computeLatitudePrecision = function(codeLength) {
+    if (codeLength <= 10) {
+      return Math.pow(20, Math.floor(codeLength / -2 + 2));
+    }
+    return Math.pow(20, -3) / Math.pow(GRID_ROWS_, codeLength - 10);
+  };
+
+  /**
+    Normalize a longitude into the range -180 to 180, not including 180.
+
+    Args:
+      longitude: A longitude in signed decimal degrees.
+   */
+  var normalizeLongitude = function(longitude) {
+    while (longitude < -180) {
+      longitude = longitude + 360;
+    }
+    while (longitude >= 180) {
+      longitude = longitude - 360;
+    }
+    return longitude;
+  };
+
+  /**
+    Encode a location into a sequence of OLC lat/lng pairs.
+
+    This uses pairs of characters (longitude and latitude in that order) to
+    represent each step in a 20x20 grid. Each code, therefore, has 1/400th
+    the area of the previous code.
+
+    Args:
+      latitude: A latitude in signed decimal degrees.
+      longitude: A longitude in signed decimal degrees.
+      codeLength: The number of significant digits in the output code, not
+          including any separator characters.
+   */
+  var encodePairs = function(latitude, longitude, codeLength) {
+    var code = '';
+    // Adjust latitude and longitude so they fall into positive ranges.
+    var adjustedLatitude = latitude + LATITUDE_MAX_;
+    var adjustedLongitude = longitude + LONGITUDE_MAX_;
+    // Count digits - can't use string length because it may include a separator
+    // character.
+    var digitCount = 0;
+    while (digitCount < codeLength) {
+      // Provides the value of digits in this place in decimal degrees.
+      var placeValue = PAIR_RESOLUTIONS_[Math.floor(digitCount / 2)];
+      // Do the latitude - gets the digit for this place and subtracts that for
+      // the next digit.
+      var digitValue = Math.floor(adjustedLatitude / placeValue);
+      adjustedLatitude -= digitValue * placeValue;
+      code += CODE_ALPHABET_.charAt(digitValue);
+      digitCount += 1;
+      // And do the longitude - gets the digit for this place and subtracts that
+      // for the next digit.
+      digitValue = Math.floor(adjustedLongitude / placeValue);
+      adjustedLongitude -= digitValue * placeValue;
+      code += CODE_ALPHABET_.charAt(digitValue);
+      digitCount += 1;
+      // Should we add a separator here?
+      if (digitCount == SEPARATOR_POSITION_ && digitCount < codeLength) {
+        code += SEPARATOR_;
+      }
+    }
+    if (code.length < SEPARATOR_POSITION_) {
+      code = code + Array(SEPARATOR_POSITION_ - code.length + 1).join(PADDING_CHARACTER_);
+    }
+    if (code.length == SEPARATOR_POSITION_) {
+      code = code + SEPARATOR_;
+    }
+    return code;
+  };
+
+  /**
+    Encode a location using the grid refinement method into an OLC string.
+
+    The grid refinement method divides the area into a grid of 4x5, and uses a
+    single character to refine the area. This allows default accuracy OLC codes
+    to be refined with just a single character.
+
+    Args:
+      latitude: A latitude in signed decimal degrees.
+      longitude: A longitude in signed decimal degrees.
+      codeLength: The number of characters required.
+   */
+  var encodeGrid = function(latitude, longitude, codeLength) {
+    var code = '';
+    var latPlaceValue = GRID_SIZE_DEGREES_;
+    var lngPlaceValue = GRID_SIZE_DEGREES_;
+    // Adjust latitude and longitude so they fall into positive ranges and
+    // get the offset for the required places.
+    var adjustedLatitude = (latitude + LATITUDE_MAX_) % latPlaceValue;
+    var adjustedLongitude = (longitude + LONGITUDE_MAX_) % lngPlaceValue;
+    for (var i = 0; i < codeLength; i++) {
+      // Work out the row and column.
+      var row = Math.floor(adjustedLatitude / (latPlaceValue / GRID_ROWS_));
+      var col = Math.floor(adjustedLongitude / (lngPlaceValue / GRID_COLUMNS_));
+      latPlaceValue /= GRID_ROWS_;
+      lngPlaceValue /= GRID_COLUMNS_;
+      adjustedLatitude -= row * latPlaceValue;
+      adjustedLongitude -= col * lngPlaceValue;
+      code += CODE_ALPHABET_.charAt(row * GRID_COLUMNS_ + col);
+    }
+    return code;
+  };
+
+  /**
+    Decode an OLC code made up of lat/lng pairs.
+
+    This decodes an OLC code made up of alternating latitude and longitude
+    characters, encoded using base 20.
+
+    Args:
+      code: A valid OLC code, presumed to be full, but with the separator
+      removed.
+   */
+  var decodePairs = function(code) {
+    // Get the latitude and longitude values. These will need correcting from
+    // positive ranges.
+    var latitude = decodePairsSequence(code, 0);
+    var longitude = decodePairsSequence(code, 1);
+    // Correct the values and set them into the CodeArea object.
+    return new CodeArea(
+        latitude[0] - LATITUDE_MAX_,
+        longitude[0] - LONGITUDE_MAX_,
+        latitude[1] - LATITUDE_MAX_,
+        longitude[1] - LONGITUDE_MAX_,
+        code.length);
+  };
+
+  /**
+    Decode either a latitude or longitude sequence.
+
+    This decodes the latitude or longitude sequence of a lat/lng pair encoding.
+    Starting at the character at position offset, every second character is
+    decoded and the value returned.
+
+    Args:
+      code: A valid OLC code, presumed to be full, with the separator removed.
+      offset: The character to start from.
+
+    Returns:
+      A pair of the low and high values. The low value comes from decoding the
+      characters. The high value is the low value plus the resolution of the
+      last position. Both values are offset into positive ranges and will need
+      to be corrected before use.
+   */
+  var decodePairsSequence = function(code, offset) {
+    var i = 0;
+    var value = 0;
+    while (i * 2 + offset < code.length) {
+      value += CODE_ALPHABET_.indexOf(code.charAt(i * 2 + offset)) *
+          PAIR_RESOLUTIONS_[i];
+      i += 1;
+    }
+    return [value, value + PAIR_RESOLUTIONS_[i - 1]];
+  };
+
+  /**
+    Decode the grid refinement portion of an OLC code.
+
+    This decodes an OLC code using the grid refinement method.
+
+    Args:
+      code: A valid OLC code sequence that is only the grid refinement
+          portion. This is the portion of a code starting at position 11.
+   */
+  var decodeGrid = function(code) {
+    var latitudeLo = 0.0;
+    var longitudeLo = 0.0;
+    var latPlaceValue = GRID_SIZE_DEGREES_;
+    var lngPlaceValue = GRID_SIZE_DEGREES_;
+    var i = 0;
+    while (i < code.length) {
+      var codeIndex = CODE_ALPHABET_.indexOf(code.charAt(i));
+      var row = Math.floor(codeIndex / GRID_COLUMNS_);
+      var col = codeIndex % GRID_COLUMNS_;
+
+      latPlaceValue /= GRID_ROWS_;
+      lngPlaceValue /= GRID_COLUMNS_;
+
+      latitudeLo += row * latPlaceValue;
+      longitudeLo += col * lngPlaceValue;
+      i += 1;
+    }
+    return CodeArea(
+        latitudeLo, longitudeLo, latitudeLo + latPlaceValue,
+        longitudeLo + lngPlaceValue, code.length);
+  };
+  
+    /**
+    Coordinates of a decoded Open Location Code.
+
+    The coordinates include the latitude and longitude of the lower left and
+    upper right corners and the center of the bounding box for the area the
+    code represents.
+
+    Attributes:
+      latitude_lo: The latitude of the SW corner in degrees.
+      longitude_lo: The longitude of the SW corner in degrees.
+      latitude_hi: The latitude of the NE corner in degrees.
+      longitude_hi: The longitude of the NE corner in degrees.
+      latitude_center: The latitude of the center in degrees.
+      longitude_center: The longitude of the center in degrees.
+      code_length: The number of significant characters that were in the code.
+          This excludes the separator.
+   */
+  var CodeArea = OpenLocationCode.prototype.CodeArea = function(
+    latitudeLo, longitudeLo, latitudeHi, longitudeHi, codeLength) {
+    return new CodeAreaFn.init(
+        latitudeLo, longitudeLo, latitudeHi, longitudeHi, codeLength);
+  };
+  
+  var CodeAreaFn = {
+    init: function(
+        latitudeLo, longitudeLo, latitudeHi, longitudeHi, codeLength) {
+      this.latitudeLo = latitudeLo;
+      this.longitudeLo = longitudeLo;
+      this.latitudeHi = latitudeHi;
+      this.longitudeHi = longitudeHi;
+      this.codeLength = codeLength;
+      this.latitudeCenter = Math.min(
+          latitudeLo + (latitudeHi - latitudeLo) / 2, LATITUDE_MAX_);
+      this.longitudeCenter = Math.min(
+          longitudeLo + (longitudeHi - longitudeLo) / 2, LONGITUDE_MAX_);
+    }
+  };
+
+
+exports.OpenLocationCode = OpenLocationCode;
+  window.OpenLocationCode = exports.OpenLocationCode;
+})();
+</script>
+
 <style>
   :root, [data-theme="dark"] {
     --bg: #0c0a09; --bg-soft: #1c1917; --bg-card: #1c1917;
@@ -1016,9 +1744,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .log-panel {
     background: var(--bg-card); border: 1px solid var(--line);
     border-radius: 12px; padding: 12px;
-    display: none; flex-direction: column; gap: 10px;
+    display: flex; flex-direction: column; gap: 10px;
   }
-  body[data-app-mode="log"] .log-panel { display: flex; }
   .log-grid {
     display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
   }
@@ -1064,9 +1791,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .audit-panel {
     background: var(--bg-card); border: 1px solid var(--line);
     border-radius: 12px; padding: 8px;
-    display: none; flex-direction: column; gap: 4px;
+    display: flex; flex-direction: column; gap: 4px;
   }
-  body[data-app-mode="audit"] .audit-panel { display: flex; }
   .audit-head {
     display: flex; justify-content: space-between; align-items: center;
     padding: 4px 6px;
@@ -1097,6 +1823,61 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .audit-row .actions button.del { border-color: var(--red); color: var(--red); }
   .audit-row .actions button.keep.active { background: var(--green); color: #0c0a09; }
   .audit-row .actions button.del.active { background: var(--red); color: #fff; }
+
+  /* Destination input tabs */
+  .dest-tab {
+    appearance: none; border: none; background: transparent;
+    color: var(--ink-soft); padding: 6px 10px; border-radius: 6px;
+    cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .dest-tab.active { background: var(--amber); color: #0c0a09; }
+  .dest-input-pane { display: flex; flex-direction: column; gap: 6px; }
+
+  body.fab-cam-hidden #fab-cam { display: none !important; }
+  body.fab-add-hidden #fab-add { display: none !important; }
+  /* Capture toggle and map toggle button visual state */
+  #capture-toggle-btn.off,
+  #map-btn.off { opacity: 0.4; text-decoration: line-through; }
+
+  /* Universal panel header for collapsible sections */
+  .panel-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--line); border-radius: 8px;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 700;
+    cursor: pointer;
+  }
+  .panel-head .title { flex: 1; }
+  .panel-head .panel-btn {
+    appearance: none; border: 1px solid var(--line); background: var(--bg);
+    color: var(--ink-soft); width: 22px; height: 22px; border-radius: 5px;
+    cursor: pointer; font-size: 11px; display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 800;
+  }
+  .panel-head .panel-btn:active { background: var(--bg-soft); }
+  .panel-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .panel-wrap.collapsed .panel-body { display: none; }
+  .panel-wrap.hidden { display: none; }
+  .panel-wrap.collapsed .panel-head { border-radius: 8px; }
+  .panel-wrap.collapsed .panel-head .panel-btn[data-panel-action="collapse"] { background: var(--amber); color: #0c0a09; }
+
+  /* Hidden-panels manager (in settings or floating) */
+  .hidden-panels-bar {
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 4px;
+    background: var(--bg-soft); border: 1px dashed var(--line); border-radius: 8px;
+    font-size: 10px; color: var(--ink-faint);
+  }
+  .hidden-panels-bar:empty { display: none; }
+  .hidden-panels-bar .restore-chip {
+    appearance: none; border: 1px solid var(--line); background: var(--bg-card);
+    color: var(--ink); padding: 4px 8px; border-radius: 100px; cursor: pointer;
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .hidden-panels-bar .restore-chip:active { background: var(--bg-soft); }
 
   /* Home-screen inline map (below trip list) */
   .home-map {
@@ -1325,7 +2106,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v12</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v15</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -1334,6 +2115,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
     <div class="topbar-actions">
       <button class="icon-btn" id="map-btn" title="Map">🗺️</button>
+      <button class="icon-btn" id="capture-toggle-btn" title="Toggle capture buttons">📷</button>
       <button class="icon-btn" id="sound-btn" title="Sound">🔊</button>
       <button class="icon-btn" id="theme-btn" title="Theme">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
@@ -1359,7 +2141,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </button>
   </div>
 
-  <div class="direction" id="direction">
+  <div class="hidden-panels-bar" id="hidden-panels-bar"></div>
+
+  <div class="direction" id="direction" style="display:none;">
     <button class="dir-btn" data-dir="a">→ A</button>
     <button class="dir-btn active" data-dir="auto">AUTO</button>
     <button class="dir-btn" data-dir="b">→ B</button>
@@ -1375,7 +2159,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div style="display: grid; grid-template-rows: auto auto auto auto; gap: 8px; min-height: 0; flex: 1; overflow: hidden;">
 
 ```
-<div class="hero mode-hide-log mode-hide-audit">
+<div class="panel-wrap mode-hide-log mode-hide-audit" data-panel="hero">
+  <div class="panel-head">
+    <span class="title">Speed & destination</span>
+    <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
+    <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
+  </div>
+  <div class="panel-body">
+<div class="hero">
   <div class="gauge-limit" id="limit-sign">
     <div class="gauge-limit-value" id="limit-value">—</div>
     <div class="gauge-limit-label">SPEED LIMIT</div>
@@ -1399,8 +2190,17 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
   </div>
 </div>
+  </div>
+</div>
 
-<div class="next mode-hide-log mode-hide-audit" id="next-card" style="display:none;">
+<div class="panel-wrap mode-hide-log mode-hide-audit" data-panel="next">
+  <div class="panel-head">
+    <span class="title">Next ahead</span>
+    <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
+    <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
+  </div>
+  <div class="panel-body">
+<div class="next" id="next-card" style="display:none;">
   <div class="next-row">
     <div class="next-bar" id="next-bar"></div>
     <div class="next-icon" id="next-icon">📍</div>
@@ -1426,14 +2226,22 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <div class="fb-timer"><div class="fb-timer-fill" id="fb-timer-fill"></div></div>
   </div>
 </div>
-
-<div class="upcoming-section mode-hide-log mode-hide-audit" id="upcoming-section">
-  <div class="section-head">
-    <span>Trip points · tap to edit</span>
-    <span class="count" id="upcoming-count">0</span>
   </div>
+</div>
+
+<div class="panel-wrap mode-hide-log mode-hide-audit" data-panel="upcoming">
+  <div class="panel-head">
+    <span class="title">Trip points · tap to edit</span>
+    <span class="count" id="upcoming-count" style="font-family:var(--mono);color:var(--ink-faint);margin-right:6px;">0</span>
+    <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
+    <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
+  </div>
+  <div class="panel-body">
+<div class="upcoming-section" id="upcoming-section">
   <div class="upcoming" id="upcoming-list">
     <div class="upcoming-empty">Start GPS to see upcoming alerts.</div>
+  </div>
+</div>
   </div>
 </div>
 
@@ -1464,6 +2272,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 </div>
 
+<div class="panel-wrap mode-hide-live mode-hide-audit" data-panel="log">
+  <div class="panel-head">
+    <span class="title">Capture log</span>
+    <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
+    <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
+  </div>
+  <div class="panel-body">
 <div class="log-panel">
   <div class="log-status" id="log-status">Tap a button to capture current GPS position</div>
   <div class="log-grid">
@@ -1476,13 +2291,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
   <div class="log-list" id="log-list"></div>
 </div>
-
-<div class="audit-panel">
-  <div class="audit-head">
-    <span>Audit · keep or delete each point</span>
-    <span id="audit-count">0</span>
   </div>
+</div>
+
+<div class="panel-wrap mode-hide-live mode-hide-log" data-panel="audit">
+  <div class="panel-head">
+    <span class="title">Audit · keep or delete each point</span>
+    <span id="audit-count" style="font-family:var(--mono);color:var(--ink-faint);margin-right:6px;">0</span>
+    <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
+    <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
+  </div>
+  <div class="panel-body">
+<div class="audit-panel">
   <div class="audit-list" id="audit-list"></div>
+</div>
+  </div>
 </div>
 ```
 
@@ -1640,9 +2463,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <div class="modal-title">Settings</div>
       <button class="modal-close" data-close>×</button>
     </div>
-    <div class="settings-section-title">Routes</div>
-    <div class="settings-list" id="routes-list"></div>
-    <button class="btn" id="add-route-btn" style="margin-top:6px;">+ Add route</button>
+    <div class="settings-section-title">Destinations</div>
+    <div class="settings-list" id="destinations-list"></div>
+    <button class="btn" id="add-destination-btn" style="margin-top:6px;">+ Add destination</button>
 
 ```
 <div class="settings-section-title">Display</div>
@@ -1663,6 +2486,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
       <button data-mapsize="l">L 60%</button>
       <button data-mapsize="off">Off</button>
     </div>
+  </div>
+  <div class="settings-row">
+    <label>Show + capture button</label>
+    <span class="toggle on" id="show-fab-add-toggle"></span>
+  </div>
+  <div class="settings-row">
+    <label>Show 📷 cam button</label>
+    <span class="toggle on" id="show-fab-cam-toggle"></span>
   </div>
 </div>
 <div class="settings-section-title">Alerts</div>
@@ -1701,6 +2532,37 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="settings-row">
     <label>Rotate map with direction</label>
     <span class="toggle on" id="rotate-map-toggle"></span>
+  </div>
+</div>
+<div class="settings-section-title">Speed limit alerts</div>
+<div class="settings-list">
+  <div class="settings-row">
+    <label>Sound type</label>
+    <div class="options" id="speed-alert-sound-options">
+      <button data-speed-sound="off">Off</button>
+      <button data-speed-sound="beep">Beep</button>
+      <button data-speed-sound="voice">Voice</button>
+      <button data-speed-sound="both">Both</button>
+    </div>
+  </div>
+  <div class="settings-row">
+    <label>Trigger when over by</label>
+    <div style="display:flex;align-items:center;gap:6px;color:var(--ink-soft);">
+      <input type="number" id="speed-alert-over-input" min="0" max="50" step="1" value="5"> km/h
+    </div>
+  </div>
+  <div class="settings-row">
+    <label>Frequency</label>
+    <div class="options" id="speed-alert-freq-options">
+      <button data-speed-freq="zone">Once per zone</button>
+      <button data-speed-freq="repeat">Repeat</button>
+    </div>
+  </div>
+  <div class="settings-row">
+    <label>Repeat every</label>
+    <div style="display:flex;align-items:center;gap:6px;color:var(--ink-soft);">
+      <input type="number" id="speed-alert-cooldown-input" min="5" max="300" step="5" value="30"> sec
+    </div>
   </div>
 </div>
 <div class="settings-section-title">Feedback prompt</div>
@@ -1806,29 +2668,59 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 </div>
 
-<div class="modal" id="route-edit-modal">
+<div class="modal" id="destination-edit-modal">
   <div class="modal-card">
     <div class="modal-head">
-      <div class="modal-title" id="route-edit-title">Edit route</div>
+      <div class="modal-title" id="destination-edit-title">Add destination</div>
       <button class="modal-close" data-close>×</button>
     </div>
     <div class="settings-list">
       <div class="settings-row">
-        <label>Route name</label>
-        <input type="text" id="re-name" placeholder="e.g. Jeddah ↔ Medina" style="flex:2;">
+        <label>Name</label>
+        <input type="text" id="de-name" placeholder="e.g. Medina, Mom's house" style="flex:2;">
       </div>
-      <div class="settings-section-title" style="margin-top:0;">Endpoint A</div>
-      <div class="settings-row"><label>Name</label><input type="text" id="re-a-name" style="flex:2;"></div>
-      <div class="settings-row"><label>Lat</label><input type="number" id="re-a-lat" step="0.00001" style="width:120px;"></div>
-      <div class="settings-row"><label>Lng</label><input type="number" id="re-a-lng" step="0.00001" style="width:120px;"></div>
-      <div class="settings-section-title" style="margin-top:0;">Endpoint B</div>
-      <div class="settings-row"><label>Name</label><input type="text" id="re-b-name" style="flex:2;"></div>
-      <div class="settings-row"><label>Lat</label><input type="number" id="re-b-lat" step="0.00001" style="width:120px;"></div>
-      <div class="settings-row"><label>Lng</label><input type="number" id="re-b-lng" step="0.00001" style="width:120px;"></div>
+    </div>
+    <div class="settings-section-title" style="margin-top:8px;">Set location by</div>
+    <div class="dest-input-tabs" style="display:flex;gap:4px;background:var(--bg-soft);padding:4px;border-radius:8px;flex-wrap:wrap;">
+      <button class="dest-tab active" data-detab="plus">Plus Code</button>
+      <button class="dest-tab" data-detab="latlng">Lat/Lng</button>
+      <button class="dest-tab" data-detab="address">Address</button>
+      <button class="dest-tab" data-detab="here">Here</button>
+      <button class="dest-tab" data-detab="map">Tap map</button>
+    </div>
+    <div class="settings-list" style="margin-top:8px;">
+      <div class="dest-input-pane" data-pane="plus">
+        <div class="settings-row">
+          <label>Plus Code</label>
+          <input type="text" id="de-plus" placeholder="e.g. 8Q4HPQF8+QV or 8Q4HPQF8+QV.RIYADH" style="flex:2;">
+        </div>
+      </div>
+      <div class="dest-input-pane" data-pane="latlng" style="display:none;">
+        <div class="settings-row"><label>Latitude</label><input type="number" id="de-lat" step="0.00001" style="width:140px;"></div>
+        <div class="settings-row"><label>Longitude</label><input type="number" id="de-lng" step="0.00001" style="width:140px;"></div>
+      </div>
+      <div class="dest-input-pane" data-pane="address" style="display:none;">
+        <div class="settings-row">
+          <label>Address</label>
+          <input type="text" id="de-address" placeholder="e.g. Al Madinah, Saudi Arabia" style="flex:2;">
+        </div>
+        <div style="font-size:10px;color:var(--ink-faint);padding:0 6px;">Geocoding via OpenStreetMap (Nominatim). May be slow.</div>
+      </div>
+      <div class="dest-input-pane" data-pane="here" style="display:none;">
+        <div class="settings-row" style="font-size:12px;color:var(--ink-soft);">Use current GPS location as the destination point.</div>
+      </div>
+      <div class="dest-input-pane" data-pane="map" style="display:none;">
+        <div class="settings-row" style="font-size:12px;color:var(--ink-soft);">Close this dialog, tap the map at the spot you want, then re-open. Coords appear here.</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button class="btn" id="de-resolve" style="flex:1;">Resolve & preview on map</button>
+      </div>
+      <div id="de-preview-meta" style="font-size:11px;color:var(--ink-soft);font-family:var(--mono);text-align:center;padding:4px;"></div>
+      <div id="de-preview-map" style="width:100%;height:200px;background:#1a1a1a;border-radius:8px;display:none;"></div>
     </div>
     <div class="modal-actions">
-      <button class="btn" id="re-delete" style="color:var(--red);border-color:var(--red);">Delete</button>
-      <button class="btn btn-primary" id="re-save">Save</button>
+      <button class="btn" id="de-delete" style="color:var(--red);border-color:var(--red);display:none;">Delete</button>
+      <button class="btn btn-primary" id="de-save">Save</button>
     </div>
   </div>
 </div>
@@ -1911,18 +2803,13 @@ const DEMO_POINTS = [
 DEMO_POINTS.forEach(p => p.isDemo = true);
 
 const SAMPLE_DATA = {
-  routes: [
-    {
-      id: "route1",
-      name: "Jeddah ↔ Medina",
-      a: { name: "Medina", lat: 24.4539, lng: 39.5680 },
-      b: { name: "Jeddah", lat: 21.5433, lng: 39.1728 },
-    }
+  destinations: [
+    { id: "dest_medina", name: "Medina", lat: 24.4539, lng: 39.5680, source: 'sample' },
+    { id: "dest_jeddah", name: "Jeddah", lat: 21.5433, lng: 39.1728, source: 'sample' },
   ],
-  activeRouteId: "route1",
-  destinations: { a: { name: "Medina", lat: 24.4539, lng: 39.5680 }, b: { name: "Jeddah", lat: 21.5433, lng: 39.1728 } },
+  activeDestinationId: "dest_medina",
   defaultLimit: 120,
-  points: []  // EMPTY by default — user captures their own points
+  points: []  // EMPTY by default
 };
 
 const STORAGE_KEY = 'roadAlert.v8.data';
@@ -1933,19 +2820,39 @@ const GH_KEY = 'roadAlert.v9.github';
 function loadData() {
   try { const r = localStorage.getItem(STORAGE_KEY); if (r) {
     const d = JSON.parse(r);
-    // Migration: ensure routes/activeRouteId exist
-    if (!Array.isArray(d.routes) || d.routes.length === 0) {
-      d.routes = [{
-        id: "route1",
-        name: (d.destinations.a.name || 'A') + ' ↔ ' + (d.destinations.b.name || 'B'),
-        a: d.destinations.a,
-        b: d.destinations.b,
-      }];
-      d.activeRouteId = "route1";
-      // Backfill routeId on existing points
-      d.points.forEach(p => { if (!p.routeId) p.routeId = "route1"; });
+    // Migration: old format with d.routes -> new format with d.destinations
+    if (Array.isArray(d.routes) && d.routes.length > 0 && !Array.isArray(d.destinations)) {
+      const dests = [];
+      d.routes.forEach(route => {
+        if (route.a) dests.push({ id: `dest_${route.id}_a`, name: route.a.name || 'A', lat: route.a.lat, lng: route.a.lng, source: 'migrated' });
+        if (route.b) dests.push({ id: `dest_${route.id}_b`, name: route.b.name || 'B', lat: route.b.lat, lng: route.b.lng, source: 'migrated' });
+      });
+      // Pick first destination as active by default
+      d.destinations = dests;
+      d.activeDestinationId = dests[0] ? dests[0].id : null;
+      // Reassign points: each point goes to the closer endpoint of its old route
+      if (Array.isArray(d.points)) {
+        d.points.forEach(p => {
+          if (!p.routeId) return;
+          const route = d.routes.find(r => r.id === p.routeId);
+          if (!route) return;
+          const distA = Math.hypot((p.lat - route.a.lat), (p.lng - route.a.lng));
+          const distB = Math.hypot((p.lat - route.b.lat), (p.lng - route.b.lng));
+          // Closer endpoint = where this point was "heading toward"
+          p.destinationId = distA < distB ? `dest_${route.id}_a` : `dest_${route.id}_b`;
+          delete p.routeId;
+        });
+      }
+      delete d.routes;
+      delete d.activeRouteId;
     }
-    if (!d.activeRouteId) d.activeRouteId = d.routes[0].id;
+    // Drop legacy d.destinations object form (a/b pair)
+    if (d.destinations && !Array.isArray(d.destinations)) {
+      delete d.destinations;
+    }
+    if (!Array.isArray(d.destinations)) d.destinations = JSON.parse(JSON.stringify(SAMPLE_DATA.destinations));
+    if (!d.activeDestinationId && d.destinations[0]) d.activeDestinationId = d.destinations[0].id;
+    if (!Array.isArray(d.points)) d.points = [];
     return d;
   } } catch(e) {}
   return JSON.parse(JSON.stringify(SAMPLE_DATA));
@@ -1965,9 +2872,21 @@ function loadSettings() {
     if (typeof s.useCompass !== 'boolean') s.useCompass = true;
     if (typeof s.clusterMeters !== 'number') s.clusterMeters = 200;
     if (typeof s.rotateMap !== 'boolean') s.rotateMap = true;
+    if (typeof s.showFabAdd !== 'boolean') s.showFabAdd = true;
+    if (typeof s.showFabCam !== 'boolean') s.showFabCam = true;
+    if (typeof s.speedAlertSound !== 'string') s.speedAlertSound = 'beep';
+    if (typeof s.speedAlertOver !== 'number') s.speedAlertOver = 5;
+    if (typeof s.speedAlertFreq !== 'string') s.speedAlertFreq = 'zone';
+    if (typeof s.speedAlertCooldown !== 'number') s.speedAlertCooldown = 30;
     return s;
   } } catch(e) {}
-  return { theme: 'auto', sound: 'voice', smart: true, limitWarn: true, askSide: true, announceSide: true, useCompass: true, rotateMap: true, clusterMeters: 200, fbTriggerKm: 2.0, fbTimeoutSec: 180, commonLimits: [40, 60, 80, 100, 120, 140] };
+  return {
+    theme: 'auto', sound: 'voice', smart: true, limitWarn: true, askSide: true,
+    announceSide: true, useCompass: true, rotateMap: true, clusterMeters: 200,
+    fbTriggerKm: 2.0, fbTimeoutSec: 180, commonLimits: [40, 60, 80, 100, 120, 140],
+    showFabAdd: true, showFabCam: true,
+    speedAlertSound: 'beep', speedAlertOver: 5, speedAlertFreq: 'zone', speedAlertCooldown: 30,
+  };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
 function loadTrips() { try { const r = localStorage.getItem(TRIPS_KEY); if (r) return JSON.parse(r); } catch(e) {} return []; }
@@ -1989,6 +2908,9 @@ let currentSpeed = 0, currentAccuracy = null, currentHeading = null;
 let dirChoice = 'auto', detectedDir = 'a';
 let alertedPoints = new Set();
 let limitWarned = false;
+let lastSpeedAlertTime = 0;
+let lastSpeedAlertZoneLimit = null; // tracks "zone": once-per-zone only fires when limit changes
+let wasOverLimit = false;
 let wakeLock = null;
 let captureSession = [];
 let currentLimit = data.defaultLimit || 120;
@@ -2051,6 +2973,50 @@ function beepPattern(type) {
   });
 }
 function speakText(text) { if (!('speechSynthesis' in window)) return; try { const u = new SpeechSynthesisUtterance(text); speechSynthesis.speak(u); } catch(e) {} }
+
+function fireSpeedAlert(limit, currentSpeedKmh, isOver) {
+  // Mute in Log/Audit modes
+  if (appMode === 'log' || appMode === 'audit') { wasOverLimit = false; return; }
+  // Master kill switch
+  if (!settings.limitWarn) { wasOverLimit = isOver; return; }
+  const soundType = settings.speedAlertSound || 'beep';
+  if (soundType === 'off') { wasOverLimit = isOver; return; }
+
+  const freq = settings.speedAlertFreq || 'zone';
+  const cooldownMs = (settings.speedAlertCooldown || 30) * 1000;
+  const now = Date.now();
+
+  if (!isOver) {
+    // No longer over — reset zone tracker so next zone alert fires
+    if (wasOverLimit) wasOverLimit = false;
+    return;
+  }
+
+  // We're over the limit. Decide whether to fire.
+  let shouldFire = false;
+  if (freq === 'zone') {
+    // Fire only when entering over-state OR when limit changes (new zone)
+    if (!wasOverLimit || lastSpeedAlertZoneLimit !== limit) {
+      shouldFire = true;
+      lastSpeedAlertZoneLimit = limit;
+    }
+  } else if (freq === 'repeat') {
+    if (now - lastSpeedAlertTime > cooldownMs || !wasOverLimit) {
+      shouldFire = true;
+    }
+  }
+
+  if (shouldFire) {
+    lastSpeedAlertTime = now;
+    const text = `Speed limit ${limit}`;
+    if (soundType === 'voice') speakText(text);
+    else if (soundType === 'beep') beepPattern('speed_change');
+    else if (soundType === 'both') { beepPattern('speed_change'); setTimeout(() => speakText(text), 400); }
+    if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+  }
+  wasOverLimit = true;
+}
+
 function alertSound(point, distText) {
   if (settings.sound === 'off') return;
   // In Log/Audit mode, no audible alerts (driver is busy capturing or auditing)
@@ -2064,39 +3030,55 @@ function alertSound(point, distText) {
   else if (settings.sound === 'both') { beepPattern(point.type); setTimeout(() => speakText(text), 400); }
 }
 
-function activeRoute() { return data.routes.find(r => r.id === data.activeRouteId) || data.routes[0]; }
-function activePoints() { const r = activeRoute(); return data.points.filter(p => !p.routeId || p.routeId === r.id); }
+function activeDestObj() {
+  return data.destinations.find(d => d.id === data.activeDestinationId) || data.destinations[0];
+}
+function activePoints() {
+  const dest = activeDestObj();
+  if (!dest) return data.points.filter(p => !p.isDemo);
+  return data.points.filter(p => !p.destinationId || p.destinationId === dest.id);
+}
+// Backwards-compat aliases (existing JS still calls activeRoute/activeDest)
+function activeRoute() {
+  // Synthesize a route-like object for legacy code paths.
+  const dest = activeDestObj();
+  if (!dest) return null;
+  return {
+    id: dest.id,
+    name: dest.name,
+    a: dest,                                                  // active destination = "a"
+    b: { name: 'Origin', lat: dest.lat, lng: dest.lng },      // placeholder; not really used
+  };
+}
 
-const distHistory = { a: [], b: [] };
+// Direction detection: are we heading TOWARD the active destination?
+// `headingToward` is true when distance to dest is decreasing
+let headingToward = true;
+const distHistory = { a: [], b: [] }; // legacy alias, kept so old refs don't crash
 function updateDirectionDetection() {
   if (!currentPos) return;
-  const route = activeRoute();
-  const dA = distance(currentPos, route.a);
-  const dB = distance(currentPos, route.b);
+  const dest = activeDestObj();
+  if (!dest) return;
+  const dToDest = distance(currentPos, dest);
 
-  // Try compass-based detection first (instant lock)
+  // Try compass-based detection first (fastest)
   if (settings.useCompass && currentHeading != null && !isNaN(currentHeading)) {
-    const bearingToA = bearing(currentPos, route.a);
-    const bearingToB = bearing(currentPos, route.b);
-    const diffA = Math.abs(((currentHeading - bearingToA + 540) % 360) - 180);
-    const diffB = Math.abs(((currentHeading - bearingToB + 540) % 360) - 180);
-    // Heading diff < 60° means I'm facing that destination
-    if (diffA < 60 && diffA < diffB - 20) { detectedDir = 'a'; return; }
-    if (diffB < 60 && diffB < diffA - 20) { detectedDir = 'b'; return; }
-    // Otherwise fall through to GPS history
+    const bearingToDest = bearing(currentPos, dest);
+    const diff = Math.abs(((currentHeading - bearingToDest + 540) % 360) - 180);
+    headingToward = diff < 90;  // within 90° of destination = heading toward
+    return;
   }
 
-  distHistory.a.push(dA); distHistory.b.push(dB);
+  // GPS history fallback: trend over last 5 readings
+  distHistory.a.push(dToDest);
   if (distHistory.a.length > 5) distHistory.a.shift();
-  if (distHistory.b.length > 5) distHistory.b.shift();
   if (distHistory.a.length >= 2) {
-    const trendA = distHistory.a[distHistory.a.length-1] - distHistory.a[0];
-    const trendB = distHistory.b[distHistory.b.length-1] - distHistory.b[0];
-    if (trendA < trendB) detectedDir = 'a'; else if (trendB < trendA) detectedDir = 'b';
-  } else { detectedDir = dA <= dB ? 'a' : 'b'; }
+    const trend = distHistory.a[distHistory.a.length-1] - distHistory.a[0];
+    headingToward = trend < 0;  // distance decreasing = toward
+  }
 }
-function activeDir() { return dirChoice === 'auto' ? detectedDir : dirChoice; }
-function activeDest() { const r = activeRoute(); return r[activeDir()]; }
+function activeDir() { return 'a'; } // legacy: always "a" since there's only one destination
+function activeDest() { return activeDestObj(); }
 
 function alertDistanceKm() {
   if (!settings.smart) return 1.0;
@@ -2191,18 +3173,15 @@ function update() {
 
   currentLimit = computeCurrentLimit();
   const speedKmh = Math.round(currentSpeed * 3.6);
-  const isOverLimit = speedKmh > currentLimit + 5;
+  const overBy = speedKmh - currentLimit;
+  const overThreshold = settings.speedAlertOver != null ? settings.speedAlertOver : 5;
+  const isOverLimit = overBy > overThreshold;
   const limitSign = document.getElementById('limit-sign');
   document.getElementById('limit-value').textContent = currentLimit;
   limitSign.classList.toggle('warning', settings.limitWarn && isOverLimit);
-  if (settings.limitWarn && isOverLimit && !limitWarned) {
-    if (settings.sound !== 'off') {
-      if (settings.sound === 'voice' || settings.sound === 'both') speakText(`Speed limit ${currentLimit}`);
-      else beepPattern('speed_change');
-    }
-    limitWarned = true;
-    setTimeout(() => { limitWarned = false; }, 15000);
-  }
+
+  // Speed alert logic: configurable type + frequency
+  fireSpeedAlert(currentLimit, speedKmh, isOverLimit);
 
   document.getElementById('speed-value').textContent = speedKmh;
   document.getElementById('speedo').classList.toggle('over', isOverLimit);
@@ -2460,6 +3439,7 @@ function applySoundSelector() {
 applySoundSelector();
 
 function onGPS(pos) {
+  const wasFirstFix = !currentPos;
   prevPos = currentPos;
   currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
   currentAccuracy = pos.coords.accuracy;
@@ -2470,7 +3450,6 @@ function onGPS(pos) {
     document.getElementById('compass').textContent = compassFromBearing(currentHeading);
   }
   update();
-  // Refresh maps if visible — fullscreen and home
   if (document.getElementById('map-modal') && document.getElementById('map-modal').classList.contains('open') && mapInstance) {
     refreshMapMarkers();
   }
@@ -2478,6 +3457,8 @@ function onGPS(pos) {
     refreshHomeMapMarkers();
     followHomeMap();
   }
+  // Draw route on first GPS fix
+  if (wasFirstFix) drawRouteToActiveDest();
 }
 
 async function startGPS() {
@@ -2494,13 +3475,18 @@ function startDemo() {
   mode = 'demo'; setStatus('demo', 'DEMO'); setStartButton(true, 'Stop');
   alertedPoints.clear(); feedbackPromptedKeys.clear();
   distHistory.a.length = 0; distHistory.b.length = 0;
-  // Inject demo points into the active route (only for the demo)
-  const activeRouteIdLocal = data.activeRouteId || (data.routes[0] && data.routes[0].id) || 'route1';
-  const demoCopies = DEMO_POINTS.map(p => ({ ...p, routeId: activeRouteIdLocal, isDemo: true }));
+  // Inject demo points into the active destination (only for the demo)
+  const activeDestId = data.activeDestinationId || (data.destinations[0] && data.destinations[0].id);
+  const demoCopies = DEMO_POINTS.map(p => {
+    const c = { ...p, destinationId: activeDestId, isDemo: true };
+    delete c.routeId; // strip legacy field from sample data
+    return c;
+  });
   data.points.push(...demoCopies);
   if (currentPos) update();
-  // Renders update next tick automatically
-  const start = data.destinations.b, end = data.destinations.a;
+  // Demo simulates Jeddah → Medina drive
+  const start = { lat: 21.5433, lng: 39.1728 }; // Jeddah
+  const end = { lat: 24.4539, lng: 39.5680 };   // Medina
   const steps = 100; demoStep = 0;
   demoTimer = setInterval(() => {
     if (demoStep > steps) { stopAll(); showToast('Demo complete'); return; }
@@ -2574,15 +3560,22 @@ document.querySelectorAll('.fab-add [data-type]').forEach(btn => {
 function beginCapture(type, btnEl, subtype) {
   if (!currentPos) { showToast('Need GPS fix first'); return; }
   if (btnEl) { btnEl.classList.add('flash'); setTimeout(() => btnEl.classList.remove('flash'), 500); }
+  const dest = activeDest();
+  const headingToName = dest && dest.name ? dest.name : null;
   pendingCapture = {
     name: typeLabel(type) + (subtype ? ' (' + subtype + ')' : ''),
     type: type,
     lat: parseFloat(currentPos.lat.toFixed(5)),
     lng: parseFloat(currentPos.lng.toFixed(5)),
     capturedAt: new Date().toISOString(),
+    capturedHeadingTo: headingToName,
+    capturedDir: activeDir(),
+    capturedHeading: (currentHeading != null && !isNaN(currentHeading)) ? Math.round(currentHeading) : null,
+    capturedSpeed: currentSpeed != null ? Math.round(currentSpeed * 3.6) : null,
+    tripId: activeTrip ? activeTrip.id : null,
     status: 'active',
     confidence: 1,
-    routeId: data.activeRouteId,
+    destinationId: data.activeDestinationId,
   };
   if (subtype) pendingCapture.subtype = subtype;
   fabCam.classList.remove('open');
@@ -2669,6 +3662,11 @@ function finalizeCapture() {
   } else {
     captureSession.push(newPoint);
     data.points.push(newPoint);
+    if (activeTrip) {
+      if (!Array.isArray(activeTrip.captures)) activeTrip.captures = [];
+      activeTrip.captures.push(pointKey(newPoint));
+      saveTrips();
+    }
     showToast(`${typeLabel(newPoint.type)} saved`, 'success');
   }
   saveData();
@@ -2798,6 +3796,72 @@ setupToggle('announce-side-toggle', 'announceSide');
 setupToggle('use-compass-toggle', 'useCompass');
 setupToggle('rotate-map-toggle', 'rotateMap');
 
+// FAB visibility toggles
+function applyFabVisibility() {
+  document.body.classList.toggle('fab-cam-hidden', settings.showFabCam === false);
+  document.body.classList.toggle('fab-add-hidden', settings.showFabAdd === false);
+  // Update top-bar toggle button visual
+  const btn = document.getElementById('capture-toggle-btn');
+  if (btn) {
+    const bothOff = settings.showFabCam === false && settings.showFabAdd === false;
+    btn.classList.toggle('off', bothOff);
+  }
+}
+setupToggle('show-fab-add-toggle', 'showFabAdd');
+setupToggle('show-fab-cam-toggle', 'showFabCam');
+['show-fab-add-toggle', 'show-fab-cam-toggle'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', () => setTimeout(applyFabVisibility, 50));
+});
+// Top-bar capture toggle: flip both settings together
+document.getElementById('capture-toggle-btn').addEventListener('click', () => {
+  const bothOff = settings.showFabCam === false && settings.showFabAdd === false;
+  // If both are off, turn both on; otherwise, turn both off
+  settings.showFabCam = bothOff;
+  settings.showFabAdd = bothOff;
+  saveSettings();
+  // Sync the settings toggles' visual state
+  const camToggle = document.getElementById('show-fab-cam-toggle');
+  const addToggle = document.getElementById('show-fab-add-toggle');
+  if (camToggle) camToggle.classList.toggle('on', bothOff);
+  if (addToggle) addToggle.classList.toggle('on', bothOff);
+  applyFabVisibility();
+  showToast(bothOff ? 'Capture buttons ON' : 'Capture buttons OFF');
+});
+applyFabVisibility();
+
+// Speed alert: sound type, frequency, threshold, cooldown
+function setSpeedAlertSound(v) {
+  settings.speedAlertSound = v;
+  saveSettings();
+  document.querySelectorAll('[data-speed-sound]').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-speed-sound') === v));
+}
+function setSpeedAlertFreq(v) {
+  settings.speedAlertFreq = v;
+  saveSettings();
+  document.querySelectorAll('[data-speed-freq]').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-speed-freq') === v));
+}
+document.querySelectorAll('[data-speed-sound]').forEach(b =>
+  b.addEventListener('click', () => setSpeedAlertSound(b.getAttribute('data-speed-sound'))));
+document.querySelectorAll('[data-speed-freq]').forEach(b =>
+  b.addEventListener('click', () => setSpeedAlertFreq(b.getAttribute('data-speed-freq'))));
+// Apply current state to button-groups
+setSpeedAlertSound(settings.speedAlertSound || 'beep');
+setSpeedAlertFreq(settings.speedAlertFreq || 'zone');
+
+document.getElementById('speed-alert-over-input').value = settings.speedAlertOver;
+document.getElementById('speed-alert-over-input').addEventListener('change', e => {
+  const v = parseInt(e.target.value);
+  if (!isNaN(v) && v >= 0) { settings.speedAlertOver = v; saveSettings(); }
+});
+document.getElementById('speed-alert-cooldown-input').value = settings.speedAlertCooldown;
+document.getElementById('speed-alert-cooldown-input').addEventListener('change', e => {
+  const v = parseInt(e.target.value);
+  if (!isNaN(v) && v >= 5) { settings.speedAlertCooldown = v; saveSettings(); }
+});
+
 document.getElementById('fb-trigger-km').value = settings.fbTriggerKm;
 document.getElementById('fb-timeout-sec').value = settings.fbTimeoutSec;
 document.getElementById('common-limits-input').value = settings.commonLimits.join(',');
@@ -2817,7 +3881,7 @@ const settingsModal = document.getElementById('settings-modal');
 const editModal = document.getElementById('edit-modal');
 const disabledModal = document.getElementById('disabled-modal');
 document.getElementById('settings-btn').addEventListener('click', () => {
-  renderRoutesList();
+  renderDestinationsList();
   document.getElementById('gh-token-input').value = github.token || '';
   document.getElementById('gh-repo-input').value = github.repo || '';
   document.getElementById('gh-path-input').value = github.path || '';
@@ -2862,44 +3926,60 @@ document.getElementById('clear-trips-btn').addEventListener('click', () => {
   trips = []; saveTrips(); renderTripLog();
 });
 
-// Routes
-document.getElementById('add-route-btn').addEventListener('click', () => openRouteEditor(null));
-document.getElementById('re-save').addEventListener('click', () => {
-  const name = document.getElementById('re-name').value.trim();
-  const aName = document.getElementById('re-a-name').value.trim();
-  const bName = document.getElementById('re-b-name').value.trim();
-  const aLat = parseFloat(document.getElementById('re-a-lat').value);
-  const aLng = parseFloat(document.getElementById('re-a-lng').value);
-  const bLat = parseFloat(document.getElementById('re-b-lat').value);
-  const bLng = parseFloat(document.getElementById('re-b-lng').value);
-  if (!name || !aName || !bName || isNaN(aLat) || isNaN(aLng) || isNaN(bLat) || isNaN(bLng)) {
-    showToast('Fill all fields'); return;
+// Destinations
+document.getElementById('add-destination-btn').addEventListener('click', () => openDestinationEditor(null));
+// Tab switcher
+document.querySelectorAll('[data-detab]').forEach(b =>
+  b.addEventListener('click', () => setDestTab(b.getAttribute('data-detab')))
+);
+document.getElementById('de-resolve').addEventListener('click', resolveDestinationInput);
+document.getElementById('de-save').addEventListener('click', () => {
+  const name = document.getElementById('de-name').value.trim();
+  if (!name) { showToast('Enter a name'); return; }
+  if (!pendingDestinationCoords) {
+    showToast('Resolve a location first'); return;
   }
-  if (editingRouteId) {
-    const r = data.routes.find(x => x.id === editingRouteId);
-    r.name = name; r.a = { name: aName, lat: aLat, lng: aLng }; r.b = { name: bName, lat: bLat, lng: bLng };
+  const activeTab = document.querySelector('[data-detab].active');
+  const source = activeTab ? activeTab.getAttribute('data-detab') : 'manual';
+  if (editingDestinationId) {
+    const d = data.destinations.find(x => x.id === editingDestinationId);
+    d.name = name;
+    d.lat = pendingDestinationCoords.lat;
+    d.lng = pendingDestinationCoords.lng;
+    d.source = source;
   } else {
-    const id = 'route_' + Date.now();
-    data.routes.push({ id, name, a: { name: aName, lat: aLat, lng: aLng }, b: { name: bName, lat: bLat, lng: bLng } });
+    const id = 'dest_' + Date.now();
+    data.destinations.push({
+      id, name,
+      lat: pendingDestinationCoords.lat,
+      lng: pendingDestinationCoords.lng,
+      source: source,
+    });
+    data.activeDestinationId = id;
   }
   saveData();
-  document.getElementById('route-edit-modal').classList.remove('open');
-  renderRoutesList();
-  refreshDirectionLabels();
-  showToast('Route saved', 'success');
-});
-document.getElementById('re-delete').addEventListener('click', () => {
-  if (!editingRouteId || data.routes.length <= 1) return;
-  if (!confirm('Delete this route and all its points?')) return;
-  data.routes = data.routes.filter(r => r.id !== editingRouteId);
-  data.points = data.points.filter(p => p.routeId !== editingRouteId);
-  if (data.activeRouteId === editingRouteId) data.activeRouteId = data.routes[0].id;
-  saveData();
-  document.getElementById('route-edit-modal').classList.remove('open');
-  renderRoutesList();
-  refreshDirectionLabels();
-  showToast('Route deleted');
+  document.getElementById('destination-edit-modal').classList.remove('open');
+  renderDestinationsList();
+  showToast('Destination saved', 'success');
   if (currentPos) update();
+  drawRouteToActiveDest();
+});
+document.getElementById('de-delete').addEventListener('click', () => {
+  if (!editingDestinationId) return;
+  if (data.destinations.length <= 1) {
+    showToast('Need at least one destination — add another first');
+    return;
+  }
+  if (!confirm('Delete this destination and all its associated points?')) return;
+  data.destinations = data.destinations.filter(d => d.id !== editingDestinationId);
+  data.points = data.points.filter(p => p.destinationId !== editingDestinationId);
+  if (data.activeDestinationId === editingDestinationId) data.activeDestinationId = data.destinations[0].id;
+  saveData();
+  document.getElementById('destination-edit-modal').classList.remove('open');
+  renderDestinationsList();
+  showToast('Destination deleted');
+  if (currentPos) update();
+  drawRouteToActiveDest();
 });
 
 // GitHub
@@ -2999,18 +4079,25 @@ function startTrip() {
   activeTrip = {
     id: 't_' + Date.now(),
     startedAt: new Date().toISOString(),
-    routeId: data.activeRouteId,
+    destinationId: data.activeDestinationId,
     routeName: activeRoute().name,
     direction: activeDir(),
+    headingTo: activeDest() ? activeDest().name : null,
     startPos: currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null,
     distanceKm: 0,
     maxSpeed: 0,
     pointCounts: {},
     passedKeys: [],
+    captures: [],  // keys of points captured during this trip
   };
   showToast('Trip started', 'success');
   updateTripStatusBar();
   document.getElementById('settings-modal').classList.remove('open');
+  if (appMode === 'log') {
+    renderLogList();
+    const status = document.getElementById('log-status');
+    if (status) status.textContent = `Trip ${activeTrip.id.slice(-4)} recording — tap a button to capture`;
+  }
 }
 function endTrip() {
   if (!activeTrip) return;
@@ -3021,6 +4108,11 @@ function endTrip() {
   showToast(`Trip saved · ${activeTrip.distanceKm.toFixed(1)} km`, 'success');
   activeTrip = null;
   updateTripStatusBar();
+  if (appMode === 'log') {
+    renderLogList();
+    const status = document.getElementById('log-status');
+    if (status) status.textContent = 'Trip ended — start a new trip to keep capturing';
+  }
 }
 function updateTripStatusBar() {
   const bar = document.getElementById('trip-status-bar');
@@ -3063,64 +4155,245 @@ function renderTripLog() {
   }));
 }
 
-// ===================== ROUTES =====================
-function renderRoutesList() {
-  const list = document.getElementById('routes-list');
-  list.innerHTML = data.routes.map(r => {
-    const ptCount = data.points.filter(p => p.routeId === r.id).length;
+// ===================== DESTINATIONS =====================
+function renderDestinationsList() {
+  const list = document.getElementById('destinations-list');
+  if (!list) return;
+  if (!data.destinations || data.destinations.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--ink-soft);padding:6px;">No destinations yet. Tap + to add.</div>';
+    return;
+  }
+  list.innerHTML = data.destinations.map(d => {
+    const ptCount = data.points.filter(p => p.destinationId === d.id && !p.isDemo).length;
+    const sourceLabel = d.source ? ` · ${d.source}` : '';
     return `
-      <div class="route-card ${r.id === data.activeRouteId ? 'active' : ''}">
+      <div class="route-card ${d.id === data.activeDestinationId ? 'active' : ''}">
         <div class="route-info">
-          <div class="route-name">${escapeHtml(r.name)}</div>
-          <div class="route-meta">${escapeHtml(r.a.name)} ↔ ${escapeHtml(r.b.name)} · ${ptCount} pts</div>
+          <div class="route-name">${escapeHtml(d.name)}</div>
+          <div class="route-meta">${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}${sourceLabel} · ${ptCount} pts</div>
         </div>
         <div class="route-actions">
-          <button data-route-activate="${r.id}" title="Activate" class="${r.id === data.activeRouteId ? 'active' : ''}">✓</button>
-          <button data-route-edit="${r.id}" title="Edit">✎</button>
+          <button data-dest-activate="${d.id}" title="Set as destination" class="${d.id === data.activeDestinationId ? 'active' : ''}">✓</button>
+          <button data-dest-edit="${d.id}" title="Edit">✎</button>
         </div>
       </div>
     `;
   }).join('');
-  list.querySelectorAll('[data-route-activate]').forEach(b => b.addEventListener('click', () => {
-    data.activeRouteId = b.getAttribute('data-route-activate');
+  list.querySelectorAll('[data-dest-activate]').forEach(b => b.addEventListener('click', () => {
+    data.activeDestinationId = b.getAttribute('data-dest-activate');
     saveData();
-    refreshDirectionLabels();
     distHistory.a.length = 0; distHistory.b.length = 0;
     alertedPoints.clear(); feedbackPromptedKeys.clear();
-    renderRoutesList();
+    renderDestinationsList();
     if (currentPos) update();
-    showToast('Route activated', 'success');
+    showToast('Destination set', 'success');
+    // Trigger route line redraw
+    drawRouteToActiveDest();
   }));
-  list.querySelectorAll('[data-route-edit]').forEach(b => b.addEventListener('click', () => {
-    openRouteEditor(b.getAttribute('data-route-edit'));
+  list.querySelectorAll('[data-dest-edit]').forEach(b => b.addEventListener('click', () => {
+    openDestinationEditor(b.getAttribute('data-dest-edit'));
   }));
-}
-let editingRouteId = null;
-function openRouteEditor(id) {
-  editingRouteId = id;
-  const r = id ? data.routes.find(x => x.id === id) : null;
-  document.getElementById('route-edit-title').textContent = r ? 'Edit route' : 'Add route';
-  document.getElementById('re-name').value = r ? r.name : '';
-  document.getElementById('re-a-name').value = r ? r.a.name : '';
-  document.getElementById('re-a-lat').value = r ? r.a.lat : '';
-  document.getElementById('re-a-lng').value = r ? r.a.lng : '';
-  document.getElementById('re-b-name').value = r ? r.b.name : '';
-  document.getElementById('re-b-lat').value = r ? r.b.lat : '';
-  document.getElementById('re-b-lng').value = r ? r.b.lng : '';
-  document.getElementById('re-delete').style.display = (r && data.routes.length > 1) ? 'flex' : 'none';
-  document.getElementById('route-edit-modal').classList.add('open');
-}
-function refreshDirectionLabels() {
-  const r = activeRoute();
-  document.querySelectorAll('.dir-btn').forEach(btn => {
-    const d = btn.getAttribute('data-dir');
-    if (d === 'a') btn.textContent = '→ ' + (r.a.name || 'A');
-    else if (d === 'b') btn.textContent = '→ ' + (r.b.name || 'B');
-  });
-  data.destinations = { a: r.a, b: r.b };
 }
 
-// ===================== GITHUB BACKUP =====================
+// Plus Code → lat/lng decoder (uses inlined Open Location Code library)
+function plusCodeToLatLng(code) {
+  if (!window.OpenLocationCode) throw new Error('Plus Code library not loaded');
+  const olc = new window.OpenLocationCode();
+  // Library is strict — full codes only. Recover short codes if needed.
+  const cleaned = code.trim().replace(/\s+/g, '+');
+  let fullCode = cleaned;
+  if (!olc.isFull(cleaned)) {
+    if (currentPos && olc.isShort(cleaned)) {
+      fullCode = olc.recoverNearest(cleaned, currentPos.lat, currentPos.lng);
+    } else {
+      throw new Error('Need full Plus Code (e.g. 8Q4HPQF8+QV) or current GPS to recover short codes');
+    }
+  }
+  const area = olc.decode(fullCode);
+  return { lat: area.latitudeCenter, lng: area.longitudeCenter };
+}
+
+// Geocode an address via Nominatim (OpenStreetMap)
+async function geocodeAddress(address) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+  const resp = await fetch(url, {
+    headers: { 'Accept': 'application/json', 'User-Agent': 'RoadAlert/15' }
+  });
+  if (!resp.ok) throw new Error('Geocoding failed: ' + resp.status);
+  const arr = await resp.json();
+  if (!arr || arr.length === 0) throw new Error('Address not found');
+  const first = arr[0];
+  return { lat: parseFloat(first.lat), lng: parseFloat(first.lon), display: first.display_name };
+}
+
+let editingDestinationId = null;
+let pendingDestinationCoords = null; // { lat, lng } resolved from any input method
+let destPreviewMap = null;
+let destPreviewMarker = null;
+let destPreviewRouteLine = null;
+let mapTapHandler = null; // closure set when "Tap map" tab is active
+
+function openDestinationEditor(id) {
+  editingDestinationId = id;
+  pendingDestinationCoords = null;
+  const d = id ? data.destinations.find(x => x.id === id) : null;
+  document.getElementById('destination-edit-title').textContent = d ? 'Edit destination' : 'Add destination';
+  document.getElementById('de-name').value = d ? d.name : '';
+  document.getElementById('de-plus').value = '';
+  document.getElementById('de-lat').value = d ? d.lat : '';
+  document.getElementById('de-lng').value = d ? d.lng : '';
+  document.getElementById('de-address').value = '';
+  document.getElementById('de-preview-meta').textContent = d ? `Current: ${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}` : '';
+  document.getElementById('de-preview-map').style.display = 'none';
+  document.getElementById('de-delete').style.display = d ? 'flex' : 'none';
+  // If editing existing, pre-fill pendingCoords
+  if (d) pendingDestinationCoords = { lat: d.lat, lng: d.lng };
+  document.getElementById('destination-edit-modal').classList.add('open');
+  // Default to Plus Code tab
+  setDestTab('plus');
+}
+
+function setDestTab(name) {
+  document.querySelectorAll('[data-detab]').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-detab') === name));
+  document.querySelectorAll('[data-pane]').forEach(p =>
+    p.style.display = p.getAttribute('data-pane') === name ? 'flex' : 'none');
+}
+
+async function resolveDestinationInput() {
+  const activeTab = document.querySelector('[data-detab].active');
+  const tab = activeTab ? activeTab.getAttribute('data-detab') : 'plus';
+  try {
+    if (tab === 'plus') {
+      const code = document.getElementById('de-plus').value.trim();
+      if (!code) throw new Error('Enter a Plus Code');
+      const ll = plusCodeToLatLng(code);
+      pendingDestinationCoords = ll;
+    } else if (tab === 'latlng') {
+      const lat = parseFloat(document.getElementById('de-lat').value);
+      const lng = parseFloat(document.getElementById('de-lng').value);
+      if (isNaN(lat) || isNaN(lng)) throw new Error('Enter valid lat and lng');
+      pendingDestinationCoords = { lat, lng };
+    } else if (tab === 'address') {
+      const addr = document.getElementById('de-address').value.trim();
+      if (!addr) throw new Error('Enter an address');
+      document.getElementById('de-preview-meta').textContent = 'Looking up address...';
+      const result = await geocodeAddress(addr);
+      pendingDestinationCoords = { lat: result.lat, lng: result.lng };
+      // If name field empty, fill from result
+      const nameField = document.getElementById('de-name');
+      if (!nameField.value.trim()) nameField.value = result.display.split(',')[0];
+    } else if (tab === 'here') {
+      if (!currentPos) throw new Error('No GPS fix yet — start GPS first');
+      pendingDestinationCoords = { lat: currentPos.lat, lng: currentPos.lng };
+    } else if (tab === 'map') {
+      throw new Error('Close this dialog, tap the map, then come back');
+    }
+    // Show preview
+    showDestPreview(pendingDestinationCoords);
+  } catch (e) {
+    document.getElementById('de-preview-meta').textContent = 'Error: ' + e.message;
+  }
+}
+
+function showDestPreview(ll) {
+  if (!ll) return;
+  const meta = document.getElementById('de-preview-meta');
+  meta.textContent = `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
+  const mapDiv = document.getElementById('de-preview-map');
+  mapDiv.style.display = 'block';
+  setTimeout(() => {
+    if (!destPreviewMap) {
+      destPreviewMap = L.map('de-preview-map', {
+        zoomControl: false, attributionControl: false, tap: true,
+      });
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, crossOrigin: true }).addTo(destPreviewMap);
+    }
+    destPreviewMap.invalidateSize(true);
+    destPreviewMap.setView([ll.lat, ll.lng], 13);
+    if (destPreviewMarker) destPreviewMap.removeLayer(destPreviewMarker);
+    destPreviewMarker = L.marker([ll.lat, ll.lng], {
+      icon: L.divIcon({ className: '', html: `<div class="ra-endpoint">!</div>`, iconSize: [28, 28], iconAnchor: [14, 14] })
+    }).addTo(destPreviewMap);
+    // Show line from current pos if available
+    if (currentPos) {
+      if (destPreviewRouteLine) destPreviewMap.removeLayer(destPreviewRouteLine);
+      destPreviewRouteLine = L.polyline([[currentPos.lat, currentPos.lng], [ll.lat, ll.lng]], {
+        color: '#f59e0b', weight: 3, opacity: 0.7, dashArray: '4,6'
+      }).addTo(destPreviewMap);
+      destPreviewMap.fitBounds([[currentPos.lat, currentPos.lng], [ll.lat, ll.lng]], { padding: [20, 20], maxZoom: 13 });
+    }
+  }, 200);
+}
+
+function refreshDirectionLabels() {
+  // Legacy noop — kept so existing call sites don't break.
+}
+
+// ===================== ROUTE DRAWING (OSRM with straight-line fallback) =====================
+let homeMapRouteLine = null;
+let modalMapRouteLine = null;
+let lastRouteFetchKey = null;
+let lastRouteCoords = null; // [[lat,lng], ...] from last successful fetch
+
+async function fetchOSRMRoute(start, end) {
+  // Returns array of [lat, lng] following roads, or null on failure
+  const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000); // 8 sec timeout
+    const resp = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) return null;
+    const coords = data.routes[0].geometry.coordinates; // [lng, lat] pairs
+    return coords.map(c => [c[1], c[0]]);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function drawRouteToActiveDest() {
+  if (!currentPos) return;
+  const dest = activeDestObj();
+  if (!dest) return;
+
+  // Throttle: cache key prevents refetching for same start/end pair within ~500m of last
+  const fetchKey = `${currentPos.lat.toFixed(2)},${currentPos.lng.toFixed(2)}_${dest.lat.toFixed(4)},${dest.lng.toFixed(4)}`;
+  let coords = lastRouteCoords;
+  if (fetchKey !== lastRouteFetchKey) {
+    coords = await fetchOSRMRoute(currentPos, dest);
+    if (!coords) {
+      // Fallback: straight line
+      coords = [[currentPos.lat, currentPos.lng], [dest.lat, dest.lng]];
+    }
+    lastRouteFetchKey = fetchKey;
+    lastRouteCoords = coords;
+  }
+
+  // Draw on home map
+  if (homeMapInstance && coords) {
+    if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
+    homeMapRouteLine = L.polyline(coords, {
+      color: '#f59e0b', weight: 4, opacity: 0.8
+    }).addTo(homeMapInstance);
+  }
+  // Draw on modal map
+  if (mapInstance && coords) {
+    if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
+    modalMapRouteLine = L.polyline(coords, {
+      color: '#f59e0b', weight: 5, opacity: 0.8
+    }).addTo(mapInstance);
+  }
+}
+
+// Auto-redraw every 30 seconds while moving
+setInterval(() => {
+  if (mode === 'gps' || mode === 'demo') drawRouteToActiveDest();
+}, 30000);
+
+
 async function backupToGitHub() {
   if (!github.token || !github.repo || !github.path) {
     showToast('Set token, repo, and path first');
@@ -3555,7 +4828,30 @@ function ensureHomeMap() {
   });
   // (intentionally no 'zoomstart' handler — zooming preserves follow)
 
+  // Long-press / right-click on map → prompt to set as destination
+  homeMapInstance.on('contextmenu', (e) => {
+    handleMapTapForDestination(e.latlng);
+  });
+
   return homeMapInstance;
+}
+
+function handleMapTapForDestination(latlng) {
+  const name = prompt('Set this point as a new destination?\nEnter a name (or cancel):');
+  if (!name || !name.trim()) return;
+  const id = 'dest_' + Date.now();
+  data.destinations.push({
+    id, name: name.trim(),
+    lat: parseFloat(latlng.lat.toFixed(5)),
+    lng: parseFloat(latlng.lng.toFixed(5)),
+    source: 'tap',
+  });
+  data.activeDestinationId = id;
+  saveData();
+  showToast(`Destination "${name.trim()}" set`, 'success');
+  if (currentPos) update();
+  drawRouteToActiveDest();
+  renderDestinationsList();
 }
 
 function updateHomeRecenterBtn() {
@@ -3679,6 +4975,9 @@ function setHomeMapSize(size) {
   document.querySelectorAll('[data-mapsize]').forEach(b =>
     b.classList.toggle('active', b.getAttribute('data-mapsize') === size)
   );
+  // Update top-bar map button visual (greyed out when off)
+  const mapBtn = document.getElementById('map-btn');
+  if (mapBtn) mapBtn.classList.toggle('off', size === 'off');
   settings.mapSize = size;
   saveSettings();
   setTimeout(() => {
@@ -3765,6 +5064,9 @@ window.addEventListener('load', () => {
   setAppMode(appMode);
   // Wire log panel buttons
   setupLogPanel();
+  // Wire collapsible panel headers and apply saved panel state
+  setupPanelHeads();
+  applyPanelState();
 });
 
 
@@ -3778,6 +5080,73 @@ function tickMapRefresh() {
 }
 setInterval(tickMapRefresh, 3000);
 // ===================== APP MODES =====================
+// ===================== PANEL STATE (collapse / hide / restore) =====================
+function loadPanelState() {
+  try { const r = localStorage.getItem('roadAlert.v13.panels'); if (r) return JSON.parse(r); } catch(e) {}
+  return {}; // { hero: 'collapsed' | 'hidden', next: ..., upcoming: ..., map: ... }
+}
+function savePanelState() { try { localStorage.setItem('roadAlert.v13.panels', JSON.stringify(panelState)); } catch(e) {} }
+let panelState = loadPanelState();
+
+function applyPanelState() {
+  document.querySelectorAll('[data-panel]').forEach(el => {
+    const name = el.getAttribute('data-panel');
+    el.classList.remove('collapsed', 'hidden');
+    if (panelState[name] === 'collapsed') el.classList.add('collapsed');
+    else if (panelState[name] === 'hidden') el.classList.add('hidden');
+  });
+  renderHiddenPanelsBar();
+}
+
+function renderHiddenPanelsBar() {
+  const bar = document.getElementById('hidden-panels-bar');
+  if (!bar) return;
+  const labels = { hero: 'Speed', next: 'Next ahead', upcoming: 'Trip points' };
+  const hiddenItems = Object.entries(panelState).filter(([_, v]) => v === 'hidden');
+  if (hiddenItems.length === 0) {
+    bar.innerHTML = '';
+    return;
+  }
+  bar.innerHTML = '<span style="padding:4px 6px;align-self:center;">Hidden:</span>' +
+    hiddenItems.map(([name]) => `<button class="restore-chip" data-restore="${name}">+ ${labels[name] || name}</button>`).join('');
+  bar.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', () => {
+    const name = b.getAttribute('data-restore');
+    delete panelState[name];
+    savePanelState();
+    applyPanelState();
+  }));
+}
+
+function setupPanelHeads() {
+  document.querySelectorAll('[data-panel]').forEach(el => {
+    const name = el.getAttribute('data-panel');
+    const head = el.querySelector('.panel-head');
+    if (!head) return;
+    // Tap on header (not on buttons) toggles collapse
+    head.addEventListener('click', (e) => {
+      if (e.target.closest('.panel-btn')) return;
+      const cur = panelState[name];
+      panelState[name] = cur === 'collapsed' ? null : 'collapsed';
+      if (panelState[name] === null) delete panelState[name];
+      savePanelState(); applyPanelState();
+    });
+    head.querySelectorAll('[data-panel-action]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = btn.getAttribute('data-panel-action');
+        if (action === 'collapse') {
+          panelState[name] = panelState[name] === 'collapsed' ? null : 'collapsed';
+        } else if (action === 'hide') {
+          panelState[name] = 'hidden';
+        }
+        if (panelState[name] === null) delete panelState[name];
+        savePanelState(); applyPanelState();
+      });
+    });
+  });
+}
+
+
 function setAppMode(m) {
   appMode = m;
   settings.appMode = m;
@@ -3786,9 +5155,18 @@ function setAppMode(m) {
   document.querySelectorAll('.mode-btn').forEach(b =>
     b.classList.toggle('active', b.getAttribute('data-mode') === m)
   );
-  if (m === 'log') renderLogList();
+  if (m === 'log') {
+    renderLogList();
+    const status = document.getElementById('log-status');
+    if (status) {
+      if (activeTrip) {
+        status.textContent = `Trip ${activeTrip.id.slice(-4)} recording — tap a button to capture`;
+      } else {
+        status.textContent = 'No trip yet — Settings → Trip log → Start trip';
+      }
+    }
+  }
   if (m === 'audit') renderAuditList();
-  // Re-render map markers since they depend on mode
   if (homeMapInstance) {
     setTimeout(() => { homeMapInstance.invalidateSize(true); refreshHomeMapMarkers(); }, 200);
   }
@@ -3797,36 +5175,97 @@ function setAppMode(m) {
 function renderLogList() {
   const container = document.getElementById('log-list');
   if (!container) return;
-  // Show recent captures (real, not demo), most recent first
-  const recent = data.points
-    .filter(p => !p.isDemo)
-    .slice()
-    .reverse()
-    .slice(0, 30);
-  if (recent.length === 0) {
-    container.innerHTML = '<div class="log-status">No captures yet. Start GPS, then tap a button above when you spot something.</div>';
+  // Show current-trip captures if a trip is running, else show "all-time" recent unassigned captures
+  let items;
+  let header;
+  if (activeTrip) {
+    const keys = (activeTrip.captures || []);
+    items = keys.map(k => data.points.find(p => pointKey(p) === k)).filter(p => p && !p.isDemo);
+    header = `Trip ${activeTrip.id.slice(-4)} · ${items.length} captures · started ${new Date(activeTrip.startedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+  } else {
+    items = data.points
+      .filter(p => !p.isDemo && !p.tripId)  // only un-tripped captures
+      .slice()
+      .reverse()
+      .slice(0, 30);
+    header = items.length === 0 ? 'No active trip · tap "Start trip" in Settings to begin' : `${items.length} unfiled captures · start a trip to group them`;
+  }
+
+  // Compute next-distances (chronological order = capture order)
+  const ordered = activeTrip ? items : items.slice().reverse(); // chronological
+  for (let i = 0; i < ordered.length; i++) {
+    const p = ordered[i];
+    const next = ordered[i + 1];
+    if (next) {
+      p._toNextKm = distance(p, next);
+      const t1 = new Date(p.capturedAt).getTime();
+      const t2 = new Date(next.capturedAt).getTime();
+      p._toNextSec = Math.round((t2 - t1) / 1000);
+    } else {
+      p._toNextKm = null;
+      p._toNextSec = null;
+    }
+  }
+
+  if (!ordered.length) {
+    container.innerHTML = `<div class="log-status">${header}</div>`;
     return;
   }
-  container.innerHTML = recent.map(p => {
+
+  // Show newest first in UI but links to next reflect chronological order
+  const display = activeTrip ? ordered.slice().reverse() : ordered.slice().reverse();
+  container.innerHTML = `<div class="log-status">${header}</div>` + display.map(p => {
     const sideText = p.side ? ' · ' + (p.side === 'left' ? 'L' : 'R') : '';
-    const timeText = p.capturedAt ? new Date(p.capturedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    const dt = p.capturedAt ? new Date(p.capturedAt) : null;
+    const timeText = dt ? dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '';
+    const dateText = dt ? dt.toLocaleDateString([], {month: 'short', day: 'numeric'}) : '';
+    const headTo = p.capturedHeadingTo ? ` → ${p.capturedHeadingTo}` : '';
+    const nextLink = (p._toNextKm != null) ?
+      `<div style="font-size:10px;color:var(--ink-faint);font-family:var(--mono);margin-top:2px;">↓ next: +${formatDist(p._toNextKm)} · ${formatSec(p._toNextSec)}</div>` :
+      `<div style="font-size:10px;color:var(--green);font-family:var(--mono);margin-top:2px;">last capture</div>`;
     return `
-      <div class="log-row">
-        <span class="em">${pointDisplayIcon(p)}</span>
-        <span class="name">${escapeHtml(p.name)}<span style="color:var(--ink-faint);font-weight:400;">${sideText}</span></span>
-        <span class="time">${timeText}</span>
-        <button class="del" data-log-del="${escapeHtml(pointKey(p))}">×</button>
+      <div class="log-row" data-edit="${escapeHtml(pointKey(p))}" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="em">${pointDisplayIcon(p)}</span>
+          <span class="name">${escapeHtml(p.name)}<span style="color:var(--ink-faint);font-weight:400;">${sideText}</span></span>
+          <span class="time">${dateText} ${timeText}</span>
+          <button class="del" data-log-del="${escapeHtml(pointKey(p))}">×</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <span style="font-size:10px;color:var(--ink-soft);font-family:var(--mono);">${escapeHtml(headTo)}</span>
+          ${nextLink}
+        </div>
       </div>
     `;
   }).join('');
+  // Wire delete + edit
   container.querySelectorAll('[data-log-del]').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
     const k = b.getAttribute('data-log-del');
     if (confirm('Delete this captured point?')) {
       data.points = data.points.filter(p => pointKey(p) !== k);
+      // Remove from active trip's captures list if present
+      if (activeTrip && Array.isArray(activeTrip.captures)) {
+        activeTrip.captures = activeTrip.captures.filter(x => x !== k);
+        saveTrips();
+      }
       saveData(); renderLogList(); if (currentPos) update();
     }
   }));
+  container.querySelectorAll('[data-edit]').forEach(row => row.addEventListener('click', e => {
+    if (e.target.closest('[data-log-del]')) return;
+    const k = row.getAttribute('data-edit');
+    openPointEditor(k);
+  }));
+}
+
+function formatSec(s) {
+  if (s == null || isNaN(s)) return '—';
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60); const ss = s % 60;
+  if (m < 60) return `${m}m ${ss}s`;
+  const h = Math.floor(m / 60); const mm = m % 60;
+  return `${h}h ${mm}m`;
 }
 
 function renderAuditList() {
@@ -3887,23 +5326,40 @@ function setupLogPanel() {
       }
       btn.classList.add('flash');
       setTimeout(() => btn.classList.remove('flash'), 400);
-      // Use existing capture flow but skip subtype/side prompts for speed in log mode
+      // Determine which destination we're heading toward
+      const dest = activeDest();
+      const destSide = activeDir(); // 'a' or 'b'
+      const headingToName = dest && dest.name ? dest.name : null;
       const newPoint = ensurePointDefaults({
         name: typeLabel(type),
         type: type,
         lat: parseFloat(currentPos.lat.toFixed(5)),
         lng: parseFloat(currentPos.lng.toFixed(5)),
         capturedAt: new Date().toISOString(),
+        capturedHeadingTo: headingToName,  // "Medina" or "Jeddah" — direction tagging
+        capturedDir: destSide,             // 'a' or 'b'
+        capturedHeading: (currentHeading != null && !isNaN(currentHeading)) ? Math.round(currentHeading) : null,
+        capturedSpeed: currentSpeed != null ? Math.round(currentSpeed * 3.6) : null,
+        tripId: activeTrip ? activeTrip.id : null,
         status: 'active',
         confidence: 1,
-        routeId: data.activeRouteId,
+        destinationId: data.activeDestinationId,
       });
       data.points.push(newPoint);
+      // If a trip is active, also push key into its captures list
+      if (activeTrip) {
+        if (!Array.isArray(activeTrip.captures)) activeTrip.captures = [];
+        activeTrip.captures.push(pointKey(newPoint));
+        saveTrips();
+      }
       saveData();
       renderLogList();
       if (currentPos) update();
       const status = document.getElementById('log-status');
-      if (status) status.textContent = `Captured: ${typeLabel(type)} at ${currentPos.lat.toFixed(4)}, ${currentPos.lng.toFixed(4)}`;
+      if (status) {
+        const head = headingToName ? `→ ${headingToName}` : '';
+        status.textContent = `Captured ${typeLabel(type)} ${head} at ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+      }
       showToast('Captured', 'success');
     });
   });
