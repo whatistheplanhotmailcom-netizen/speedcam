@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v11.1</title>
+<title>Road Alert v11.2</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1030,12 +1030,31 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .home-map-fab.fit { right: 50px; background: var(--bg-card); color: var(--ink); border: 1px solid var(--line); }
   .home-map-fab.expand { right: 92px; background: var(--bg-card); color: var(--ink); border: 1px solid var(--line); }
 
+  /* Follow pill — clear text indicator */
+  .home-map-pill {
+    position: absolute; left: 8px; bottom: 8px; z-index: 5;
+    background: var(--green); color: #0c0a09;
+    border: none; border-radius: 100px; padding: 6px 12px;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .home-map-pill .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #0c0a09;
+    animation: pulse 1.6s infinite;
+  }
+  .home-map-pill.off {
+    background: var(--bg-card); color: var(--ink-soft); border: 1px solid var(--line);
+  }
+  .home-map-pill.off .dot { background: var(--ink-faint); animation: none; }
+
   /* Map modal — full screen */
   .map-modal {
     position: fixed; inset: 0; background: var(--bg);
-    display: none; flex-direction: column; z-index: 150;
+    display: none; flex-direction: column; z-index: 9999;
   }
-  .map-modal.open { display: flex; }
+  .map-modal.open { display: flex !important; }
   .map-header {
     position: relative; z-index: 10;
     padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top));
@@ -1181,7 +1200,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v11.1</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v11.2</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -1296,6 +1315,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
             <button data-mapsize="l">L</button>
           </div>
         </div>
+        <button class="home-map-pill" id="home-map-follow-btn" title="Follow my location">
+          <span class="dot"></span> <span id="home-map-follow-label">Follow: ON</span>
+        </button>
         <button class="home-map-fab fit" id="home-map-fit-btn" title="Fit all">⛶</button>
         <button class="home-map-fab" id="home-map-recenter-btn" title="Recenter">📍</button>
       </div>
@@ -2989,11 +3011,6 @@ function popupHtmlFor(p, distFromMe) {
 function ensureMap() {
   if (mapInstance) return mapInstance;
   if (typeof L === 'undefined') { showToast('Map library error — try reload'); return null; }
-  const container = document.getElementById('map-leaflet');
-  if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
-    // Container not sized yet, force visible parent
-    document.getElementById('map-modal').classList.add('open');
-  }
   mapInstance = L.map('map-leaflet', {
     zoomControl: true, attributionControl: true, tap: true,
     preferCanvas: false,
@@ -3251,7 +3268,16 @@ function initMapInModal() {
 }
 
 document.getElementById('map-btn').addEventListener('click', openMap);
-document.getElementById('map-close-btn').addEventListener('click', () => document.getElementById('map-modal').classList.remove('open'));
+document.getElementById('map-close-btn').addEventListener('click', () => {
+  document.getElementById('map-modal').classList.remove('open');
+  // Refresh home map in case it lost size while modal was open
+  setTimeout(() => {
+    if (homeMapInstance) {
+      homeMapInstance.invalidateSize(true);
+      refreshHomeMapMarkers();
+    }
+  }, 200);
+});
 document.getElementById('map-recenter-btn').addEventListener('click', recenterMapToCurrent);
 document.getElementById('map-fit-btn').addEventListener('click', fitMapToAll);
 document.getElementById('map-layer-btn').addEventListener('click', () => {
@@ -3295,11 +3321,21 @@ function ensureHomeMap() {
 
   homeMapMarkersLayer = L.layerGroup().addTo(homeMapInstance);
 
+  // Auto-follow break: detect user's actual drag/pinch (not programmatic moves)
+  // Leaflet's 'dragstart' fires when user grabs and starts moving the map;
+  // it does NOT fire from setView/panTo, so this is the right hook.
   homeMapInstance.on('dragstart', () => {
-    if (homeMapAutoFollow) { homeMapAutoFollow = false; updateHomeRecenterBtn(); }
+    if (homeMapAutoFollow) {
+      homeMapAutoFollow = false;
+      updateHomeRecenterBtn();
+    }
   });
+  // Pinch-to-zoom triggers zoomstart; ignore programmatic
   homeMapInstance.on('zoomstart', () => {
-    if (homeMapAutoFollow && !homeMapProgrammaticMove) { homeMapAutoFollow = false; updateHomeRecenterBtn(); }
+    if (homeMapAutoFollow && !homeMapProgrammaticMove) {
+      homeMapAutoFollow = false;
+      updateHomeRecenterBtn();
+    }
   });
 
   return homeMapInstance;
@@ -3307,11 +3343,14 @@ function ensureHomeMap() {
 
 function updateHomeRecenterBtn() {
   const btn = document.getElementById('home-map-recenter-btn');
-  if (!btn) return;
-  if (homeMapAutoFollow) {
-    btn.style.background = 'var(--green)';
-  } else {
-    btn.style.background = 'var(--amber)';
+  if (btn) {
+    btn.style.background = homeMapAutoFollow ? 'var(--green)' : 'var(--amber)';
+  }
+  const pill = document.getElementById('home-map-follow-btn');
+  const label = document.getElementById('home-map-follow-label');
+  if (pill && label) {
+    pill.classList.toggle('off', !homeMapAutoFollow);
+    label.textContent = 'Follow: ' + (homeMapAutoFollow ? 'ON' : 'OFF');
   }
 }
 
@@ -3355,10 +3394,12 @@ function refreshHomeMapMarkers() {
       zIndexOffset: 1000,
     }).addTo(homeMapInstance);
 
+    // Auto-follow: setView keeps zoom and pans smoothly to keep dot centered
     if (homeMapAutoFollow) {
       homeMapProgrammaticMove = true;
-      homeMapInstance.panTo([currentPos.lat, currentPos.lng], { animate: true, duration: 0.6 });
-      setTimeout(() => { homeMapProgrammaticMove = false; }, 700);
+      const currentZoom = homeMapInstance.getZoom();
+      homeMapInstance.setView([currentPos.lat, currentPos.lng], currentZoom, { animate: true, duration: 0.5 });
+      setTimeout(() => { homeMapProgrammaticMove = false; }, 600);
     }
   }
 }
@@ -3447,6 +3488,18 @@ window.addEventListener('load', () => {
   document.getElementById('home-map-recenter-btn').addEventListener('click', recenterHomeMap);
   document.getElementById('home-map-fit-btn').addEventListener('click', fitHomeMapToAll);
   document.getElementById('home-map-fullscreen').addEventListener('click', openMap);
+  document.getElementById('home-map-follow-btn').addEventListener('click', () => {
+    if (homeMapAutoFollow) {
+      // Turn OFF
+      homeMapAutoFollow = false;
+      updateHomeRecenterBtn();
+      showToast('Follow OFF — map stays put');
+    } else {
+      // Turn ON and recenter
+      recenterHomeMap();
+      showToast('Follow ON — map tracks you');
+    }
+  });
 
   // Initialize home map after layout settles
   setTimeout(initHomeMap, 300);
