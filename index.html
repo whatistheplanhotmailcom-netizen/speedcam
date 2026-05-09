@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v15</title>
+<title>Road Alert v15.1</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1496,6 +1496,15 @@ exports.OpenLocationCode = OpenLocationCode;
     align-self: center;
   }
   .gauge-limit.warning { animation: limitPulse 0.6s infinite; }
+  .gauge-limit.flash {
+    animation: limitFlash 0.8s ease-out;
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+  @keyframes limitFlash {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); transform: scale(1); }
+    50% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); transform: scale(1.1); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); transform: scale(1); }
+  }
   @keyframes limitPulse {
     0%, 100% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.3), 0 4px 20px rgba(239, 68, 68, 0.4); }
     50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0.15), 0 4px 24px rgba(239, 68, 68, 0.6); }
@@ -2106,7 +2115,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v15</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v15.1</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2980,14 +2989,12 @@ function fireSpeedAlert(limit, currentSpeedKmh, isOver) {
   // Master kill switch
   if (!settings.limitWarn) { wasOverLimit = isOver; return; }
   const soundType = settings.speedAlertSound || 'beep';
-  if (soundType === 'off') { wasOverLimit = isOver; return; }
 
   const freq = settings.speedAlertFreq || 'zone';
   const cooldownMs = (settings.speedAlertCooldown || 30) * 1000;
   const now = Date.now();
 
   if (!isOver) {
-    // No longer over — reset zone tracker so next zone alert fires
     if (wasOverLimit) wasOverLimit = false;
     return;
   }
@@ -2995,7 +3002,7 @@ function fireSpeedAlert(limit, currentSpeedKmh, isOver) {
   // We're over the limit. Decide whether to fire.
   let shouldFire = false;
   if (freq === 'zone') {
-    // Fire only when entering over-state OR when limit changes (new zone)
+    // Fire when transitioning to over-state OR when limit changed (new zone)
     if (!wasOverLimit || lastSpeedAlertZoneLimit !== limit) {
       shouldFire = true;
       lastSpeedAlertZoneLimit = limit;
@@ -3008,10 +3015,21 @@ function fireSpeedAlert(limit, currentSpeedKmh, isOver) {
 
   if (shouldFire) {
     lastSpeedAlertTime = now;
-    const text = `Speed limit ${limit}`;
-    if (soundType === 'voice') speakText(text);
-    else if (soundType === 'beep') beepPattern('speed_change');
-    else if (soundType === 'both') { beepPattern('speed_change'); setTimeout(() => speakText(text), 400); }
+    // Visual flash on the speed limit sign — always works, even if audio fails
+    const limitSign = document.getElementById('limit-sign');
+    if (limitSign) {
+      limitSign.classList.add('flash');
+      setTimeout(() => limitSign.classList.remove('flash'), 800);
+    }
+    // Audio (only if not 'off')
+    if (soundType !== 'off') {
+      const text = `Speed limit ${limit}`;
+      try {
+        if (soundType === 'voice') speakText(text);
+        else if (soundType === 'beep') beepPattern('speed_change');
+        else if (soundType === 'both') { beepPattern('speed_change'); setTimeout(() => speakText(text), 400); }
+      } catch (e) { /* audio not ready */ }
+    }
     if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
   }
   wasOverLimit = true;
@@ -3457,8 +3475,8 @@ function onGPS(pos) {
     refreshHomeMapMarkers();
     followHomeMap();
   }
-  // Draw route on first GPS fix
-  if (wasFirstFix) drawRouteToActiveDest();
+  // Redraw route line on every GPS tick (cheap; OSRM refetch is throttled internally)
+  if (homeMapInstance || mapInstance) drawRouteToActiveDest();
 }
 
 async function startGPS() {
@@ -4359,31 +4377,49 @@ async function drawRouteToActiveDest() {
   const dest = activeDestObj();
   if (!dest) return;
 
-  // Throttle: cache key prevents refetching for same start/end pair within ~500m of last
-  const fetchKey = `${currentPos.lat.toFixed(2)},${currentPos.lng.toFixed(2)}_${dest.lat.toFixed(4)},${dest.lng.toFixed(4)}`;
-  let coords = lastRouteCoords;
-  if (fetchKey !== lastRouteFetchKey) {
-    coords = await fetchOSRMRoute(currentPos, dest);
-    if (!coords) {
-      // Fallback: straight line
-      coords = [[currentPos.lat, currentPos.lng], [dest.lat, dest.lng]];
-    }
-    lastRouteFetchKey = fetchKey;
-    lastRouteCoords = coords;
-  }
-
-  // Draw on home map
-  if (homeMapInstance && coords) {
+  // ALWAYS draw a straight line immediately so user sees something
+  const straightCoords = [[currentPos.lat, currentPos.lng], [dest.lat, dest.lng]];
+  if (homeMapInstance) {
     if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
-    homeMapRouteLine = L.polyline(coords, {
-      color: '#f59e0b', weight: 4, opacity: 0.8
+    homeMapRouteLine = L.polyline(straightCoords, {
+      color: '#f59e0b', weight: 3, opacity: 0.5, dashArray: '8,8'
     }).addTo(homeMapInstance);
   }
-  // Draw on modal map
-  if (mapInstance && coords) {
+  if (mapInstance) {
+    if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
+    modalMapRouteLine = L.polyline(straightCoords, {
+      color: '#f59e0b', weight: 4, opacity: 0.5, dashArray: '8,8'
+    }).addTo(mapInstance);
+  }
+
+  // Then try to upgrade to a road-following route via OSRM (async, throttled)
+  const fetchKey = `${currentPos.lat.toFixed(2)},${currentPos.lng.toFixed(2)}_${dest.lat.toFixed(4)},${dest.lng.toFixed(4)}`;
+  if (fetchKey === lastRouteFetchKey && lastRouteCoords) {
+    // Use cached OSRM route if same area
+    drawRoadFollowingLine(lastRouteCoords);
+    return;
+  }
+
+  const osrmCoords = await fetchOSRMRoute(currentPos, dest);
+  if (osrmCoords) {
+    lastRouteFetchKey = fetchKey;
+    lastRouteCoords = osrmCoords;
+    drawRoadFollowingLine(osrmCoords);
+  }
+  // If OSRM failed, keep the straight line we already drew
+}
+
+function drawRoadFollowingLine(coords) {
+  if (homeMapInstance) {
+    if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
+    homeMapRouteLine = L.polyline(coords, {
+      color: '#f59e0b', weight: 4, opacity: 0.85
+    }).addTo(homeMapInstance);
+  }
+  if (mapInstance) {
     if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
     modalMapRouteLine = L.polyline(coords, {
-      color: '#f59e0b', weight: 5, opacity: 0.8
+      color: '#f59e0b', weight: 5, opacity: 0.85
     }).addTo(mapInstance);
   }
 }
@@ -5014,6 +5050,8 @@ function initHomeMap() {
   setTimeout(() => { m.invalidateSize(true); }, 300);
   setTimeout(() => { m.invalidateSize(true); }, 800);
   setTimeout(() => { m.invalidateSize(true); }, 1500);
+  // Draw route line as soon as map is ready and we have GPS
+  if (currentPos) setTimeout(() => drawRouteToActiveDest(), 600);
 }
 
 // Wire up size toggle and home map buttons (after DOM ready)
