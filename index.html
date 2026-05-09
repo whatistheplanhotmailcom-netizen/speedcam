@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,188 +7,207 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v3 — Jeddah ⇄ Medina</title>
+<title>Road Alert v5</title>
 
-<link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"Road Alert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+<link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-  :root {
-    --bg: #0c0a09;
-    --bg-soft: #1c1917;
-    --bg-card: #1c1917;
-    --line: rgba(245, 241, 232, 0.08);
-    --line-strong: rgba(245, 241, 232, 0.18);
-    --ink: #f5f1e8;
-    --ink-soft: #a8a29e;
-    --ink-faint: #57534e;
-    --amber: #f59e0b;
-    --amber-glow: rgba(245, 158, 11, 0.25);
-    --red: #ef4444;
-    --orange: #f97316;
-    --yellow: #eab308;
-    --green: #84cc16;
-    --cyan: #06b6d4;
-    --violet: #a78bfa;
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
-    --sans: 'Bricolage Grotesque', system-ui, sans-serif;
+  :root, [data-theme="dark"] {
+    --bg: #0c0a09; --bg-soft: #1c1917; --bg-card: #1c1917;
+    --line: rgba(245, 241, 232, 0.08); --line-strong: rgba(245, 241, 232, 0.18);
+    --ink: #f5f1e8; --ink-soft: #a8a29e; --ink-faint: #57534e;
+    --amber: #f59e0b; --amber-glow: rgba(245, 158, 11, 0.25);
+    --red: #ef4444; --orange: #f97316; --yellow: #eab308;
+    --green: #84cc16; --cyan: #06b6d4; --violet: #a78bfa;
+    --limit-bg: #ffffff; --limit-ring: #ef4444; --limit-ink: #0c0a09;
   }
+  [data-theme="light"] {
+    --bg: #f5f1e8; --bg-soft: #ffffff; --bg-card: #ffffff;
+    --line: rgba(28, 25, 23, 0.08); --line-strong: rgba(28, 25, 23, 0.2);
+    --ink: #1c1917; --ink-soft: #57534e; --ink-faint: #a8a29e;
+    --amber: #d97706; --amber-glow: rgba(217, 119, 6, 0.18);
+    --red: #dc2626; --orange: #ea580c; --yellow: #ca8a04;
+    --green: #65a30d; --cyan: #0891b2; --violet: #7c3aed;
+    --limit-bg: #ffffff; --limit-ring: #dc2626; --limit-ink: #0c0a09;
+  }
+  :root { --mono: 'JetBrains Mono', ui-monospace, monospace; --sans: 'Bricolage Grotesque', system-ui, sans-serif; }
+
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow-x: hidden; }
+  html, body { height: 100%; overflow: hidden; }
   body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--ink);
-    background-image:
-      radial-gradient(ellipse at top, rgba(245, 158, 11, 0.04) 0%, transparent 50%),
-      radial-gradient(ellipse at bottom, rgba(6, 182, 212, 0.03) 0%, transparent 50%);
-    min-height: 100vh; min-height: 100dvh;
+    font-family: var(--sans); background: var(--bg); color: var(--ink);
+    background-image: radial-gradient(ellipse at top, var(--amber-glow) 0%, transparent 50%);
+    height: 100vh; height: 100dvh;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     user-select: none; -webkit-user-select: none;
+    transition: background 0.4s, color 0.4s;
   }
   body::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; opacity: 0.4; mix-blend-mode: overlay;
+    content: ''; position: fixed; inset: 0; pointer-events: none; opacity: 0.3; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
     z-index: 0;
   }
+
   .app {
-    position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 12px;
-    display: flex; flex-direction: column; gap: 12px;
-    min-height: 100vh; min-height: 100dvh;
+    position: relative; z-index: 1;
+    max-width: 480px; margin: 0 auto;
+    height: 100vh; height: 100dvh;
+    padding: 8px 10px;
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 8px;
   }
-  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 0; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
-  .brand-mark {
-    width: 22px; height: 22px; border: 2px solid var(--amber); border-radius: 50%;
-    position: relative; box-shadow: 0 0 12px var(--amber-glow);
+
+  .topbar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 0 2px; font-size: 11px; color: var(--ink-soft); }
+  .brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: var(--ink); }
+  .brand-mark { width: 16px; height: 16px; border: 2px solid var(--amber); border-radius: 50%; box-shadow: 0 0 8px var(--amber-glow); position: relative; }
+  .brand-mark::after { content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: var(--amber); border-radius: 50%; transform: translate(-50%, -50%); }
+  .topbar-meta { display: flex; gap: 8px; justify-content: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .topbar-meta span { color: var(--ink-faint); }
+  .topbar-meta strong { color: var(--ink); font-weight: 700; margin-right: 3px; }
+  .topbar-actions { display: flex; gap: 4px; align-items: center; }
+  .icon-btn {
+    appearance: none; border: 1px solid var(--line); background: var(--bg-card);
+    color: var(--ink-soft); width: 28px; height: 28px; border-radius: 8px;
+    display: grid; place-items: center; cursor: pointer; padding: 0;
   }
-  .brand-mark::after {
-    content: ''; position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
-    background: var(--amber); border-radius: 50%; transform: translate(-50%, -50%);
-  }
-  .brand-meta { color: var(--ink-faint); font-weight: 400; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-  .status-pill {
-    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
-    border: 1px solid var(--line); border-radius: 100px;
-    font-family: var(--mono); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
-  }
+  .icon-btn:active { transform: scale(0.93); }
+  .icon-btn svg { width: 14px; height: 14px; }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
-  .status-pill.live .status-dot { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.6s infinite; }
-  .status-pill.demo .status-dot { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: pulse 1.6s infinite; }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.6s infinite; }
+  .status-dot.demo { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 1.6s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  .tabs {
-    display: grid; grid-template-columns: 1fr 1fr;
-    background: var(--bg-card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 4px; gap: 2px;
-  }
-  .tab {
-    appearance: none; border: none; background: transparent; color: var(--ink-soft);
-    font-family: var(--sans); font-weight: 600; font-size: 14px;
-    padding: 10px; border-radius: 10px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: background 0.2s, color 0.2s;
-  }
-  .tab.active { background: var(--amber); color: #0c0a09; }
-  .tab svg { width: 14px; height: 14px; }
-
-  .direction {
-    display: grid; grid-template-columns: 1fr auto 1fr;
-    gap: 0; background: var(--bg-card); border: 1px solid var(--line);
-    border-radius: 14px; padding: 4px;
-    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-  }
-  .dir-btn {
-    appearance: none; border: none; background: transparent; color: var(--ink-soft);
-    font-family: var(--mono); font-weight: 600; font-size: 11px;
-    padding: 8px 6px; border-radius: 10px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-  }
+  .direction { display: grid; grid-template-columns: 1fr 1fr 1fr; background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+  .dir-btn { appearance: none; border: none; background: transparent; color: var(--ink-soft); font-family: var(--mono); font-weight: 600; font-size: 10px; padding: 6px 4px; border-radius: 7px; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; }
   .dir-btn.active { background: var(--ink); color: var(--bg); }
-  .dir-arrow { color: var(--ink-faint); padding: 8px 4px; font-family: var(--mono); }
 
-  .hero {
-    background: linear-gradient(180deg, rgba(245, 158, 11, 0.04), rgba(245, 158, 11, 0));
-    border: 1px solid var(--line); border-radius: 20px;
-    padding: 20px 22px 16px; position: relative; overflow: hidden;
+  .hero { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: stretch; min-height: 0; }
+
+  .speed-limit-sign {
+    width: 110px; background: var(--limit-bg); border: 6px solid var(--limit-ring); border-radius: 50%;
+    display: grid; place-items: center; aspect-ratio: 1; position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   }
-  .hero::before {
-    content: ''; position: absolute; top: 0; right: 0; width: 140px; height: 140px;
-    background: radial-gradient(circle, var(--amber-glow) 0%, transparent 60%); pointer-events: none;
+  .speed-limit-sign.warning { animation: limitPulse 0.6s infinite; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.3), 0 4px 20px rgba(239, 68, 68, 0.4); }
+  @keyframes limitPulse {
+    0%, 100% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.3), 0 4px 20px rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0.15), 0 4px 24px rgba(239, 68, 68, 0.6); }
   }
-  .hero-label {
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--ink-soft); font-weight: 500; display: flex; align-items: center; gap: 8px;
+  .speed-limit-value { font-family: var(--mono); font-weight: 800; font-size: 42px; line-height: 1; color: var(--limit-ink); letter-spacing: -0.04em; }
+  .speed-limit-label {
+    position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft);
+    background: var(--bg); padding: 2px 8px; border-radius: 100px; border: 1px solid var(--line); white-space: nowrap;
   }
-  .hero-label::before { content: ''; width: 16px; height: 1px; background: var(--amber); }
-  .hero-number {
-    font-family: var(--mono); font-weight: 700;
-    font-size: clamp(56px, 16vw, 86px); line-height: 1; letter-spacing: -0.04em;
-    margin-top: 4px; font-variant-numeric: tabular-nums;
-    display: flex; align-items: baseline; gap: 12px;
+
+  .hero-right { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .dest-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; }
+  .dest-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  .dest-distance { font-family: var(--mono); font-weight: 800; font-size: 28px; line-height: 1; letter-spacing: -0.03em; color: var(--ink); margin-top: 2px; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+  .dest-distance .unit { font-size: 12px; font-weight: 500; color: var(--ink-soft); font-family: var(--sans); }
+  .dest-eta { font-family: var(--mono); font-size: 10px; color: var(--ink-soft); margin-top: 2px; letter-spacing: 0.06em; }
+  .speed-badge {
+    position: absolute; top: 6px; right: 6px;
+    display: flex; flex-direction: column; align-items: center;
+    background: var(--bg); border: 1px solid var(--line-strong);
+    border-radius: 8px; padding: 4px 8px; min-width: 46px;
   }
-  .hero-unit { font-family: var(--sans); font-size: 18px; font-weight: 500; color: var(--ink-soft); letter-spacing: 0; }
-  .hero-sub { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
-  .hero-sub strong { color: var(--ink); font-weight: 600; }
-  .hero-meta {
-    display: flex; gap: 16px; margin-top: 12px;
-    padding-top: 12px; border-top: 1px solid var(--line);
-    font-family: var(--mono); font-size: 11px;
-    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+  .speed-badge.over { border-color: var(--red); background: rgba(239,68,68,0.1); }
+  .speed-badge-value { font-family: var(--mono); font-weight: 800; font-size: 16px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .speed-badge.over .speed-badge-value { color: var(--red); }
+  .speed-badge-unit { font-family: var(--mono); font-size: 8px; color: var(--ink-faint); margin-top: 1px; letter-spacing: 0.08em; }
+  .accuracy-badge {
+    position: absolute; bottom: 6px; right: 8px;
+    font-family: var(--mono); font-size: 9px; color: var(--ink-faint);
+    letter-spacing: 0.04em;
   }
-  .hero-meta span strong { color: var(--ink); font-weight: 700; margin-right: 4px; }
+  .accuracy-badge.good { color: var(--green); }
+  .accuracy-badge.bad { color: var(--orange); }
 
   .next {
-    background: var(--bg-card); border: 1px solid var(--line); border-radius: 18px;
-    padding: 16px 16px 14px; display: flex; align-items: center; gap: 14px; position: relative;
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
+    transition: box-shadow 0.3s, border-color 0.3s; position: relative; overflow: hidden;
   }
-  .next.alerting {
-    border-color: var(--amber); box-shadow: 0 0 0 4px var(--amber-glow);
-    animation: alertPulse 1s infinite;
-  }
-  @keyframes alertPulse {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.25); }
-    50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.1); }
-  }
-  .next-bar { width: 4px; align-self: stretch; border-radius: 4px; background: var(--amber); }
+  .next.alerting { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-glow); animation: alertPulse 1s infinite; }
+  @keyframes alertPulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); } 50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.1); } }
+  .next-row { display: flex; align-items: center; gap: 10px; }
+  .next-bar { width: 3px; align-self: stretch; border-radius: 3px; background: var(--amber); }
   .next-body { flex: 1; min-width: 0; }
-  .next-label { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
-  .next-name { font-size: 18px; font-weight: 600; margin-top: 4px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .next-distance { font-family: var(--mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--amber); }
-  .next-distance .unit { font-size: 13px; color: var(--ink-soft); margin-left: 4px; font-weight: 500; font-family: var(--sans); }
+  .next-label { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  .next-name { font-size: 14px; font-weight: 600; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .next-distance { font-family: var(--mono); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--amber); text-align: right; }
+  .next-distance .unit { font-size: 10px; color: var(--ink-soft); margin-left: 3px; font-weight: 500; font-family: var(--sans); }
+  .next-eta { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); letter-spacing: 0.06em; text-align: right; }
 
-  .upcoming-section { display: flex; flex-direction: column; gap: 8px; }
-  .section-head {
-    display: flex; align-items: center; justify-content: space-between; padding: 0 4px;
-    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600;
+  /* Feedback row */
+  .feedback {
+    display: none;
+    flex-direction: column; gap: 4px;
+    border-top: 1px solid var(--line);
+    padding-top: 6px;
   }
+  .next.show-feedback .feedback { display: flex; }
+  .feedback-q { font-size: 10px; color: var(--ink-soft); font-weight: 500; letter-spacing: 0.04em; }
+  .feedback-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .fb-btn {
+    appearance: none; border: 1px solid var(--line-strong); background: var(--bg);
+    color: var(--ink); font-family: var(--sans); font-weight: 700; font-size: 12px;
+    padding: 8px 4px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .fb-btn:active { transform: scale(0.94); }
+  .fb-btn.yes { border-color: var(--green); color: var(--green); }
+  .fb-btn.no { border-color: var(--red); color: var(--red); }
+  .fb-btn.maybe { border-color: var(--yellow); color: var(--yellow); }
+  .fb-timer {
+    height: 2px; background: var(--line); overflow: hidden; border-radius: 2px;
+  }
+  .fb-timer-fill {
+    height: 100%; background: var(--amber);
+    width: 100%;
+    transition: width linear;
+  }
+
+  .upcoming-section { display: flex; flex-direction: column; min-height: 0; gap: 4px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
   .section-head .count { color: var(--ink-faint); font-family: var(--mono); }
-  .upcoming, .captures {
-    display: flex; flex-direction: column;
-    background: var(--bg-card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
-  }
+  .upcoming { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px; overflow-y: auto; }
   .upcoming-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-bottom: 1px solid var(--line); flex-shrink: 0;
+    transition: opacity 0.3s;
   }
   .upcoming-row:last-child { border-bottom: none; }
-  .upcoming-empty { padding: 22px; text-align: center; color: var(--ink-faint); font-size: 13px; }
-  .row-icon {
-    width: 30px; height: 30px; border-radius: 8px;
-    display: grid; place-items: center; flex-shrink: 0;
-    font-family: var(--mono); font-size: 14px; font-weight: 700; border: 1px solid;
+  .upcoming-row.disabled { opacity: 0.4; }
+  .upcoming-row.disabled .row-name { text-decoration: line-through; }
+  .upcoming-row.maybe { background: rgba(234, 179, 8, 0.04); }
+  .upcoming-empty { padding: 16px; text-align: center; color: var(--ink-faint); font-size: 12px; flex: 1; display: grid; place-items: center; }
+  .row-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; flex-shrink: 0; font-family: var(--mono); font-size: 11px; font-weight: 700; border: 1px solid; position: relative; }
+  .row-icon .badge {
+    position: absolute; top: -4px; right: -4px;
+    width: 12px; height: 12px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 8px; font-weight: 800; font-family: var(--mono);
+    border: 1.5px solid var(--bg);
   }
-  .row-name { flex: 1; font-size: 14px; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row-name .row-type { color: var(--ink-faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-top: 1px; font-weight: 500; }
-  .row-distance { font-family: var(--mono); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-soft); flex-shrink: 0; }
-  .row-action {
-    appearance: none; background: transparent; border: none; color: var(--ink-faint);
-    font-size: 18px; cursor: pointer; padding: 4px 8px;
-  }
+  .row-icon .badge.yes { background: var(--green); color: #0c0a09; }
+  .row-icon .badge.maybe { background: var(--yellow); color: #0c0a09; }
+  .row-name { flex: 1; font-size: 13px; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-name .row-type { color: var(--ink-faint); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-top: 0; font-weight: 500; }
+  .row-distance { font-family: var(--mono); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-soft); flex-shrink: 0; text-align: right; }
+  .row-distance small { display: block; font-size: 9px; color: var(--ink-faint); font-weight: 500; }
+  .row-action { appearance: none; background: transparent; border: 1px solid var(--line); color: var(--ink-soft); width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; cursor: pointer; padding: 0; flex-shrink: 0; }
+  .row-action svg { width: 12px; height: 12px; }
+  .row-action:active { transform: scale(0.9); }
 
   .t-petrol { color: var(--green); border-color: rgba(132, 204, 22, 0.3); background: rgba(132, 204, 22, 0.08); }
   .t-checkpoint { color: var(--yellow); border-color: rgba(234, 179, 8, 0.3); background: rgba(234, 179, 8, 0.08); }
@@ -198,85 +216,48 @@
   .t-speed_change { color: var(--cyan); border-color: rgba(6, 182, 212, 0.3); background: rgba(6, 182, 212, 0.08); }
   .t-gate { color: var(--violet); border-color: rgba(167, 139, 250, 0.3); background: rgba(167, 139, 250, 0.08); }
 
-  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .settings-row {
-    display: flex; gap: 10px; align-items: center;
-    padding: 12px 14px; background: var(--bg-card);
-    border: 1px solid var(--line); border-radius: 14px;
-    font-size: 13px;
-  }
-  .settings-row label { display: flex; align-items: center; gap: 8px; flex: 1; color: var(--ink-soft); font-size: 12px; }
-  .toggle {
-    position: relative; width: 36px; height: 20px;
-    background: var(--bg); border: 1px solid var(--line-strong); border-radius: 100px;
-    cursor: pointer; flex-shrink: 0; transition: background 0.2s, border-color 0.2s;
-  }
-  .toggle::after {
-    content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
-    background: var(--ink-soft); border-radius: 50%;
-    transition: transform 0.2s, background 0.2s;
-  }
-  .toggle.on { background: var(--amber); border-color: var(--amber); }
-  .toggle.on::after { transform: translateX(16px); background: #0c0a09; }
-
-  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .controls-3 { grid-template-columns: 2fr 1fr 1fr; }
+  .controls { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
   .btn {
     appearance: none; border: 1px solid var(--line-strong); background: var(--bg-card); color: var(--ink);
-    font-family: var(--sans); font-weight: 600; font-size: 14px;
-    padding: 14px 12px; border-radius: 14px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: transform 0.1s, background 0.2s, border-color 0.2s;
+    font-family: var(--sans); font-weight: 700; font-size: 13px;
+    padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
   }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary {
-    background: var(--amber); color: #0c0a09; border-color: var(--amber);
-    grid-column: 1 / -1; font-size: 16px; padding: 18px 16px;
-    box-shadow: 0 0 24px var(--amber-glow);
-  }
-  .btn-primary.active { background: var(--bg-card); color: var(--red); border-color: var(--red); box-shadow: 0 0 18px rgba(239, 68, 68, 0.2); }
-  .btn-ghost { background: transparent; }
-  .btn svg { width: 16px; height: 16px; }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--amber); color: #0c0a09; border-color: var(--amber); font-size: 14px; box-shadow: 0 0 16px var(--amber-glow); }
+  .btn-primary.active { background: var(--bg-card); color: var(--red); border-color: var(--red); box-shadow: 0 0 12px rgba(239,68,68,0.2); }
+  .btn-square { padding: 12px; min-width: 44px; }
+  .btn svg { width: 14px; height: 14px; }
 
-  .capture-status {
-    background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+  .fab { position: fixed; right: 16px; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 50; }
+  .fab-main {
+    appearance: none; border: none; width: 56px; height: 56px; border-radius: 50%;
+    background: var(--ink); color: var(--bg);
+    display: grid; place-items: center; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4), 0 0 0 4px var(--bg);
+    transition: transform 0.2s;
   }
-  .cs-label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
-  .cs-value { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--ink); margin-top: 2px; }
-  .cs-value small { font-size: 11px; color: var(--ink-faint); font-weight: 500; margin-left: 4px; }
-  .cs-coords { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
-
-  .capture-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .cap-btn {
-    appearance: none; border: 1px solid; border-radius: 16px;
-    padding: 18px 14px; cursor: pointer; min-height: 88px;
-    display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
-    font-family: var(--sans); transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
-    text-align: left; gap: 4px;
+  .fab-main:active { transform: scale(0.92); }
+  .fab-main svg { width: 22px; height: 22px; }
+  .fab.open .fab-main { background: var(--red); color: var(--bg); transform: rotate(45deg); }
+  .fab-menu { position: absolute; bottom: 64px; right: 0; display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+  .fab.open .fab-menu { pointer-events: auto; opacity: 1; }
+  .fab-item {
+    appearance: none; border: 1px solid; border-radius: 100px; padding: 8px 14px 8px 8px;
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    background: var(--bg-card); font-family: var(--sans); font-weight: 700; font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: translateY(10px); transition: transform 0.2s, opacity 0.2s; opacity: 0; white-space: nowrap;
   }
-  .cap-btn:active { transform: scale(0.96); }
-  .cap-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-  .cap-btn .icon {
-    font-family: var(--mono); font-size: 18px; font-weight: 800;
-    width: 30px; height: 30px; border-radius: 8px;
-    display: grid; place-items: center; border: 1px solid currentColor;
-  }
-  .cap-btn .name { font-size: 15px; font-weight: 700; line-height: 1.2; }
-  .cap-btn .sub { font-size: 11px; opacity: 0.7; font-family: var(--mono); letter-spacing: 0.05em; text-transform: uppercase; }
-
-  .cap-btn.b-petrol { color: var(--green); border-color: rgba(132, 204, 22, 0.4); background: rgba(132, 204, 22, 0.06); }
-  .cap-btn.b-checkpoint { color: var(--yellow); border-color: rgba(234, 179, 8, 0.4); background: rgba(234, 179, 8, 0.06); }
-  .cap-btn.b-speed_camera { color: var(--red); border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.06); }
-  .cap-btn.b-mobile_camera { color: var(--orange); border-color: rgba(249, 115, 22, 0.4); background: rgba(249, 115, 22, 0.06); }
-  .cap-btn.b-speed_change { color: var(--cyan); border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.06); }
-  .cap-btn.b-gate { color: var(--violet); border-color: rgba(167, 139, 250, 0.4); background: rgba(167, 139, 250, 0.06); }
-  .cap-btn.flash { animation: flash 0.5s; }
-  @keyframes flash {
-    0% { box-shadow: 0 0 0 0 currentColor; }
-    50% { box-shadow: 0 0 0 8px currentColor; opacity: 0.7; }
-    100% { box-shadow: 0 0 0 0 currentColor; }
-  }
+  .fab.open .fab-item { transform: translateY(0); opacity: 1; }
+  .fab.open .fab-item:nth-child(6) { transition-delay: 0.02s; }
+  .fab.open .fab-item:nth-child(5) { transition-delay: 0.04s; }
+  .fab.open .fab-item:nth-child(4) { transition-delay: 0.06s; }
+  .fab.open .fab-item:nth-child(3) { transition-delay: 0.08s; }
+  .fab.open .fab-item:nth-child(2) { transition-delay: 0.10s; }
+  .fab.open .fab-item:nth-child(1) { transition-delay: 0.12s; }
+  .fab-item .icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-family: var(--mono); font-weight: 800; font-size: 12px; border: 1px solid currentColor; }
+  .fab-item.flash { animation: flash 0.5s; }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 currentColor, 0 4px 12px rgba(0,0,0,0.3); } 50% { box-shadow: 0 0 0 8px currentColor, 0 4px 12px rgba(0,0,0,0.3); opacity: 0.7; } 100% { box-shadow: 0 0 0 0 currentColor, 0 4px 12px rgba(0,0,0,0.3); } }
 
   .modal {
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7);
@@ -284,203 +265,262 @@
     display: none; align-items: flex-end; z-index: 100;
   }
   .modal.open { display: flex; }
-  .modal-card {
-    width: 100%; max-width: 480px; margin: 0 auto;
-    background: var(--bg-soft); border-top: 1px solid var(--line-strong);
-    border-radius: 24px 24px 0 0; padding: 18px;
-    max-height: 85vh; display: flex; flex-direction: column; gap: 12px;
-  }
+  .modal-card { width: 100%; max-width: 480px; margin: 0 auto; background: var(--bg-soft); border-top: 1px solid var(--line-strong); border-radius: 24px 24px 0 0; padding: 16px; max-height: 88vh; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
   .modal-head { display: flex; justify-content: space-between; align-items: center; }
-  .modal-title { font-size: 17px; font-weight: 700; }
-  .modal-close { width: 32px; height: 32px; border: none; background: var(--bg-card); color: var(--ink-soft); border-radius: 50%; font-size: 18px; cursor: pointer; }
-  .modal-card textarea {
-    flex: 1; min-height: 240px;
-    background: var(--bg); border: 1px solid var(--line); color: var(--ink);
-    font-family: var(--mono); font-size: 12px; line-height: 1.5;
-    padding: 12px; border-radius: 12px; resize: vertical;
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { width: 30px; height: 30px; border: none; background: var(--bg-card); color: var(--ink-soft); border-radius: 50%; font-size: 16px; cursor: pointer; }
+  .modal-card textarea { flex: 1; min-height: 220px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font-family: var(--mono); font-size: 11px; line-height: 1.5; padding: 10px; border-radius: 10px; resize: vertical; }
+  .modal-help { font-size: 11px; color: var(--ink-faint); line-height: 1.5; }
+  .modal-help code { color: var(--amber); font-family: var(--mono); font-size: 10px; }
+  .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1; min-width: 100px; }
+
+  .settings-list { display: flex; flex-direction: column; gap: 6px; }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 10px; font-size: 13px; color: var(--ink); gap: 8px;
   }
-  .modal-help { font-size: 12px; color: var(--ink-faint); line-height: 1.5; }
-  .modal-help code { color: var(--amber); font-family: var(--mono); }
-  .modal-actions { display: flex; gap: 10px; }
-  .modal-actions .btn { flex: 1; }
+  .settings-row label { color: var(--ink); font-weight: 500; flex: 1; }
+  .settings-row .options { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .settings-row .options button {
+    appearance: none; border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink-soft);
+    padding: 6px 10px; border-radius: 8px;
+    font-family: var(--mono); font-size: 11px; font-weight: 600; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .settings-row .options button.active { background: var(--amber); color: #0c0a09; border-color: var(--amber); }
+  .settings-row input[type="number"] {
+    width: 56px; background: var(--bg); border: 1px solid var(--line-strong); color: var(--ink);
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    padding: 5px 6px; border-radius: 8px; text-align: center;
+  }
+  .toggle { position: relative; width: 36px; height: 20px; background: var(--bg); border: 1px solid var(--line-strong); border-radius: 100px; cursor: pointer; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--ink-soft); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+  .toggle.on { background: var(--amber); border-color: var(--amber); }
+  .toggle.on::after { transform: translateX(16px); background: #0c0a09; }
+  .settings-section-title { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 700; margin-top: 8px; padding: 0 4px; }
 
   .toast {
-    position: fixed; bottom: 24px; left: 50%;
+    position: fixed; bottom: calc(140px + env(safe-area-inset-bottom)); left: 50%;
     transform: translateX(-50%) translateY(20px);
     background: var(--ink); color: var(--bg);
-    padding: 10px 16px; border-radius: 100px;
-    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    padding: 8px 14px; border-radius: 100px;
+    font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none;
     transition: opacity 0.2s, transform 0.2s; z-index: 200;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.success { background: var(--green); color: var(--bg); }
 
-  .hidden { display: none !important; }
-
-  @media (max-height: 700px) {
-    .hero { padding: 14px 18px 12px; }
-    .hero-number { font-size: clamp(44px, 12vw, 64px); }
-    .cap-btn { min-height: 72px; padding: 14px 12px; }
-  }
+  @media (max-height: 720px) { .speed-limit-sign { width: 96px; border-width: 5px; } .speed-limit-value { font-size: 36px; } .dest-distance { font-size: 24px; } }
+  @media (max-height: 640px) { .speed-limit-sign { width: 84px; border-width: 5px; } .speed-limit-value { font-size: 32px; } }
 </style>
 </head>
-<body>
+<body data-theme="dark">
 
 <div class="app">
-  <header class="topbar">
+
+  <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <div>
-        <div>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:11px;font-weight:600;">v3</span></div>
-        <div class="brand-meta">Jeddah ⇄ Medina</div>
-      </div>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v5</span></span>
     </div>
-    <div class="status-pill" id="status">
-      <span class="status-dot"></span>
-      <span id="status-text">Idle</span>
+    <div class="topbar-meta">
+      <span><strong id="clock">—:—</strong></span>
+      <span><strong id="compass">—</strong></span>
+      <span><strong id="status-text">Idle</strong><span class="status-dot" id="status-dot"></span></span>
     </div>
-  </header>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="drive">Drive</button>
-    <button class="tab" data-tab="capture">Capture</button>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="theme-btn" title="Theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <button class="icon-btn" id="settings-btn" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="direction" id="direction">
     <button class="dir-btn" data-dir="a">→ A</button>
-    <span class="dir-arrow">·</span>
     <button class="dir-btn active" data-dir="auto">AUTO</button>
-    <span class="dir-arrow">·</span>
     <button class="dir-btn" data-dir="b">→ B</button>
   </div>
 
-  <div id="tab-drive" class="tab-content">
-    <section class="hero">
-      <div class="hero-label" id="hero-label">Distance to destination</div>
-      <div class="hero-number">
-        <span id="hero-km">—</span>
-        <span class="hero-unit">km</span>
-      </div>
-      <div class="hero-sub" id="hero-sub">Press <strong>Start</strong> or <strong>Demo</strong> to begin.</div>
-      <div class="hero-meta">
-        <span><strong id="speed-display">—</strong>km/h</span>
-        <span><strong id="alert-display">—</strong>m alert</span>
-        <span id="dir-display">—</span>
-      </div>
-    </section>
+  <div style="display: grid; grid-template-rows: auto auto 1fr; gap: 8px; min-height: 0;">
 
-    <section class="next" id="next-card" style="display:none;">
-      <div class="next-bar" id="next-bar"></div>
-      <div class="next-body">
-        <div class="next-label">Next ahead</div>
-        <div class="next-name" id="next-name">—</div>
+    <div class="hero">
+      <div class="speed-limit-sign" id="limit-sign">
+        <div class="speed-limit-value" id="limit-value">—</div>
+        <div class="speed-limit-label">SPEED LIMIT</div>
       </div>
-      <div class="next-distance">
-        <span id="next-dist">—</span><span class="unit" id="next-unit">km</span>
+      <div class="hero-right">
+        <div class="dest-card">
+          <div class="speed-badge" id="speed-badge">
+            <div class="speed-badge-value" id="speed-value">0</div>
+            <div class="speed-badge-unit">KM/H</div>
+          </div>
+          <div class="dest-label" id="dest-label">DESTINATION</div>
+          <div class="dest-distance">
+            <span id="dest-km">—</span>
+            <span class="unit">km</span>
+          </div>
+          <div class="dest-eta" id="dest-eta">—</div>
+          <div class="accuracy-badge" id="accuracy-badge">±—</div>
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="upcoming-section">
+    <div class="next" id="next-card" style="display:none;">
+      <div class="next-row">
+        <div class="next-bar" id="next-bar"></div>
+        <div class="next-body">
+          <div class="next-label">Next ahead</div>
+          <div class="next-name" id="next-name">—</div>
+        </div>
+        <div>
+          <div class="next-distance">
+            <span id="next-dist">—</span><span class="unit" id="next-unit">km</span>
+          </div>
+          <div class="next-eta" id="next-eta">—</div>
+        </div>
+      </div>
+      <div class="feedback">
+        <div class="feedback-q">Still there?</div>
+        <div class="feedback-buttons">
+          <button class="fb-btn yes" data-fb="yes">Yes</button>
+          <button class="fb-btn maybe" data-fb="maybe">Maybe</button>
+          <button class="fb-btn no" data-fb="no">No</button>
+        </div>
+        <div class="fb-timer"><div class="fb-timer-fill" id="fb-timer-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="upcoming-section">
       <div class="section-head">
         <span>Upcoming</span>
         <span class="count" id="upcoming-count">0</span>
       </div>
       <div class="upcoming" id="upcoming-list">
-        <div class="upcoming-empty">Start a trip to see upcoming alerts.</div>
-      </div>
-    </section>
-
-    <div class="settings-grid">
-      <div class="settings-row">
-        <label>Voice <span class="toggle on" id="voice-toggle"></span></label>
-      </div>
-      <div class="settings-row">
-        <label>Speed-aware <span class="toggle on" id="smart-toggle"></span></label>
+        <div class="upcoming-empty">Start GPS to see upcoming alerts.</div>
       </div>
     </div>
 
-    <div class="controls">
-      <button class="btn btn-primary" id="start-btn">
-        <span id="start-label">Start GPS</span>
-      </button>
-      <button class="btn" id="demo-btn">Demo</button>
-      <button class="btn btn-ghost" id="edit-btn">Edit</button>
-    </div>
   </div>
 
-  <div id="tab-capture" class="tab-content hidden">
-    <div class="capture-status">
-      <div>
-        <div class="cs-label">Captured this session</div>
-        <div class="cs-value" id="capture-count">0 <small>points</small></div>
-      </div>
-      <div style="text-align:right">
-        <div class="cs-label">Position</div>
-        <div class="cs-coords" id="capture-coords">— , —</div>
+  <div class="controls">
+    <button class="btn btn-primary" id="start-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+      <span id="start-label">Start GPS</span>
+    </button>
+    <button class="btn btn-square" id="demo-btn" title="Demo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 4 20 12 6 20" fill="currentColor"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<div class="fab" id="fab">
+  <div class="fab-menu">
+    <button class="fab-item t-petrol" data-type="petrol"><span class="icon">P</span> Petrol</button>
+    <button class="fab-item t-checkpoint" data-type="checkpoint"><span class="icon">C</span> Checkpoint</button>
+    <button class="fab-item t-speed_camera" data-type="speed_camera"><span class="icon">S</span> Speed Cam</button>
+    <button class="fab-item t-mobile_camera" data-type="mobile_camera"><span class="icon">M</span> Mobile Cam</button>
+    <button class="fab-item t-speed_change" data-type="speed_change"><span class="icon">⇅</span> Speed Zone</button>
+    <button class="fab-item t-gate" data-type="gate"><span class="icon">G</span> Gate</button>
+  </div>
+  <button class="fab-main" id="fab-main" title="Capture">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+</div>
+
+<div class="modal" id="settings-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="settings-section-title">Display</div>
+    <div class="settings-list">
+      <div class="settings-row">
+        <label>Theme</label>
+        <div class="options" id="theme-options">
+          <button data-theme-set="auto">Auto</button>
+          <button data-theme-set="light">Day</button>
+          <button data-theme-set="dark">Night</button>
+        </div>
       </div>
     </div>
-
-    <div class="capture-grid" id="capture-grid">
-      <button class="cap-btn b-petrol" data-type="petrol" disabled>
-        <span class="icon">P</span>
-        <div><div class="name">Petrol</div><div class="sub">Station</div></div>
-      </button>
-      <button class="cap-btn b-checkpoint" data-type="checkpoint" disabled>
-        <span class="icon">C</span>
-        <div><div class="name">Checkpoint</div><div class="sub">Police / Toll</div></div>
-      </button>
-      <button class="cap-btn b-speed_camera" data-type="speed_camera" disabled>
-        <span class="icon">S</span>
-        <div><div class="name">Speed Cam</div><div class="sub">Fixed</div></div>
-      </button>
-      <button class="cap-btn b-mobile_camera" data-type="mobile_camera" disabled>
-        <span class="icon">M</span>
-        <div><div class="name">Mobile Cam</div><div class="sub">Phone radar</div></div>
-      </button>
-      <button class="cap-btn b-speed_change" data-type="speed_change" disabled>
-        <span class="icon">⇅</span>
-        <div><div class="name">Speed Zone</div><div class="sub">Limit change</div></div>
-      </button>
-      <button class="cap-btn b-gate" data-type="gate" disabled>
-        <span class="icon">G</span>
-        <div><div class="name">Gate</div><div class="sub">Entrance</div></div>
-      </button>
+    <div class="settings-section-title">Alerts</div>
+    <div class="settings-list">
+      <div class="settings-row">
+        <label>Sound</label>
+        <div class="options" id="sound-options">
+          <button data-sound-set="voice">Voice</button>
+          <button data-sound-set="beep">Beep</button>
+          <button data-sound-set="both">Both</button>
+          <button data-sound-set="off">Off</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Speed-aware timing</label>
+        <span class="toggle on" id="smart-toggle"></span>
+      </div>
+      <div class="settings-row">
+        <label>Speed limit warning</label>
+        <span class="toggle on" id="limit-warn-toggle"></span>
+      </div>
     </div>
-
-    <section class="upcoming-section">
-      <div class="section-head">
-        <span>Recent captures</span>
-        <span class="count" id="captures-count">0</span>
+    <div class="settings-section-title">Feedback prompt</div>
+    <div class="settings-list">
+      <div class="settings-row">
+        <label>Show at distance</label>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--ink-soft);">
+          <input type="number" id="fb-trigger-km" min="0.2" max="10" step="0.1" value="2"> km
+        </div>
       </div>
-      <div class="captures" id="captures-list">
-        <div class="upcoming-empty">Tap a button above to capture a point.</div>
+      <div class="settings-row">
+        <label>Auto-dismiss after</label>
+        <div style="display:flex;align-items:center;gap:6px;color:var(--ink-soft);">
+          <input type="number" id="fb-timeout-sec" min="5" max="120" step="1" value="30"> sec
+        </div>
       </div>
-    </section>
-
-    <div class="controls controls-3">
-      <button class="btn btn-primary" id="cap-start-btn">
-        <span id="cap-start-label">Start GPS</span>
-      </button>
+    </div>
+    <div class="settings-section-title">Data</div>
+    <div class="modal-actions">
+      <button class="btn" id="show-disabled-btn">Disabled points</button>
       <button class="btn" id="export-btn">Export</button>
-      <button class="btn btn-ghost" id="merge-btn">Save</button>
+      <button class="btn" id="import-btn">Import</button>
+      <button class="btn" id="edit-btn">Edit JSON</button>
+    </div>
+    <input type="file" id="import-file" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<div class="modal" id="edit-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Edit data</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="modal-help">
+      Each point can have <code>status</code>: "active" (default), "no" (disabled), or "maybe". <code>confidence</code> counts Yes/No feedback. Speed-change points carry a <code>limit</code>.
+    </div>
+    <textarea id="data-text" spellcheck="false"></textarea>
+    <div class="modal-actions">
+      <button class="btn" id="copy-btn">Copy</button>
+      <button class="btn btn-primary" id="save-btn">Save</button>
     </div>
   </div>
 </div>
 
-<div class="modal" id="modal">
+<div class="modal" id="disabled-modal">
   <div class="modal-card">
     <div class="modal-head">
-      <div class="modal-title">Edit data</div>
-      <button class="modal-close" id="modal-close">×</button>
+      <div class="modal-title">Disabled points</div>
+      <button class="modal-close" data-close>×</button>
     </div>
-    <div class="modal-help">
-      JSON has <code>destinations.a</code>, <code>destinations.b</code>, and <code>points</code> array. Types: <code>petrol</code>, <code>checkpoint</code>, <code>speed_camera</code>, <code>mobile_camera</code>, <code>speed_change</code>, <code>gate</code>.
-    </div>
-    <textarea id="data-text" spellcheck="false"></textarea>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="copy-btn">Copy</button>
-      <button class="btn btn-primary" id="save-btn">Save</button>
-    </div>
+    <div class="modal-help">Tap to reactivate. These don't trigger warnings.</div>
+    <div id="disabled-list" style="display:flex;flex-direction:column;gap:6px;"></div>
   </div>
 </div>
 
@@ -489,11 +529,12 @@
 <script>
 const SAMPLE_DATA = {
   destinations: {
-    a: { name: "Medina entrance", lat: 24.4539, lng: 39.5680 },
-    b: { name: "Jeddah",          lat: 21.5433, lng: 39.1728 },
+    a: { name: "Medina", lat: 24.4539, lng: 39.5680 },
+    b: { name: "Jeddah", lat: 21.5433, lng: 39.1728 },
   },
+  defaultLimit: 120,
   points: [
-    { name: "Speed → 120 km/h",       type: "speed_change",  lat: 21.7100, lng: 39.2400 },
+    { name: "Speed → 120",            type: "speed_change",  limit: 120, lat: 21.7100, lng: 39.2400 },
     { name: "Speed cam — KM 380",     type: "speed_camera",  lat: 21.7600, lng: 39.2900 },
     { name: "Petrol — Asfan",         type: "petrol",        lat: 21.8200, lng: 39.3100 },
     { name: "Checkpoint — Asfan",     type: "checkpoint",    lat: 21.8500, lng: 39.3150 },
@@ -501,9 +542,10 @@ const SAMPLE_DATA = {
     { name: "Petrol — Khulais",       type: "petrol",        lat: 22.1500, lng: 39.3000 },
     { name: "Checkpoint — Madrakah",  type: "checkpoint",    lat: 22.3500, lng: 39.2400 },
     { name: "Speed cam — KM 320",     type: "speed_camera",  lat: 22.4800, lng: 39.1700 },
-    { name: "Speed → 100 km/h",       type: "speed_change",  lat: 22.5500, lng: 39.1300 },
+    { name: "Speed → 100",            type: "speed_change",  limit: 100, lat: 22.5500, lng: 39.1300 },
     { name: "Petrol — Rabigh South",  type: "petrol",        lat: 22.7000, lng: 39.0500 },
     { name: "Checkpoint — Rabigh",    type: "checkpoint",    lat: 22.7800, lng: 39.0300 },
+    { name: "Speed → 120",            type: "speed_change",  limit: 120, lat: 22.8500, lng: 39.0000 },
     { name: "Petrol — Mastura",       type: "petrol",        lat: 23.1000, lng: 38.8500 },
     { name: "Checkpoint — Mastura",   type: "checkpoint",    lat: 23.1300, lng: 38.8600 },
     { name: "Speed cam — KM 200",     type: "speed_camera",  lat: 23.3500, lng: 38.8800 },
@@ -511,26 +553,29 @@ const SAMPLE_DATA = {
     { name: "Checkpoint — Badr",      type: "checkpoint",    lat: 23.7800, lng: 38.7900 },
     { name: "Mobile cam zone",        type: "mobile_camera", lat: 23.9500, lng: 39.0500 },
     { name: "Speed cam — KM 80",      type: "speed_camera",  lat: 24.0500, lng: 39.2000 },
+    { name: "Speed → 100",            type: "speed_change",  limit: 100, lat: 24.3500, lng: 39.5000 },
     { name: "Petrol — Suwariqyah",    type: "petrol",        lat: 24.2400, lng: 39.4200 },
-    { name: "Speed → 100 km/h",       type: "speed_change",  lat: 24.3500, lng: 39.5000 },
     { name: "Checkpoint — final",     type: "checkpoint",    lat: 24.4400, lng: 39.5650 },
     { name: "Medina gate",            type: "gate",          lat: 24.4539, lng: 39.5680 },
   ]
 };
 
-const STORAGE_KEY = 'roadAlert.v3.data';
+const STORAGE_KEY = 'roadAlert.v5.data';
+const SETTINGS_KEY = 'roadAlert.v5.settings';
+
 function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
+  try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
   return JSON.parse(JSON.stringify(SAMPLE_DATA));
 }
-function saveData() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {} }
+function loadSettings() {
+  try { const raw = localStorage.getItem(SETTINGS_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+  return { theme: 'auto', sound: 'voice', smart: true, limitWarn: true, fbTriggerKm: 2.0, fbTimeoutSec: 30 };
 }
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
 
 let data = loadData();
+let settings = loadSettings();
 let mode = 'idle';
 let watchId = null;
 let demoTimer = null;
@@ -538,33 +583,95 @@ let demoStep = 0;
 let currentPos = null;
 let prevPos = null;
 let currentSpeed = 0;
+let currentAccuracy = null;
 let currentHeading = null;
 let dirChoice = 'auto';
 let detectedDir = 'a';
 let alertedPoints = new Set();
-let voiceOn = true;
-let smartAlerts = true;
+let limitWarned = false;
 let wakeLock = null;
 let captureSession = [];
+let currentLimit = data.defaultLimit || 120;
+let activeFeedbackKey = null;
+let feedbackTimer = null;
+let feedbackPromptedKeys = new Set();
+let audioCtx = null;
+
+function ensurePointDefaults(p) {
+  if (!p.status) p.status = 'active';
+  if (typeof p.confidence !== 'number') p.confidence = 0;
+  return p;
+}
+data.points.forEach(ensurePointDefaults);
+
+function pointKey(p) { return p.name + '|' + p.lat.toFixed(4) + '|' + p.lng.toFixed(4); }
 
 function toRad(x) { return x * Math.PI / 180; }
 function distance(a, b) {
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
   const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(x));
 }
+function bearing(a, b) {
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1)*Math.sin(lat2) - Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+function compassFromBearing(deg) {
+  if (deg == null || isNaN(deg)) return '—';
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
 
-function speak(text) {
-  if (!voiceOn || !('speechSynthesis' in window)) return;
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
-    speechSynthesis.speak(u);
-  } catch(e) {}
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function beepPattern(type) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const patterns = {
+    petrol:        [{ f: 700, d: 0.15 }],
+    checkpoint:    [{ f: 600, d: 0.12 }, { f: 600, d: 0.12, gap: 0.08 }],
+    speed_camera:  [{ f: 1000, d: 0.08 }, { f: 1000, d: 0.08, gap: 0.05 }, { f: 1000, d: 0.08, gap: 0.05 }],
+    mobile_camera: [{ f: 800, d: 0.1 }, { f: 1000, d: 0.1, gap: 0.05 }],
+    speed_change:  [{ f: 500, d: 0.1 }, { f: 700, d: 0.1, gap: 0.05 }],
+    gate:          [{ f: 900, d: 0.25 }],
+  };
+  const pat = patterns[type] || patterns.petrol;
+  let t = ctx.currentTime;
+  pat.forEach(b => {
+    t += (b.gap || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = b.f;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.25, t + 0.01);
+    gain.gain.linearRampToValueAtTime(0, t + b.d);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + b.d + 0.02);
+    t += b.d;
+  });
+}
+function speakText(text) {
+  if (!('speechSynthesis' in window)) return;
+  try { const u = new SpeechSynthesisUtterance(text); u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0; speechSynthesis.speak(u); } catch(e) {}
+}
+function alert(point, distText) {
+  if (settings.sound === 'off') return;
+  const text = `${point.name} in ${distText}`;
+  if (settings.sound === 'voice') speakText(text);
+  else if (settings.sound === 'beep') beepPattern(point.type);
+  else if (settings.sound === 'both') { beepPattern(point.type); setTimeout(() => speakText(text), 400); }
 }
 
 const distHistory = { a: [], b: [] };
@@ -576,24 +683,82 @@ function updateDirectionDetection() {
   if (distHistory.a.length > 5) distHistory.a.shift();
   if (distHistory.b.length > 5) distHistory.b.shift();
   if (distHistory.a.length >= 2) {
-    const trendA = distHistory.a[distHistory.a.length - 1] - distHistory.a[0];
-    const trendB = distHistory.b[distHistory.b.length - 1] - distHistory.b[0];
-    if (trendA < trendB) detectedDir = 'a';
-    else if (trendB < trendA) detectedDir = 'b';
-  } else {
-    detectedDir = dA <= dB ? 'a' : 'b';
-  }
+    const trendA = distHistory.a[distHistory.a.length-1] - distHistory.a[0];
+    const trendB = distHistory.b[distHistory.b.length-1] - distHistory.b[0];
+    if (trendA < trendB) detectedDir = 'a'; else if (trendB < trendA) detectedDir = 'b';
+  } else { detectedDir = dA <= dB ? 'a' : 'b'; }
 }
 function activeDir() { return dirChoice === 'auto' ? detectedDir : dirChoice; }
 function activeDest() { return data.destinations[activeDir()]; }
 
 function alertDistanceKm() {
-  const minKm = 0.3, maxKm = 3.0, warningSec = 22;
-  if (!smartAlerts) return 1.0;
+  if (!settings.smart) return 1.0;
   const speed = currentSpeed || 0;
   if (speed < 4) return 0.5;
-  const km = (speed * warningSec) / 1000;
-  return Math.max(minKm, Math.min(maxKm, km));
+  const km = (speed * 22) / 1000;
+  return Math.max(0.3, Math.min(3.0, km));
+}
+
+function computeCurrentLimit() {
+  if (!currentPos) return data.defaultLimit || 120;
+  const dest = activeDest();
+  const myDist = distance(currentPos, dest);
+  const behind = data.points
+    .filter(p => p.type === 'speed_change' && typeof p.limit === 'number' && p.status !== 'no')
+    .map(p => ({ ...p, distFromDest: distance(p, dest) }))
+    .filter(p => p.distFromDest > myDist - 0.05)
+    .sort((a, b) => a.distFromDest - b.distFromDest);
+  if (behind.length === 0) return data.defaultLimit || 120;
+  return behind[0].limit;
+}
+
+function formatDist(km) { if (km < 1) return Math.round(km * 1000) + ' m'; return km.toFixed(1) + ' km'; }
+function formatEta(km) {
+  if (!currentSpeed || currentSpeed < 2) return '—';
+  const seconds = (km * 1000) / currentSpeed;
+  if (seconds < 60) return Math.round(seconds) + 's';
+  if (seconds < 3600) return Math.round(seconds / 60) + 'm';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function typeIcon(type) { return { petrol: 'P', checkpoint: 'C', speed_camera: 'S', mobile_camera: 'M', speed_change: '⇅', gate: 'G' }[type] || '•'; }
+function typeLabel(type) { return { petrol: 'Petrol', checkpoint: 'Checkpoint', speed_camera: 'Speed cam', mobile_camera: 'Mobile cam', speed_change: 'Speed zone', gate: 'Gate' }[type] || type; }
+function colorFor(type) { return { petrol: 'var(--green)', checkpoint: 'var(--yellow)', speed_camera: 'var(--red)', mobile_camera: 'var(--orange)', speed_change: 'var(--cyan)', gate: 'var(--violet)' }[type] || 'var(--amber)'; }
+
+function showFeedbackFor(point) {
+  const key = pointKey(point);
+  if (activeFeedbackKey === key) return;
+  activeFeedbackKey = key;
+  feedbackPromptedKeys.add(key);
+  const card = document.getElementById('next-card');
+  card.classList.add('show-feedback');
+  const fill = document.getElementById('fb-timer-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  void fill.offsetWidth;
+  fill.style.transition = `width ${settings.fbTimeoutSec}s linear`;
+  fill.style.width = '0%';
+  if (feedbackTimer) clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(() => hideFeedback(), settings.fbTimeoutSec * 1000);
+}
+function hideFeedback() {
+  activeFeedbackKey = null;
+  if (feedbackTimer) clearTimeout(feedbackTimer);
+  feedbackTimer = null;
+  document.getElementById('next-card').classList.remove('show-feedback');
+}
+function applyFeedback(verdict) {
+  if (!activeFeedbackKey) return;
+  const point = data.points.find(p => pointKey(p) === activeFeedbackKey);
+  if (!point) { hideFeedback(); return; }
+  if (verdict === 'yes') { point.status = 'active'; point.confidence = (point.confidence || 0) + 1; showToast('Confirmed', 'success'); }
+  else if (verdict === 'no') { point.status = 'no'; point.confidence = (point.confidence || 0) - 1; showToast('Disabled — reactivate in settings'); }
+  else if (verdict === 'maybe') { point.status = 'maybe'; showToast('Marked uncertain'); }
+  saveData();
+  hideFeedback();
+  if (currentPos) update();
 }
 
 function update() {
@@ -602,12 +767,37 @@ function update() {
   const dest = activeDest();
   const kmToDest = distance(currentPos, dest);
 
-  document.getElementById('hero-km').textContent = kmToDest.toFixed(1);
-  document.getElementById('hero-label').textContent = `Distance to ${dest.name}`;
-  document.getElementById('speed-display').textContent = Math.round(currentSpeed * 3.6);
-  document.getElementById('alert-display').textContent = Math.round(alertDistanceKm() * 1000);
-  document.getElementById('dir-display').innerHTML = `<strong>${activeDir().toUpperCase()}</strong>${dirChoice==='auto' ? ' AUTO' : ''}`;
-  document.getElementById('capture-coords').textContent = currentPos.lat.toFixed(5) + ', ' + currentPos.lng.toFixed(5);
+  currentLimit = computeCurrentLimit();
+  const speedKmh = Math.round(currentSpeed * 3.6);
+  const isOverLimit = speedKmh > currentLimit + 5;
+  const limitSign = document.getElementById('limit-sign');
+  document.getElementById('limit-value').textContent = currentLimit;
+  limitSign.classList.toggle('warning', settings.limitWarn && isOverLimit);
+  if (settings.limitWarn && isOverLimit && !limitWarned) {
+    if (settings.sound !== 'off') {
+      if (settings.sound === 'voice' || settings.sound === 'both') speakText(`Speed limit ${currentLimit}`);
+      else beepPattern('speed_change');
+    }
+    limitWarned = true;
+    setTimeout(() => { limitWarned = false; }, 15000);
+  }
+
+  document.getElementById('speed-value').textContent = speedKmh;
+  document.getElementById('speed-badge').classList.toggle('over', isOverLimit);
+  document.getElementById('dest-label').textContent = '→ ' + dest.name.toUpperCase();
+  document.getElementById('dest-km').textContent = kmToDest.toFixed(1);
+  document.getElementById('dest-eta').textContent = formatEta(kmToDest);
+
+  const accBadge = document.getElementById('accuracy-badge');
+  if (currentAccuracy != null) {
+    accBadge.textContent = '±' + Math.round(currentAccuracy) + 'm';
+    accBadge.className = 'accuracy-badge ' + (currentAccuracy <= 10 ? 'good' : (currentAccuracy <= 25 ? '' : 'bad'));
+  } else { accBadge.textContent = '±—'; accBadge.className = 'accuracy-badge'; }
+
+  if (prevPos && distance(prevPos, currentPos) > 0.01) {
+    const b = bearing(prevPos, currentPos);
+    document.getElementById('compass').textContent = compassFromBearing(b);
+  }
 
   const annotated = data.points.map(p => ({
     ...p,
@@ -617,12 +807,15 @@ function update() {
   const ahead = annotated
     .filter(p => p.distFromDest < kmToDest + 0.1)
     .sort((a, b) => a.distFromMe - b.distFromMe);
-  document.getElementById('upcoming-count').textContent = ahead.length;
+
+  const aheadActive = ahead.filter(p => p.status !== 'no');
+  document.getElementById('upcoming-count').textContent = aheadActive.length;
 
   const nextCard = document.getElementById('next-card');
   const alertKm = alertDistanceKm();
-  if (ahead.length > 0) {
-    const next = ahead[0];
+
+  if (aheadActive.length > 0) {
+    const next = aheadActive[0];
     nextCard.style.display = 'flex';
     document.getElementById('next-name').textContent = next.name;
     document.getElementById('next-bar').style.background = colorFor(next.type);
@@ -633,67 +826,111 @@ function update() {
       document.getElementById('next-dist').textContent = next.distFromMe.toFixed(1);
       document.getElementById('next-unit').textContent = 'km';
     }
+    document.getElementById('next-eta').textContent = formatEta(next.distFromMe);
     nextCard.classList.toggle('alerting', next.distFromMe <= alertKm);
-    document.getElementById('hero-sub').innerHTML = `<strong>${ahead.length}</strong> alerts ahead · heading <strong>${dest.name}</strong>`;
+
+    const nextKey = pointKey(next);
+    if (next.distFromMe <= settings.fbTriggerKm && next.distFromMe >= 0.05 && !feedbackPromptedKeys.has(nextKey)) {
+      showFeedbackFor(next);
+    } else if (activeFeedbackKey && activeFeedbackKey !== nextKey) {
+      hideFeedback();
+    }
   } else {
     nextCard.style.display = 'none';
-    document.getElementById('hero-sub').innerHTML = `Approaching <strong>${dest.name}</strong> — no more alerts`;
+    if (activeFeedbackKey) hideFeedback();
   }
 
   const list = document.getElementById('upcoming-list');
   if (ahead.length === 0) {
     list.innerHTML = '<div class="upcoming-empty">No upcoming points.</div>';
   } else {
-    list.innerHTML = ahead.slice(0, 6).map(p => `
-      <div class="upcoming-row">
-        <div class="row-icon t-${p.type}">${typeIcon(p.type)}</div>
-        <div class="row-name">${escapeHtml(p.name)}<span class="row-type">${typeLabel(p.type)}</span></div>
-        <div class="row-distance">${formatDist(p.distFromMe)}</div>
-      </div>
-    `).join('');
+    list.innerHTML = ahead.slice(0, 8).map(p => {
+      const badge = p.status === 'maybe' ? '<span class="badge maybe">?</span>' :
+                    (p.confidence > 0 ? '<span class="badge yes">✓</span>' : '');
+      const cls = p.status === 'no' ? 'disabled' : (p.status === 'maybe' ? 'maybe' : '');
+      const action = p.status === 'no'
+        ? `<button class="row-action" data-reactivate="${escapeHtml(pointKey(p))}" title="Reactivate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>`
+        : '';
+      return `
+        <div class="upcoming-row ${cls}">
+          <div class="row-icon t-${p.type}">${typeIcon(p.type)}${badge}</div>
+          <div class="row-name">${escapeHtml(p.name)}<span class="row-type">${typeLabel(p.type)}</span></div>
+          <div class="row-distance">${formatDist(p.distFromMe)}<small>${formatEta(p.distFromMe)}</small></div>
+          ${action}
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-reactivate]').forEach(b => {
+      b.addEventListener('click', () => {
+        const key = b.getAttribute('data-reactivate');
+        const p = data.points.find(x => pointKey(x) === key);
+        if (p) { p.status = 'active'; saveData(); update(); showToast('Reactivated', 'success'); }
+      });
+    });
   }
 
-  ahead.forEach(p => {
-    const key = p.name + '|' + p.lat.toFixed(4) + '|' + p.lng.toFixed(4);
+  aheadActive.forEach(p => {
+    const key = pointKey(p);
     if (p.distFromMe <= alertKm && !alertedPoints.has(key)) {
       alertedPoints.add(key);
-      const distText = p.distFromMe < 1
-        ? `${Math.round(p.distFromMe * 1000)} meters`
-        : `${p.distFromMe.toFixed(1)} kilometers`;
-      speak(`${p.name} in ${distText}`);
+      const distText = p.distFromMe < 1 ? `${Math.round(p.distFromMe * 1000)} meters` : `${p.distFromMe.toFixed(1)} kilometers`;
+      alert(p, distText);
     }
     if (p.distFromMe > alertKm * 3) alertedPoints.delete(key);
+    if (p.distFromMe > settings.fbTriggerKm * 1.5) feedbackPromptedKeys.delete(key);
   });
 }
 
-function colorFor(type) {
-  return { petrol: 'var(--green)', checkpoint: 'var(--yellow)', speed_camera: 'var(--red)', mobile_camera: 'var(--orange)', speed_change: 'var(--cyan)', gate: 'var(--violet)' }[type] || 'var(--amber)';
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('clock').textContent = h + ':' + m;
 }
-function typeIcon(type) { return { petrol: 'P', checkpoint: 'C', speed_camera: 'S', mobile_camera: 'M', speed_change: '⇅', gate: 'G' }[type] || '•'; }
-function typeLabel(type) { return { petrol: 'Petrol station', checkpoint: 'Checkpoint', speed_camera: 'Speed camera', mobile_camera: 'Mobile camera', speed_change: 'Speed change', gate: 'Gate' }[type] || type; }
-function formatDist(km) { if (km < 1) return Math.round(km * 1000) + ' m'; return km.toFixed(1) + ' km'; }
-function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+setInterval(updateClock, 5000);
+updateClock();
+
+function applyTheme() {
+  let t = settings.theme;
+  if (t === 'auto') {
+    const h = new Date().getHours();
+    t = (h >= 6 && h < 18) ? 'light' : 'dark';
+  }
+  document.body.setAttribute('data-theme', t);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'light' ? '#f5f1e8' : '#0c0a09');
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('active', b.getAttribute('data-theme-set') === settings.theme));
+}
+setInterval(() => { if (settings.theme === 'auto') applyTheme(); }, 60000);
+applyTheme();
+
+function applySoundSelector() {
+  document.querySelectorAll('[data-sound-set]').forEach(b => b.classList.toggle('active', b.getAttribute('data-sound-set') === settings.sound));
+}
+applySoundSelector();
 
 function onGPS(pos) {
   prevPos = currentPos;
   currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  currentAccuracy = pos.coords.accuracy;
   if (pos.coords.speed != null && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
     currentSpeed = pos.coords.speed;
   } else if (prevPos) {
-    const km = distance(prevPos, currentPos);
-    currentSpeed = km * 1000;
+    currentSpeed = distance(prevPos, currentPos) * 1000;
   }
-  if (pos.coords.heading != null && !isNaN(pos.coords.heading)) currentHeading = pos.coords.heading;
+  if (pos.coords.heading != null && !isNaN(pos.coords.heading)) {
+    currentHeading = pos.coords.heading;
+    document.getElementById('compass').textContent = compassFromBearing(currentHeading);
+  }
   update();
-  enableCaptureButtons(true);
 }
 
 async function startGPS() {
   if (!navigator.geolocation) { showToast('GPS not supported'); return; }
+  ensureAudio();
   stopAll();
   mode = 'gps';
-  setStatus('live', 'Live GPS');
-  setStartButton(true, 'Stop GPS');
+  setStatus('live', 'LIVE');
+  setStartButton(true, 'Stop');
   await requestWakeLock();
   watchId = navigator.geolocation.watchPosition(
     onGPS,
@@ -703,23 +940,25 @@ async function startGPS() {
 }
 
 function startDemo() {
+  ensureAudio();
   stopAll();
   mode = 'demo';
-  setStatus('demo', 'Demo drive');
-  setStartButton(true, 'Stop demo');
+  setStatus('demo', 'DEMO');
+  setStartButton(true, 'Stop');
   alertedPoints.clear();
+  feedbackPromptedKeys.clear();
   distHistory.a.length = 0; distHistory.b.length = 0;
   const start = data.destinations.b;
   const end = data.destinations.a;
-  const steps = 80;
+  const steps = 100;
   demoStep = 0;
-  enableCaptureButtons(true);
   demoTimer = setInterval(() => {
     if (demoStep > steps) { stopAll(); showToast('Demo complete'); return; }
     const t = demoStep / steps;
     prevPos = currentPos;
     currentPos = { lat: start.lat + (end.lat - start.lat) * t, lng: start.lng + (end.lng - start.lng) * t };
     currentSpeed = 33;
+    currentAccuracy = 8;
     update();
     demoStep++;
   }, 350);
@@ -729,143 +968,203 @@ function stopAll() {
   if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   if (demoTimer !== null) { clearInterval(demoTimer); demoTimer = null; }
   if (wakeLock) { try { wakeLock.release(); } catch(e) {} wakeLock = null; }
+  hideFeedback();
   mode = 'idle';
   setStatus('', 'Idle');
   setStartButton(false, 'Start GPS');
-  enableCaptureButtons(false);
 }
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) return;
   try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
 }
 function setStatus(cls, text) {
-  const el = document.getElementById('status');
-  el.className = 'status-pill' + (cls ? ' ' + cls : '');
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (cls ? ' ' + cls : '');
   document.getElementById('status-text').textContent = text;
 }
 function setStartButton(active, label) {
-  ['start-btn', 'cap-start-btn'].forEach(id => {
-    const btn = document.getElementById(id);
-    btn.classList.toggle('active', active);
-  });
+  const btn = document.getElementById('start-btn');
+  btn.classList.toggle('active', active);
   document.getElementById('start-label').textContent = label;
-  document.getElementById('cap-start-label').textContent = label;
 }
 
-function enableCaptureButtons(on) {
-  document.querySelectorAll('.cap-btn').forEach(b => b.disabled = !on);
-}
+const fab = document.getElementById('fab');
+document.getElementById('fab-main').addEventListener('click', () => fab.classList.toggle('open'));
+document.querySelectorAll('.fab-item').forEach(btn => {
+  btn.addEventListener('click', () => capturePoint(btn.getAttribute('data-type'), btn));
+});
 function capturePoint(type, btnEl) {
   if (!currentPos) { showToast('Need GPS fix first'); return; }
-  const sameType = captureSession.filter(p => p.type === type).length;
-  const point = {
-    name: typeLabel(type) + ' ' + (sameType + 1),
+  const newPoint = {
+    name: typeLabel(type) + ' @ ' + new Date().toLocaleTimeString(),
     type,
     lat: parseFloat(currentPos.lat.toFixed(5)),
     lng: parseFloat(currentPos.lng.toFixed(5)),
     capturedAt: new Date().toISOString(),
+    status: 'active',
+    confidence: 1,
   };
-  captureSession.push(point);
-  renderCaptures();
-  if (btnEl) { btnEl.classList.add('flash'); setTimeout(() => btnEl.classList.remove('flash'), 500); }
-  speak(typeLabel(type) + ' saved');
-  if (navigator.vibrate) navigator.vibrate(40);
-}
-function renderCaptures() {
-  document.getElementById('capture-count').innerHTML = captureSession.length + ' <small>points</small>';
-  document.getElementById('captures-count').textContent = captureSession.length;
-  const list = document.getElementById('captures-list');
-  if (captureSession.length === 0) {
-    list.innerHTML = '<div class="upcoming-empty">Tap a button above to capture a point.</div>';
-    return;
+
+  // Auto-merge: if there's another point of the same type within 100m, average them
+  const MERGE_M = 100;
+  const nearby = data.points.find(p =>
+    p.type === type &&
+    distance(p, newPoint) * 1000 < MERGE_M
+  );
+  if (nearby) {
+    const n = (nearby.confidence || 0) + 1;
+    nearby.lat = parseFloat(((nearby.lat * (n-1) + newPoint.lat) / n).toFixed(5));
+    nearby.lng = parseFloat(((nearby.lng * (n-1) + newPoint.lng) / n).toFixed(5));
+    nearby.confidence = n;
+    nearby.status = 'active';
+    showToast(`${typeLabel(type)} merged (×${n})`, 'success');
+  } else {
+    captureSession.push(newPoint);
+    data.points.push(newPoint);
+    showToast(`${typeLabel(type)} saved`, 'success');
   }
-  list.innerHTML = captureSession.slice().reverse().map((p, idx) => {
-    const realIdx = captureSession.length - 1 - idx;
-    return `
-      <div class="upcoming-row">
-        <div class="row-icon t-${p.type}">${typeIcon(p.type)}</div>
-        <div class="row-name">${escapeHtml(p.name)}<span class="row-type">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span></div>
-        <button class="row-action" data-remove="${realIdx}">×</button>
-      </div>
-    `;
-  }).join('');
-  list.querySelectorAll('[data-remove]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const i = parseInt(btn.getAttribute('data-remove'));
-      captureSession.splice(i, 1);
-      renderCaptures();
-    });
-  });
+  saveData();
+  if (btnEl) { btnEl.classList.add('flash'); setTimeout(() => btnEl.classList.remove('flash'), 500); }
+  if (settings.sound === 'voice' || settings.sound === 'both') speakText(typeLabel(type) + ' saved');
+  else if (settings.sound === 'beep') beepPattern(type);
+  if (navigator.vibrate) navigator.vibrate(40);
+  setTimeout(() => fab.classList.remove('open'), 300);
+  if (currentPos) update();
 }
-function exportCaptures() {
-  if (captureSession.length === 0) { showToast('Nothing captured yet'); return; }
-  const blob = new Blob([JSON.stringify(captureSession, null, 2)], { type: 'application/json' });
+function exportAllData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `road-alert-captures-${Date.now()}.json`;
+  a.download = `road-alert-data-${Date.now()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast('Exported');
+  showToast('Exported', 'success');
 }
-function mergeCaptures() {
-  if (captureSession.length === 0) { showToast('Nothing to save'); return; }
-  data.points = data.points.concat(captureSession.map(p => ({ name: p.name, type: p.type, lat: p.lat, lng: p.lng })));
-  saveData();
-  const n = captureSession.length;
-  captureSession = [];
-  renderCaptures();
-  showToast(`Merged ${n} points`, 'success');
-}
-
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const name = tab.getAttribute('data-tab');
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-    document.getElementById('tab-' + name).classList.remove('hidden');
-  });
-});
 
 document.querySelectorAll('.dir-btn').forEach(btn => {
   const d = btn.getAttribute('data-dir');
-  if (d === 'a') btn.textContent = '→ ' + (data.destinations.a.name.split(' ')[0] || 'A');
-  else if (d === 'b') btn.textContent = '→ ' + (data.destinations.b.name.split(' ')[0] || 'B');
+  if (d === 'a') btn.textContent = '→ ' + (data.destinations.a.name || 'A');
+  else if (d === 'b') btn.textContent = '→ ' + (data.destinations.b.name || 'B');
   btn.addEventListener('click', () => {
     dirChoice = d;
     document.querySelectorAll('.dir-btn').forEach(b => b.classList.toggle('active', b === btn));
     alertedPoints.clear();
+    feedbackPromptedKeys.clear();
     if (currentPos) update();
   });
 });
 
 document.getElementById('start-btn').addEventListener('click', () => mode === 'idle' ? startGPS() : stopAll());
 document.getElementById('demo-btn').addEventListener('click', () => mode === 'demo' ? stopAll() : startDemo());
-document.getElementById('voice-toggle').addEventListener('click', e => { voiceOn = !voiceOn; e.currentTarget.classList.toggle('on', voiceOn); });
-document.getElementById('smart-toggle').addEventListener('click', e => { smartAlerts = !smartAlerts; e.currentTarget.classList.toggle('on', smartAlerts); if (currentPos) update(); });
 
-document.getElementById('cap-start-btn').addEventListener('click', () => mode === 'idle' ? startGPS() : stopAll());
-document.querySelectorAll('.cap-btn').forEach(btn => {
-  btn.addEventListener('click', () => capturePoint(btn.getAttribute('data-type'), btn));
+document.getElementById('theme-btn').addEventListener('click', () => {
+  const order = ['auto', 'light', 'dark'];
+  const i = order.indexOf(settings.theme);
+  settings.theme = order[(i + 1) % order.length];
+  saveSettings(); applyTheme();
+  showToast('Theme: ' + settings.theme);
 });
-document.getElementById('export-btn').addEventListener('click', exportCaptures);
-document.getElementById('merge-btn').addEventListener('click', mergeCaptures);
+document.querySelectorAll('[data-theme-set]').forEach(b => {
+  b.addEventListener('click', () => { settings.theme = b.getAttribute('data-theme-set'); saveSettings(); applyTheme(); });
+});
+document.querySelectorAll('[data-sound-set]').forEach(b => {
+  b.addEventListener('click', () => { settings.sound = b.getAttribute('data-sound-set'); saveSettings(); applySoundSelector(); ensureAudio(); if (settings.sound !== 'off') beepPattern('petrol'); });
+});
 
-const modal = document.getElementById('modal');
+document.querySelectorAll('[data-fb]').forEach(b => {
+  b.addEventListener('click', (e) => { e.stopPropagation(); applyFeedback(b.getAttribute('data-fb')); });
+});
+
+function setupToggle(id, key) {
+  const el = document.getElementById(id);
+  el.classList.toggle('on', !!settings[key]);
+  el.addEventListener('click', () => { settings[key] = !settings[key]; el.classList.toggle('on', settings[key]); saveSettings(); });
+}
+setupToggle('smart-toggle', 'smart');
+setupToggle('limit-warn-toggle', 'limitWarn');
+
+document.getElementById('fb-trigger-km').value = settings.fbTriggerKm;
+document.getElementById('fb-timeout-sec').value = settings.fbTimeoutSec;
+document.getElementById('fb-trigger-km').addEventListener('change', e => {
+  const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) { settings.fbTriggerKm = v; saveSettings(); }
+});
+document.getElementById('fb-timeout-sec').addEventListener('change', e => {
+  const v = parseInt(e.target.value); if (!isNaN(v) && v > 0) { settings.fbTimeoutSec = v; saveSettings(); }
+});
+
+const settingsModal = document.getElementById('settings-modal');
+const editModal = document.getElementById('edit-modal');
+const disabledModal = document.getElementById('disabled-modal');
+document.getElementById('settings-btn').addEventListener('click', () => settingsModal.classList.add('open'));
 document.getElementById('edit-btn').addEventListener('click', () => {
   document.getElementById('data-text').value = JSON.stringify(data, null, 2);
-  modal.classList.add('open');
+  settingsModal.classList.remove('open');
+  editModal.classList.add('open');
 });
-document.getElementById('modal-close').addEventListener('click', () => modal.classList.remove('open'));
+document.getElementById('show-disabled-btn').addEventListener('click', () => {
+  const list = document.getElementById('disabled-list');
+  const disabled = data.points.filter(p => p.status === 'no');
+  if (disabled.length === 0) {
+    list.innerHTML = '<div class="upcoming-empty">No disabled points.</div>';
+  } else {
+    list.innerHTML = disabled.map(p => `
+      <div class="settings-row">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;text-decoration:line-through;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.name)}</div>
+          <div style="font-size:10px;color:var(--ink-faint);font-family:var(--mono);">${typeLabel(p.type)} · ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+        </div>
+        <button class="btn" data-reactivate-modal="${escapeHtml(pointKey(p))}" style="padding:6px 10px;font-size:11px;">Reactivate</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-reactivate-modal]').forEach(b => {
+      b.addEventListener('click', () => {
+        const key = b.getAttribute('data-reactivate-modal');
+        const p = data.points.find(x => pointKey(x) === key);
+        if (p) { p.status = 'active'; saveData(); document.getElementById('show-disabled-btn').click(); if (currentPos) update(); showToast('Reactivated', 'success'); }
+      });
+    });
+  }
+  settingsModal.classList.remove('open');
+  disabledModal.classList.add('open');
+});
+document.getElementById('export-btn').addEventListener('click', exportAllData);
+document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
+document.getElementById('import-file').addEventListener('change', (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed.destinations || !parsed.destinations.a || !parsed.destinations.b || !Array.isArray(parsed.points))
+        throw new Error('Invalid file format');
+      data = parsed; data.points.forEach(ensurePointDefaults);
+      saveData();
+      if (currentPos) update();
+      showToast('Imported', 'success');
+    } catch(err) { showToast('Invalid: ' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.querySelectorAll('[data-close]').forEach(b => {
+  b.addEventListener('click', () => {
+    settingsModal.classList.remove('open');
+    editModal.classList.remove('open');
+    disabledModal.classList.remove('open');
+  });
+});
 document.getElementById('save-btn').addEventListener('click', () => {
   try {
     const parsed = JSON.parse(document.getElementById('data-text').value);
     if (!parsed.destinations || !parsed.destinations.a || !parsed.destinations.b || !Array.isArray(parsed.points))
-      throw new Error('Need destinations.a, destinations.b, and points[]');
-    data = parsed; saveData();
+      throw new Error('Need destinations.a, destinations.b, points[]');
+    data = parsed; data.points.forEach(ensurePointDefaults);
+    saveData();
     alertedPoints.clear();
+    feedbackPromptedKeys.clear();
     if (currentPos) update();
-    modal.classList.remove('open');
+    editModal.classList.remove('open');
     showToast('Saved');
   } catch(e) { showToast('Invalid: ' + e.message); }
 });
@@ -880,14 +1179,16 @@ function showToast(msg, cls) {
   t.textContent = msg;
   t.className = 'toast show' + (cls ? ' ' + cls : '');
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => t.className = 'toast', 2200);
+  showToast._t = setTimeout(() => t.className = 'toast', 2000);
 }
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && (mode === 'gps' || mode === 'demo')) requestWakeLock();
 });
 
-renderCaptures();
+document.addEventListener('click', (e) => {
+  if (fab.classList.contains('open') && !fab.contains(e.target)) fab.classList.remove('open');
+});
 </script>
 
 </body>
