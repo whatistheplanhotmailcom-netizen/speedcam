@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v17</title>
+<title>Road Alert v17.1</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -2121,10 +2121,11 @@ exports.OpenLocationCode = OpenLocationCode;
 
 <div class="app">
 
+<div id="global-error-bar" style="display:none;position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:8px 12px;z-index:99999;font-family:monospace;font-size:11px;line-height:1.4;text-align:center;"></div>
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v17</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v17.1</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2854,6 +2855,16 @@ const STORAGE_KEY = 'roadAlert.v8.data';
 
 // ===== DEBUG SYSTEM =====
 const debugMessages = [];
+// Global error trap: surface JS errors so we don't have silent failures
+window.addEventListener('error', (e) => {
+  try {
+    const errEl = document.getElementById('global-error-bar');
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.textContent = 'JS Error: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '?');
+    }
+  } catch(_) {}
+});
 function debugLog(msg) {
   const t = new Date().toLocaleTimeString([], {hour12: false});
   debugMessages.push(`[${t}] ${msg}`);
@@ -2868,7 +2879,10 @@ function updateDebugStatus() {
   const heightNow = homeMap ? homeMap.offsetHeight : 0;
   const widthNow = homeMap ? homeMap.offsetWidth : 0;
   const rotateOn = settings && settings.rotateMap !== false ? 'on' : 'off';
-  const followOn = (typeof homeMapAutoFollow !== 'undefined' && homeMapAutoFollow) ? 'on' : 'off';
+  // homeMapAutoFollow is declared later in the script with `let`. Accessing it
+  // before its declaration throws ReferenceError (TDZ). Wrap in try/catch.
+  let followOn = '?';
+  try { followOn = (typeof homeMapAutoFollow !== 'undefined' && homeMapAutoFollow) ? 'on' : 'off'; } catch(e) { followOn = '?'; }
   const status = [
     `size:${sizeNow} ${widthNow}x${heightNow}px`,
     `rot:${rotateOn} fol:${followOn}`,
