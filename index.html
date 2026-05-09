@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v11.2</title>
+<title>Road Alert v11.3</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1200,7 +1200,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v11.2</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v11.3</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2290,6 +2290,7 @@ function onGPS(pos) {
   }
   if (homeMapInstance) {
     refreshHomeMapMarkers();
+    followHomeMap();
   }
 }
 
@@ -2321,6 +2322,7 @@ function startDemo() {
     }
     if (homeMapInstance) {
       refreshHomeMapMarkers();
+      followHomeMap();
     }
     demoStep++;
   }, 350);
@@ -3393,24 +3395,36 @@ function refreshHomeMapMarkers() {
       icon: L.divIcon({ className: '', html: `<div class="ra-current"></div>`, iconSize: [20, 20], iconAnchor: [10, 10] }),
       zIndexOffset: 1000,
     }).addTo(homeMapInstance);
-
-    // Auto-follow: setView keeps zoom and pans smoothly to keep dot centered
-    if (homeMapAutoFollow) {
-      homeMapProgrammaticMove = true;
-      const currentZoom = homeMapInstance.getZoom();
-      homeMapInstance.setView([currentPos.lat, currentPos.lng], currentZoom, { animate: true, duration: 0.5 });
-      setTimeout(() => { homeMapProgrammaticMove = false; }, 600);
-    }
   }
+  // Follow happens in a dedicated function below
+}
+
+// Dedicated follow: called explicitly from every GPS update
+function followHomeMap() {
+  if (!homeMapInstance || !currentPos || !homeMapAutoFollow) return;
+  homeMapProgrammaticMove = true;
+  const z = homeMapInstance.getZoom() || 12;
+  homeMapInstance.setView([currentPos.lat, currentPos.lng], z, { animate: true, duration: 0.4 });
+  setTimeout(() => { homeMapProgrammaticMove = false; }, 500);
 }
 
 function recenterHomeMap() {
-  if (!homeMapInstance) return;
+  if (!homeMapInstance) {
+    // Try to initialize if not yet ready
+    initHomeMap();
+    return;
+  }
+  homeMapAutoFollow = true;
+  updateHomeRecenterBtn();
   if (currentPos) {
-    homeMapAutoFollow = true;
     homeMapProgrammaticMove = true;
-    homeMapInstance.setView([currentPos.lat, currentPos.lng], Math.max(homeMapInstance.getZoom(), 12), { animate: true });
+    const z = Math.max(homeMapInstance.getZoom() || 12, 12);
+    homeMapInstance.setView([currentPos.lat, currentPos.lng], z, { animate: true });
     setTimeout(() => { homeMapProgrammaticMove = false; }, 600);
+  } else {
+    showToast('Waiting for GPS...');
+    fitHomeMapToAll();
+    homeMapAutoFollow = true; // re-enable since fit disables it
     updateHomeRecenterBtn();
   }
 }
@@ -3453,27 +3467,30 @@ function setHomeMapSize(size) {
 }
 
 function initHomeMap() {
-  setTimeout(() => {
-    const m = ensureHomeMap();
-    if (!m) {
-      // Container not ready yet, try again
-      setTimeout(initHomeMap, 500);
-      return;
-    }
-    m.invalidateSize(true);
-    refreshHomeMapMarkers();
-    if (currentPos) {
-      homeMapAutoFollow = true;
-      homeMapProgrammaticMove = true;
-      m.setView([currentPos.lat, currentPos.lng], 12);
-      setTimeout(() => { homeMapProgrammaticMove = false; }, 600);
-    } else {
-      fitHomeMapToAll();
-    }
-    updateHomeRecenterBtn();
-    setTimeout(() => { m.invalidateSize(true); }, 300);
-    setTimeout(() => { m.invalidateSize(true); }, 800);
-  }, 200);
+  // If size is "off", don't init
+  if (settings.mapSize === 'off') return;
+
+  const m = ensureHomeMap();
+  if (!m) {
+    // Container not ready (probably hidden). Try again shortly.
+    setTimeout(initHomeMap, 500);
+    return;
+  }
+  m.invalidateSize(true);
+  refreshHomeMapMarkers();
+  if (currentPos) {
+    homeMapAutoFollow = true;
+    homeMapProgrammaticMove = true;
+    m.setView([currentPos.lat, currentPos.lng], 12);
+    setTimeout(() => { homeMapProgrammaticMove = false; }, 600);
+  } else {
+    fitHomeMapToAll();
+    homeMapAutoFollow = true; // ready to follow as soon as GPS comes in
+  }
+  updateHomeRecenterBtn();
+  setTimeout(() => { m.invalidateSize(true); }, 300);
+  setTimeout(() => { m.invalidateSize(true); }, 800);
+  setTimeout(() => { m.invalidateSize(true); }, 1500);
 }
 
 // Wire up size toggle and home map buttons (after DOM ready)
@@ -3490,14 +3507,22 @@ window.addEventListener('load', () => {
   document.getElementById('home-map-fullscreen').addEventListener('click', openMap);
   document.getElementById('home-map-follow-btn').addEventListener('click', () => {
     if (homeMapAutoFollow) {
-      // Turn OFF
       homeMapAutoFollow = false;
       updateHomeRecenterBtn();
-      showToast('Follow OFF — map stays put');
+      showToast('Follow OFF');
     } else {
-      // Turn ON and recenter
-      recenterHomeMap();
-      showToast('Follow ON — map tracks you');
+      homeMapAutoFollow = true;
+      updateHomeRecenterBtn();
+      // Immediately center on current location
+      if (currentPos && homeMapInstance) {
+        homeMapProgrammaticMove = true;
+        const z = Math.max(homeMapInstance.getZoom() || 12, 12);
+        homeMapInstance.setView([currentPos.lat, currentPos.lng], z, { animate: true });
+        setTimeout(() => { homeMapProgrammaticMove = false; }, 600);
+        showToast('Follow ON');
+      } else if (!currentPos) {
+        showToast('Follow ON — waiting for GPS');
+      }
     }
   });
 
