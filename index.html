@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v11.4</title>
+<title>Road Alert v12</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -690,6 +690,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
 //# sourceMappingURL=leaflet.js.map
 </script>
 
+<script id="leaflet-rotate-js">
+!function(t){"function"==typeof define&&define.amd?define(t):t()}((function(){"use strict";const t=L.extend({},L.DomUtil);L.extend(L.DomUtil,{setTransform:function(o,e,i,n,a){var s=e||new L.Point(0,0);if(!n)return e=s._round(),t.setTransform.apply(this,arguments);s=s.rotateFrom(n,a),o.style[L.DomUtil.TRANSFORM]="translate3d("+s.x+"px,"+s.y+"px,0)"+(i?" scale("+i+")":"")+" rotate("+n+"rad)"},setPosition:function(o,e,i,n,a){if(!i)return t.setPosition.apply(this,arguments);o._leaflet_pos=e,L.Browser.any3d?L.DomUtil.setTransform(o,e,a,i,n):(o.style.left=e.x+"px",o.style.top=e.y+"px")},DEG_TO_RAD:Math.PI/180,RAD_TO_DEG:180/Math.PI}),L.Draggable.include({}),L.extend(L.Point.prototype,{rotate:function(t){return this.rotateFrom(t,new L.Point(0,0))},rotateFrom:function(t,o){if(!t)return this;var e=Math.sin(t),i=Math.cos(t),n=o.x,a=o.y,s=this.x-n,r=this.y-a;return new L.Point(s*i-r*e+n,s*e+r*i+a)}});const o=L.extend({},L.DivOverlay.prototype);L.DivOverlay.include({getEvents:function(){return L.extend(o.getEvents.apply(this,arguments),{rotate:this._updatePosition})},_updatePosition:function(){if(this._map&&(o._updatePosition.apply(this,arguments),this._map&&this._map._rotate&&this._zoomAnimated)){var t=this._getAnchor(),e=L.DomUtil.getPosition(this._container).subtract(t);L.DomUtil.setPosition(this._container,this._map.rotatedPointToMapPanePoint(e).add(t))}}});const e=L.extend({},L.Popup.prototype);L.Popup.include({_animateZoom:function(t){if(e._animateZoom.apply(this,arguments),this._map&&this._map._rotate){var o=this._getAnchor(),i=L.DomUtil.getPosition(this._container).subtract(o);L.DomUtil.setPosition(this._container,this._map.rotatedPointToMapPanePoint(i).add(o))}},_adjustPan:function(){if(!(!this.options.autoPan||this._map._panAnim&&this._map._panAnim._inProgress))if(this._autopanning)this._autopanning=!1;else{var t=this._map,o=parseInt(L.DomUtil.getStyle(this._container,"marginBottom"),10)||0,e=this._container.offsetHeight+o,i=this._containerWidth,n=new L.Point(this._containerLeft,-e-this._containerBottom);n._add(L.DomUtil.getPosition(this._container));var a=n._add(this._map._getMapPanePos()),s=L.point(this.options.autoPanPadding),r=L.point(this.options.autoPanPaddingTopLeft||s),h=L.point(this.options.autoPanPaddingBottomRight||s),_=t.getSize(),d=0,p=0;a.x+i+h.x>_.x&&(d=a.x+i-_.x+h.x),a.x-d-r.x<0&&(d=a.x-r.x),a.y+e+h.y>_.y&&(p=a.y+e-_.y+h.y),a.y-p-r.y<0&&(p=a.y-r.y),(d||p)&&(this.options.keepInView&&(this._autopanning=!0),t.fire("autopanstart").panBy([d,p]))}}});const i=L.extend({},L.Tooltip.prototype);L.Tooltip.include({_animateZoom:function(t){if(!this._map._rotate)return i._animateZoom.apply(this,arguments);var o=this._map._latLngToNewLayerPoint(this._latlng,t.zoom,t.center);o=this._map.rotatedPointToMapPanePoint(o),this._setPosition(o)},_updatePosition:function(){if(!this._map._rotate)return i._updatePosition.apply(this,arguments);var t=this._map.latLngToLayerPoint(this._latlng);t=this._map.rotatedPointToMapPanePoint(t),this._setPosition(t)}}),L.extend({},L.Icon.prototype),L.Icon.include({_setIconStyles:function(t,o){var e=this.options,i=e[o+"Size"];"number"==typeof i&&(i=[i,i]);var n=L.point(i),a=L.point("shadow"===o&&e.shadowAnchor||e.iconAnchor||n&&n.divideBy(2,!0));t.className="leaflet-marker-"+o+" "+(e.className||""),a&&(t.style.marginLeft=-a.x+"px",t.style.marginTop=-a.y+"px",t.style[L.DomUtil.TRANSFORM+"Origin"]=a.x+"px "+a.y+"px 0px"),n&&(t.style.width=n.x+"px",t.style.height=n.y+"px")}});const n=L.extend({},L.Marker.prototype);var a;L.Marker.mergeOptions({rotation:0,rotateWithView:!1,scale:void 0});var s={_onDrag:function(t){var o=this._marker,e=o.options.rotation||o.options.rotateWithView,i=o._shadow,n=L.DomUtil.getPosition(o._icon);!e&&i&&L.DomUtil.setPosition(i,n),o._map._rotate&&(n=o._map.mapPanePointToRotatedPoint(n));var a=o._map.layerPointToLatLng(n);o._latlng=a,t.latlng=a,t.oldLatLng=this._oldLatLng,e?o.setLatLng(a):o.fire("move",t),o.fire("drag",t)},_onDragEnd:function(t){this._marker._map._rotate&&this._marker.update(),a._onDragEnd.apply(this,arguments)}};L.Marker.include({getEvents:function(){return L.extend(n.getEvents.apply(this,arguments),{rotate:this.update})},_initInteraction:function(){var t=n._initInteraction.apply(this,arguments);return this.dragging&&this.dragging.enabled()&&this._map&&this._map._rotate&&(a=a||Object.getPrototypeOf(this.dragging),this.dragging.disable(),Object.assign(this.dragging,{_onDrag:s._onDrag.bind(this.dragging),_onDragEnd:s._onDragEnd.bind(this.dragging)}),this.dragging.enable()),t},_setPos:function(t){this._map._rotate&&(t=this._map.rotatedPointToMapPanePoint(t));var o=this.options.rotation||0;this.options.rotateWithView&&(o+=this._map._bearing),this._icon&&L.DomUtil.setPosition(this._icon,t,o,t,this.options.scale),this._shadow&&L.DomUtil.setPosition(this._shadow,t,o,t,this.options.scale),this._zIndex=t.y+this.options.zIndexOffset,this._resetZIndex()},setRotation:function(t){this.options.rotation=t,this.update()}});const r=L.extend({},L.GridLayer.prototype);L.GridLayer.include({getEvents:function(){var t=r.getEvents.apply(this,arguments);return this._map._rotate&&!this.options.updateWhenIdle&&(this._onRotate||(this._onRotate=L.Util.throttle(this._onMoveEnd,this.options.updateInterval,this)),t.rotate=this._onRotate),t},_getTiledPixelBounds:function(t){return this._map._rotate?this._map._getNewPixelBounds(t,this._tileZoom):r._getTiledPixelBounds.apply(this,arguments)}});const h=L.extend({},L.Renderer.prototype);L.Renderer.include({getEvents:function(){return L.extend(h.getEvents.apply(this,arguments),{rotate:this._update})},onAdd:function(){h.onAdd.apply(this,arguments),L.version<="1.9.3"&&this._container.classList.add("leaflet-zoom-animated")},_updateTransform:function(t,o){if(!this._map._rotate)return h._updateTransform.apply(this,arguments);var e=this._map.getZoomScale(o,this._zoom),i=this._map._latLngToNewLayerPoint(this._topLeft,o,t);L.DomUtil.setTransform(this._container,i,e)},_update:function(){if(!this._map._rotate)return h._update.apply(this,arguments);this._bounds=this._map._getPaddedPixelBounds(this.options.padding),this._topLeft=this._map.layerPointToLatLng(this._bounds.min),this._center=this._map.getCenter(),this._zoom=this._map.getZoom()}});const _=L.extend({},L.Map.prototype);L.Map.mergeOptions({rotate:!1,bearing:0}),L.Map.include({initialize:function(t,o){o.rotate&&(this._rotate=!0,this._bearing=0),_.initialize.apply(this,arguments),this.options.rotate&&this.setBearing(this.options.bearing)},containerPointToLayerPoint:function(t){return this._rotate?L.point(t).subtract(this._getMapPanePos()).rotateFrom(-this._bearing,this._getRotatePanePos()).subtract(this._getRotatePanePos()):_.containerPointToLayerPoint.apply(this,arguments)},layerPointToContainerPoint:function(t){return this._rotate?L.point(t).add(this._getRotatePanePos()).rotateFrom(this._bearing,this._getRotatePanePos()).add(this._getMapPanePos()):_.layerPointToContainerPoint.apply(this,arguments)},rotatedPointToMapPanePoint:function(t){return L.point(t).rotate(this._bearing)._add(this._getRotatePanePos())},mapPanePointToRotatedPoint:function(t){return L.point(t)._subtract(this._getRotatePanePos()).rotate(-this._bearing)},mapBoundsToContainerBounds:function(t){if(!this._rotate&&_.mapBoundsToContainerBounds)return _.mapBoundsToContainerBounds.apply(this,arguments);const o=this.getPixelOrigin(),e=this.layerPointToContainerPoint(this.project(t.getNorthWest())._subtract(o)),i=this.layerPointToContainerPoint(this.project(t.getNorthEast())._subtract(o)),n=this.layerPointToContainerPoint(this.project(t.getSouthWest())._subtract(o)),a=this.layerPointToContainerPoint(this.project(t.getSouthEast())._subtract(o));return L.bounds([L.point(Math.min(e.x,i.x,a.x,n.x),Math.min(e.y,i.y,a.y,n.y)),L.point(Math.max(e.x,i.x,a.x,n.x),Math.max(e.y,i.y,a.y,n.y))])},getBounds:function(){if(!this._rotate)return _.getBounds.apply(this,arguments);var t=this.getSize();return new L.LatLngBounds([this.containerPointToLatLng([0,0]),this.containerPointToLatLng([t.x,0]),this.containerPointToLatLng([t.x,t.y]),this.containerPointToLatLng([0,t.y])])},setBearing:function(t){if(L.Browser.any3d&&this._rotate){var o=L.Util.wrapNum(t,[0,360])*L.DomUtil.DEG_TO_RAD,e=this._getPixelCenter(),i=this._getRotatePanePos().rotateFrom(-this._bearing,e),n=i.rotateFrom(o,e);L.DomUtil.setPosition(this._rotatePane,i,o,e),this._pivot=e,this._bearing=o,this._rotatePanePos=n,this.fire("rotate")}},getBearing:function(){return this._bearing*L.DomUtil.RAD_TO_DEG},_initPanes:function(){var t=this._panes={};this._paneRenderers={},this._mapPane=this.createPane("mapPane",this._container),L.DomUtil.setPosition(this._mapPane,new L.Point(0,0)),this._rotate?(this._rotatePane=this.createPane("rotatePane",this._mapPane),this._norotatePane=this.createPane("norotatePane",this._mapPane),this.createPane("tilePane",this._rotatePane),this.createPane("overlayPane",this._rotatePane),this.createPane("shadowPane",this._norotatePane),this.createPane("markerPane",this._norotatePane),this.createPane("tooltipPane",this._norotatePane),this.createPane("popupPane",this._norotatePane)):(this.createPane("tilePane"),this.createPane("overlayPane"),this.createPane("shadowPane"),this.createPane("markerPane"),this.createPane("tooltipPane"),this.createPane("popupPane")),this.options.markerZoomAnimation||(L.DomUtil.addClass(t.markerPane,"leaflet-zoom-hide"),L.DomUtil.addClass(t.shadowPane,"leaflet-zoom-hide"))},panInside(t,o){if(!this._rotate||Math.abs(this._bearing).toFixed(1)<.1)return _.panInside.apply(this,arguments);o=o||{};const e=L.point(o.paddingTopLeft||o.padding||[0,0]),i=L.point(o.paddingBottomRight||o.padding||[0,0]),n=this._container.getBoundingClientRect(),a=this.latLngToContainerPoint(t),s=L.bounds([L.point(n),L.point(n).add(this.getSize())]),r=s.getCenter(),h=L.bounds([s.min.add(e),s.max.subtract(i)]),d=h.getSize();if(!h.contains(a)){this._enforcingBounds=!0;const t=a.subtract(h.getCenter()),e=h.extend(a).getSize().subtract(d);r.x+=t.x<0?-e.x:e.x,r.y+=t.y<0?-e.y:e.y,this.panTo(this.containerPointToLatLng(r),o),this._enforcingBounds=!1}return this},getBoundsZoom(t,o,e){if(!this._rotate||Math.abs(this._bearing).toFixed(1)<.1)return _.getBoundsZoom.apply(this,arguments);t=L.latLngBounds(t),e=L.point(e||[0,0]);let i=this.getZoom()||0;const n=this.getMinZoom(),a=this.getMaxZoom(),s=this.getSize().subtract(e),r=this.mapBoundsToContainerBounds(t).getSize(),h=this.options.zoomSnap,d=s.x/r.x,p=s.y/r.y,l=o?Math.max(d,p):Math.min(d,p);return i=this.getScaleZoom(l,i),h&&(i=Math.round(i/(h/100))*(h/100),i=o?Math.ceil(i/h)*h:Math.floor(i/h)*h),Math.max(n,Math.min(a,i))},_getCenterOffset:function(t){var o=_._getCenterOffset.apply(this,arguments);return this._rotate&&(o=o.rotate(this._bearing)),o},_getRotatePanePos:function(){return this._rotatePanePos||new L.Point(0,0)},_getNewPixelOrigin:function(t,o){if(!this._rotate)return _._getNewPixelOrigin.apply(this,arguments);var e=this.getSize()._divideBy(2);return this.project(t,o).rotate(this._bearing)._subtract(e)._add(this._getMapPanePos())._add(this._getRotatePanePos()).rotate(-this._bearing)._round()},_getNewPixelBounds:function(t,o){if(t=t||this.getCenter(),o=o||this.getZoom(),!this._rotate&&_._getNewPixelBounds)return _._getNewPixelBounds.apply(this,arguments);var e=this._animatingZoom?Math.max(this._animateToZoom,this.getZoom()):this.getZoom(),i=this.getZoomScale(e,o),n=this.project(t,o).floor(),a=this.getSize(),s=new L.Bounds([this.containerPointToLayerPoint([0,0]).floor(),this.containerPointToLayerPoint([a.x,0]).floor(),this.containerPointToLayerPoint([0,a.y]).floor(),this.containerPointToLayerPoint([a.x,a.y]).floor()]).getSize().divideBy(2*i);return new L.Bounds(n.subtract(s),n.add(s))},_getPixelCenter:function(){return!this._rotate&&_._getPixelCenter?_._getPixelCenter.apply(this,arguments):this.getSize()._divideBy(2)._subtract(this._getMapPanePos())},_getPaddedPixelBounds:function(t){if(!this._rotate&&_._getPaddedPixelBounds)return _._getPaddedPixelBounds.apply(this,arguments);var o=t,e=this.getSize(),i=e.multiplyBy(-o),n=e.multiplyBy(1+o);return new L.Bounds([this.containerPointToLayerPoint([i.x,i.y]).floor(),this.containerPointToLayerPoint([i.x,n.y]).floor(),this.containerPointToLayerPoint([n.x,i.y]).floor(),this.containerPointToLayerPoint([n.x,n.y]).floor()])},_handleGeolocationResponse:function(t){if(this._container._leaflet_id){var o=t.coords.latitude,e=t.coords.longitude,i=t.coords.heading,n=new L.LatLng(o,e),a=n.toBounds(t.coords.accuracy),s=this._locateOptions;if(s.setView){var r=this.getBoundsZoom(a);this.setView(n,s.maxZoom?Math.min(r,s.maxZoom):r)}var h={latlng:n,bounds:a,timestamp:t.timestamp,heading:i};for(var _ in t.coords)"number"==typeof t.coords[_]&&(h[_]=t.coords[_]);this.fire("locationfound",h)}}}),L.Map.CompassBearing=L.Handler.extend({initialize:function(t){this._map=t,"ondeviceorientationabsolute"in window?this.__deviceOrientationEvent="deviceorientationabsolute":"ondeviceorientation"in window&&(this.__deviceOrientationEvent="deviceorientation"),this._throttled=L.Util.throttle(this._onDeviceOrientation,100,this)},addHooks:function(){this._map._rotate&&this.__deviceOrientationEvent?L.DomEvent.on(window,this.__deviceOrientationEvent,this._throttled,this):this.disable()},removeHooks:function(){this._map._rotate&&this.__deviceOrientationEvent&&L.DomEvent.off(window,this.__deviceOrientationEvent,this._throttled,this)},_onDeviceOrientation:function(t){var o=t.webkitCompassHeading||t.alpha,e=0;!t.absolute&&t.webkitCompassHeading&&(o=360-o),t.absolute||void 0===window.orientation||(e=window.orientation),this._map.setBearing(o-e)}}),L.Map.addInitHook("addHandler","compassBearing",L.Map.CompassBearing),L.Map.mergeOptions({trackContainerMutation:!1}),L.Map.ContainerMutation=L.Handler.extend({addHooks:function(){this._observer||(this._observer=new MutationObserver(L.Util.bind(this._map.invalidateSize,this._map))),this._observer.observe(this._map.getContainer(),{childList:!1,attributes:!0,characterData:!1,subtree:!1,attributeFilter:["style"]})},removeHooks:function(){this._observer.disconnect()}}),L.Map.addInitHook("addHandler","trackContainerMutation",L.Map.ContainerMutation),L.Map.mergeOptions({bounceAtZoomLimits:!0}),L.Map.TouchGestures=L.Handler.extend({initialize:function(t){this._map=t,this.rotate=!!this._map.options.touchRotate,this.zoom=!!this._map.options.touchZoom},addHooks:function(){L.DomEvent.on(this._map._container,"touchstart",this._onTouchStart,this)},removeHooks:function(){L.DomEvent.off(this._map._container,"touchstart",this._onTouchStart,this)},_onTouchStart:function(t){var o=this._map;if(t.touches&&2===t.touches.length&&!o._animatingZoom&&!this._zooming&&!this._rotating){var e=o.mouseEventToContainerPoint(t.touches[0]),i=o.mouseEventToContainerPoint(t.touches[1]),n=e.subtract(i);this._centerPoint=o.getSize()._divideBy(2),this._startLatLng=o.containerPointToLatLng(this._centerPoint),this.zoom?("center"!==o.options.touchZoom&&(this._pinchStartLatLng=o.containerPointToLatLng(e.add(i)._divideBy(2))),this._startDist=e.distanceTo(i),this._startZoom=o.getZoom(),this._zooming=!0):this._zooming=!1,this.rotate?(this._startTheta=Math.atan(n.x/n.y),this._startBearing=o.getBearing(),n.y<0&&(this._startBearing+=180),this._rotating=!0):this._rotating=!1,this._moved=!1,o._stop(),L.DomEvent.on(document,"touchmove",this._onTouchMove,this).on(document,"touchend touchcancel",this._onTouchEnd,this),L.DomEvent.preventDefault(t)}},_onTouchMove:function(t){if(t.touches&&2===t.touches.length&&(this._zooming||this._rotating)){var o,e=this._map,i=e.mouseEventToContainerPoint(t.touches[0]),n=e.mouseEventToContainerPoint(t.touches[1]),a=i.subtract(n),s=i.distanceTo(n)/this._startDist;if(this._rotating){var r=(Math.atan(a.x/a.y)-this._startTheta)*L.DomUtil.RAD_TO_DEG;a.y<0&&(r+=180),r&&e.setBearing(this._startBearing-r)}if(this._zooming)if(this._zoom=e.getScaleZoom(s,this._startZoom),!e.options.bounceAtZoomLimits&&(this._zoom<e.getMinZoom()&&s<1||this._zoom>e.getMaxZoom()&&s>1)&&(this._zoom=e._limitZoom(this._zoom)),"center"===e.options.touchZoom){if(this._center=this._startLatLng,1===s)return}else{if(o=i._add(n)._divideBy(2)._subtract(this._centerPoint),1===s&&0===o.x&&0===o.y)return;var h=-e.getBearing()*L.DomUtil.DEG_TO_RAD;this._center=e.unproject(e.project(this._pinchStartLatLng).subtract(o.rotate(h)))}this._moved||(e._moveStart(!0,!1),this._moved=!0),L.Util.cancelAnimFrame(this._animRequest);var _=e._move.bind(e,this._center,this._zoom,{pinch:!0,round:!1},void 0);this._animRequest=L.Util.requestAnimFrame(_,this,!0),L.DomEvent.preventDefault(t)}},_onTouchEnd:function(){this._moved&&(this._zooming||this._rotating)?(this._zooming=!1,this._rotating=!1,L.Util.cancelAnimFrame(this._animRequest),L.DomEvent.off(document,"touchmove",this._onTouchMove,this).off(document,"touchend touchcancel",this._onTouchEnd,this),this.zoom&&(this._map.options.zoomAnimation?this._map._animateZoom(this._center,this._map._limitZoom(this._zoom),!0,this._map.options.zoomSnap):this._map._resetView(this._center,this._map._limitZoom(this._zoom)))):this._zooming=!1}}),L.Map.addInitHook("addHandler","touchGestures",L.Map.TouchGestures),L.Map.mergeOptions({touchRotate:!1}),L.Map.TouchRotate=L.Handler.extend({addHooks:function(){this._map.touchGestures.enable(),this._map.touchGestures.rotate=!0},removeHooks:function(){this._map.touchGestures.rotate=!1}}),L.Map.addInitHook("addHandler","touchRotate",L.Map.TouchRotate),L.Map.mergeOptions({shiftKeyRotate:!0}),L.Map.ShiftKeyRotate=L.Handler.extend({addHooks:function(){L.DomEvent.on(this._map._container,"wheel",this._handleShiftScroll,this),this._map.shiftKeyRotate.rotate=!0},removeHooks:function(){L.DomEvent.off(this._map._container,"wheel",this._handleShiftScroll,this),this._map.shiftKeyRotate.rotate=!1},_handleShiftScroll:function(t){t.shiftKey?(t.preventDefault(),this._map.scrollWheelZoom.disable(),this._map.setBearing(this._map._bearing*L.DomUtil.RAD_TO_DEG+5*Math.sign(t.deltaY))):this._map.scrollWheelZoom.enable()}}),L.Map.addInitHook("addHandler","shiftKeyRotate",L.Map.ShiftKeyRotate),L.Map.addInitHook((function(){this.scrollWheelZoom.enabled()&&this.shiftKeyRotate.enabled()&&(this.scrollWheelZoom.disable(),this.scrollWheelZoom.enable())})),L.Map.mergeOptions({touchZoom:L.Browser.touch,bounceAtZoomLimits:!1}),L.Map.TouchZoom=L.Handler.extend({addHooks:function(){L.DomUtil.addClass(this._map._container,"leaflet-touch-zoom"),this._map.touchGestures.enable(),this._map.touchGestures.zoom=!0},removeHooks:function(){L.DomUtil.removeClass(this._map._container,"leaflet-touch-zoom"),this._map.touchGestures.zoom=!1}}),L.Map.addInitHook("addHandler","touchZoom",L.Map.TouchZoom),L.Control.Rotate=L.Control.extend({options:{position:"topleft",closeOnZeroBearing:!0},onAdd:function(t){var o=this._container=L.DomUtil.create("div","leaflet-control-rotate leaflet-bar"),e=this._arrow=L.DomUtil.create("span","leaflet-control-rotate-arrow");e.style.backgroundImage="url(\"data:image/svg+xml;charset=utf-8,%3Csvg width='29' height='29' viewBox='0 0 29 29' xmlns='http://www.w3.org/2000/svg' fill='%23333'%3E%3Cpath d='M10.5 14l4-8 4 8h-8z'/%3E%3Cpath d='M10.5 16l4 8 4-8h-8z' fill='%23ccc'/%3E%3C/svg%3E\")",e.style.cursor="grab",e.style.display="block",e.style.width="100%",e.style.height="100%",e.style.backgroundRepeat="no-repeat",e.style.backgroundPosition="50%";var i=this._link=L.DomUtil.create("a","leaflet-control-rotate-toggle",o);return i.appendChild(e),i.href="#",i.title="Rotate map",L.DomEvent.on(i,"dblclick",L.DomEvent.stopPropagation).on(i,"mousedown",this._handleMouseDown,this).on(i,"click",L.DomEvent.stop).on(i,"click",this._cycleState,this).on(i,"click",this._refocusOnMap,this),L.Browser.any3d||L.DomUtil.addClass(i,"leaflet-disabled"),this._restyle(),t.on("rotate",this._restyle,this),this._follow=!1,this._canFollow=!1,this.options.closeOnZeroBearing&&0===t.getBearing()&&(o.style.display="none"),o},onRemove:function(t){t.off("rotate",this._restyle,this)},_handleMouseDown:function(t){L.DomEvent.stop(t),this.dragging=!0,this.dragstartX=t.pageX,this.dragstartY=t.pageY,L.DomEvent.on(document,"mousemove",this._handleMouseDrag,this).on(document,"mouseup",this._handleMouseUp,this)},_handleMouseUp:function(t){L.DomEvent.stop(t),this.dragging=!1,L.DomEvent.off(document,"mousemove",this._handleMouseDrag,this).off(document,"mouseup",this._handleMouseUp,this)},_handleMouseDrag:function(t){if(this.dragging){var o=t.clientX-this.dragstartX;this._map.setBearing(o)}},_cycleState:function(t){if(this._map){var o=this._map;o.touchRotate.enabled()||o.compassBearing.enabled()?o.compassBearing.enabled()?(o.compassBearing.disable(),o.setBearing(0),this.options.closeOnZeroBearing&&o.touchRotate.enable()):(o.touchRotate.disable(),o.compassBearing.enable()):o.touchRotate.enable(),this._restyle()}},_restyle:function(){if(this._map.options.rotate){var t=this._map,o=t.getBearing();this._arrow.style.transform="rotate("+o+"deg)",o&&this.options.closeOnZeroBearing&&(this._container.style.display="block"),t.compassBearing.enabled()?this._link.style.backgroundColor="orange":t.touchRotate.enabled()?this._link.style.backgroundColor=null:(this._link.style.backgroundColor="grey",0===o&&this.options.closeOnZeroBearing&&(this._container.style.display="none"))}else L.DomUtil.addClass(this._link,"leaflet-disabled")}}),L.control.rotate=function(t){return new L.Control.Rotate(t)},L.Map.mergeOptions({rotateControl:!0}),L.Map.addInitHook((function(){if(this.options.rotateControl){var t="object"==typeof this.options.rotateControl?this.options.rotateControl:{};this.rotateControl=L.control.rotate(t),this.addControl(this.rotateControl)}}))}));
+//# sourceMappingURL=leaflet-rotate.js.map
+
+</script>
+
 <style>
   :root, [data-theme="dark"] {
     --bg: #0c0a09; --bg-soft: #1c1917; --bg-card: #1c1917;
@@ -976,6 +982,122 @@ svg.leaflet-image-layer.leaflet-interactive path {
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.success { background: var(--green); color: var(--bg); }
 
+  /* Mode switcher: 3 big tappable mode buttons at top */
+  .mode-switcher {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 4px;
+  }
+  .mode-btn {
+    appearance: none; border: none; background: transparent;
+    padding: 8px 6px; border-radius: 8px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    color: var(--ink-soft); transition: all 0.15s;
+    font-family: var(--sans);
+  }
+  .mode-btn .mode-icon { font-size: 18px; }
+  .mode-btn .mode-label {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .mode-btn.active {
+    background: var(--amber); color: #0c0a09;
+  }
+  .mode-btn:not(.active):active { background: var(--bg-soft); }
+
+  /* Mode-specific show/hide */
+  body[data-app-mode="log"] .mode-hide-log,
+  body[data-app-mode="live"] .mode-hide-live,
+  body[data-app-mode="audit"] .mode-hide-audit {
+    display: none !important;
+  }
+
+  /* Log mode UI: big capture-everything panel */
+  .log-panel {
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px;
+    display: none; flex-direction: column; gap: 10px;
+  }
+  body[data-app-mode="log"] .log-panel { display: flex; }
+  .log-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .log-cap {
+    appearance: none; border: 2px solid var(--line-strong); background: var(--bg);
+    color: var(--ink); padding: 16px 8px; border-radius: 12px;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center;
+    gap: 4px; font-family: var(--sans);
+  }
+  .log-cap:active { transform: scale(0.96); }
+  .log-cap .icon { font-size: 30px; }
+  .log-cap .lbl { font-size: 12px; font-weight: 700; }
+  .log-cap.t-petrol { border-color: #84cc16; }
+  .log-cap.t-checkpoint { border-color: #eab308; }
+  .log-cap.t-speed_camera { border-color: #ef4444; }
+  .log-cap.t-mobile_camera { border-color: #f97316; }
+  .log-cap.t-speed_change { border-color: #06b6d4; }
+  .log-cap.t-gate { border-color: #a78bfa; }
+  .log-status {
+    font-size: 11px; color: var(--ink-soft); font-family: var(--mono);
+    text-align: center; padding: 4px;
+  }
+  .log-list {
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 240px; overflow-y: auto;
+  }
+  .log-row {
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+  }
+  .log-row .em { font-size: 18px; }
+  .log-row .name { flex: 1; font-weight: 600; }
+  .log-row .time { color: var(--ink-faint); font-family: var(--mono); font-size: 10px; }
+  .log-row .del {
+    appearance: none; border: 1px solid var(--line); background: transparent;
+    color: var(--red); width: 22px; height: 22px; border-radius: 5px;
+    cursor: pointer; font-size: 14px;
+  }
+
+  /* Audit mode: simple list */
+  .audit-panel {
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 8px;
+    display: none; flex-direction: column; gap: 4px;
+  }
+  body[data-app-mode="audit"] .audit-panel { display: flex; }
+  .audit-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 6px;
+    font-size: 11px; color: var(--ink-soft); font-family: var(--mono);
+    text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;
+  }
+  .audit-list {
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 60vh; overflow-y: auto;
+  }
+  .audit-row {
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .audit-row .em { font-size: 22px; flex-shrink: 0; }
+  .audit-row .info { flex: 1; min-width: 0; }
+  .audit-row .name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .audit-row .meta { font-size: 10px; color: var(--ink-faint); font-family: var(--mono); }
+  .audit-row.no { opacity: 0.4; }
+  .audit-row .actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .audit-row .actions button {
+    appearance: none; border: 1px solid var(--line-strong); background: var(--bg-card);
+    width: 32px; height: 32px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; display: grid; place-items: center;
+  }
+  .audit-row .actions button.keep { border-color: var(--green); color: var(--green); }
+  .audit-row .actions button.del { border-color: var(--red); color: var(--red); }
+  .audit-row .actions button.keep.active { background: var(--green); color: #0c0a09; }
+  .audit-row .actions button.del.active { background: var(--red); color: #fff; }
+
   /* Home-screen inline map (below trip list) */
   .home-map {
     background: var(--bg-card); border: 1px solid var(--line);
@@ -1196,14 +1318,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 </style>
 
 </head>
-<body data-theme="dark">
+<body data-theme="dark" data-app-mode="live">
 
 <div class="app">
 
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v11.4</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v12</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -1222,6 +1344,21 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </div>
   </div>
 
+  <div class="mode-switcher" id="mode-switcher">
+    <button class="mode-btn active" data-mode="live">
+      <span class="mode-icon">🚗</span>
+      <span class="mode-label">Live</span>
+    </button>
+    <button class="mode-btn" data-mode="log">
+      <span class="mode-icon">📍</span>
+      <span class="mode-label">Log</span>
+    </button>
+    <button class="mode-btn" data-mode="audit">
+      <span class="mode-icon">✓</span>
+      <span class="mode-label">Audit</span>
+    </button>
+  </div>
+
   <div class="direction" id="direction">
     <button class="dir-btn" data-dir="a">→ A</button>
     <button class="dir-btn active" data-dir="auto">AUTO</button>
@@ -1238,7 +1375,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div style="display: grid; grid-template-rows: auto auto auto auto; gap: 8px; min-height: 0; flex: 1; overflow: hidden;">
 
 ```
-<div class="hero">
+<div class="hero mode-hide-log mode-hide-audit">
   <div class="gauge-limit" id="limit-sign">
     <div class="gauge-limit-value" id="limit-value">—</div>
     <div class="gauge-limit-label">SPEED LIMIT</div>
@@ -1263,7 +1400,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 </div>
 
-<div class="next" id="next-card" style="display:none;">
+<div class="next mode-hide-log mode-hide-audit" id="next-card" style="display:none;">
   <div class="next-row">
     <div class="next-bar" id="next-bar"></div>
     <div class="next-icon" id="next-icon">📍</div>
@@ -1290,7 +1427,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 </div>
 
-<div class="upcoming-section" id="upcoming-section">
+<div class="upcoming-section mode-hide-log mode-hide-audit" id="upcoming-section">
   <div class="section-head">
     <span>Trip points · tap to edit</span>
     <span class="count" id="upcoming-count">0</span>
@@ -1300,7 +1437,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   </div>
 </div>
 
-<div class="home-map" id="home-map">
+<div class="home-map mode-hide-audit" id="home-map">
   <div class="home-map-head">
     <span class="label">Map</span>
     <div class="size-toggle" id="map-size-toggle">
@@ -1325,6 +1462,27 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <button class="home-map-fab fit" id="home-map-fit-btn" title="Fit all">⛶</button>
     <button class="home-map-fab" id="home-map-recenter-btn" title="Recenter">📍</button>
   </div>
+</div>
+
+<div class="log-panel">
+  <div class="log-status" id="log-status">Tap a button to capture current GPS position</div>
+  <div class="log-grid">
+    <button class="log-cap t-petrol"        data-log-type="petrol"><span class="icon">⛽</span><span class="lbl">Petrol</span></button>
+    <button class="log-cap t-checkpoint"    data-log-type="checkpoint"><span class="icon">🛂</span><span class="lbl">Checkpoint</span></button>
+    <button class="log-cap t-speed_camera"  data-log-type="speed_camera"><span class="icon">📷</span><span class="lbl">Speed cam</span></button>
+    <button class="log-cap t-mobile_camera" data-log-type="mobile_camera"><span class="icon">📱</span><span class="lbl">Mobile cam</span></button>
+    <button class="log-cap t-speed_change"  data-log-type="speed_change"><span class="icon">⇅</span><span class="lbl">Speed zone</span></button>
+    <button class="log-cap t-gate"          data-log-type="gate"><span class="icon">🚪</span><span class="lbl">Gate</span></button>
+  </div>
+  <div class="log-list" id="log-list"></div>
+</div>
+
+<div class="audit-panel">
+  <div class="audit-head">
+    <span>Audit · keep or delete each point</span>
+    <span id="audit-count">0</span>
+  </div>
+  <div class="audit-list" id="audit-list"></div>
 </div>
 ```
 
@@ -1540,6 +1698,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
     <label>Use compass for direction</label>
     <span class="toggle on" id="use-compass-toggle"></span>
   </div>
+  <div class="settings-row">
+    <label>Rotate map with direction</label>
+    <span class="toggle on" id="rotate-map-toggle"></span>
+  </div>
 </div>
 <div class="settings-section-title">Feedback prompt</div>
 <div class="settings-list">
@@ -1719,6 +1881,35 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <div class="toast" id="toast"></div>
 
 <script>
+// Sample points injected only when Demo button is running
+const DEMO_POINTS = [
+  { name: "Speed → 120",            type: "speed_change",  limit: 120, lat: 21.7100, lng: 39.2400, routeId: "route1" },
+  { name: "Speed cam — KM 380",     type: "speed_camera",  subtype: "box", side: "right", lat: 21.7600, lng: 39.2900, routeId: "route1" },
+  { name: "Petrol — Asfan",         type: "petrol",        lat: 21.8200, lng: 39.3100, routeId: "route1" },
+  { name: "Checkpoint — Asfan",     type: "checkpoint",    lat: 21.8500, lng: 39.3150, routeId: "route1" },
+  { name: "Mobile cam zone",        type: "mobile_camera", side: "right", lat: 21.9800, lng: 39.3000, routeId: "route1" },
+  { name: "Petrol — Khulais",       type: "petrol",        lat: 22.1500, lng: 39.3000, routeId: "route1" },
+  { name: "Checkpoint — Madrakah",  type: "checkpoint",    lat: 22.3500, lng: 39.2400, routeId: "route1" },
+  { name: "Speed cam — KM 320",     type: "speed_camera",  subtype: "pole", side: "right", lat: 22.4800, lng: 39.1700, routeId: "route1" },
+  { name: "Speed → 100",            type: "speed_change",  limit: 100, lat: 22.5500, lng: 39.1300, routeId: "route1" },
+  { name: "Petrol — Rabigh South",  type: "petrol",        lat: 22.7000, lng: 39.0500, routeId: "route1" },
+  { name: "Checkpoint — Rabigh",    type: "checkpoint",    lat: 22.7800, lng: 39.0300, routeId: "route1" },
+  { name: "Speed → 120",            type: "speed_change",  limit: 120, lat: 22.8500, lng: 39.0000, routeId: "route1" },
+  { name: "Petrol — Mastura",       type: "petrol",        lat: 23.1000, lng: 38.8500, routeId: "route1" },
+  { name: "Checkpoint — Mastura",   type: "checkpoint",    lat: 23.1300, lng: 38.8600, routeId: "route1" },
+  { name: "Speed cam — KM 200",     type: "speed_camera",  subtype: "spider", side: "left", lat: 23.3500, lng: 38.8800, routeId: "route1" },
+  { name: "Petrol — Bir Derwish",   type: "petrol",        lat: 23.5500, lng: 38.9200, routeId: "route1" },
+  { name: "Checkpoint — Badr",      type: "checkpoint",    lat: 23.7800, lng: 38.7900, routeId: "route1" },
+  { name: "Mobile cam zone",        type: "mobile_camera", side: "left", lat: 23.9500, lng: 39.0500, routeId: "route1" },
+  { name: "Speed cam — KM 80",      type: "speed_camera",  subtype: "box", side: "right", lat: 24.0500, lng: 39.2000, routeId: "route1" },
+  { name: "Speed → 100",            type: "speed_change",  limit: 100, lat: 24.3500, lng: 39.5000, routeId: "route1" },
+  { name: "Petrol — Suwariqyah",    type: "petrol",        lat: 24.2400, lng: 39.4200, routeId: "route1" },
+  { name: "Checkpoint — final",     type: "checkpoint",    lat: 24.4400, lng: 39.5650, routeId: "route1" },
+  { name: "Medina gate",            type: "gate",          lat: 24.4539, lng: 39.5680, routeId: "route1" },
+];
+// Mark demo points (so we can remove them when demo stops)
+DEMO_POINTS.forEach(p => p.isDemo = true);
+
 const SAMPLE_DATA = {
   routes: [
     {
@@ -1731,31 +1922,7 @@ const SAMPLE_DATA = {
   activeRouteId: "route1",
   destinations: { a: { name: "Medina", lat: 24.4539, lng: 39.5680 }, b: { name: "Jeddah", lat: 21.5433, lng: 39.1728 } },
   defaultLimit: 120,
-  points: [
-    { name: "Speed → 120",            type: "speed_change",  limit: 120, lat: 21.7100, lng: 39.2400, routeId: "route1" },
-    { name: "Speed cam — KM 380",     type: "speed_camera",  subtype: "box", side: "right", lat: 21.7600, lng: 39.2900, routeId: "route1" },
-    { name: "Petrol — Asfan",         type: "petrol",        lat: 21.8200, lng: 39.3100, routeId: "route1" },
-    { name: "Checkpoint — Asfan",     type: "checkpoint",    lat: 21.8500, lng: 39.3150, routeId: "route1" },
-    { name: "Mobile cam zone",        type: "mobile_camera", side: "right", lat: 21.9800, lng: 39.3000, routeId: "route1" },
-    { name: "Petrol — Khulais",       type: "petrol",        lat: 22.1500, lng: 39.3000, routeId: "route1" },
-    { name: "Checkpoint — Madrakah",  type: "checkpoint",    lat: 22.3500, lng: 39.2400, routeId: "route1" },
-    { name: "Speed cam — KM 320",     type: "speed_camera",  subtype: "pole", side: "right", lat: 22.4800, lng: 39.1700, routeId: "route1" },
-    { name: "Speed → 100",            type: "speed_change",  limit: 100, lat: 22.5500, lng: 39.1300, routeId: "route1" },
-    { name: "Petrol — Rabigh South",  type: "petrol",        lat: 22.7000, lng: 39.0500, routeId: "route1" },
-    { name: "Checkpoint — Rabigh",    type: "checkpoint",    lat: 22.7800, lng: 39.0300, routeId: "route1" },
-    { name: "Speed → 120",            type: "speed_change",  limit: 120, lat: 22.8500, lng: 39.0000, routeId: "route1" },
-    { name: "Petrol — Mastura",       type: "petrol",        lat: 23.1000, lng: 38.8500, routeId: "route1" },
-    { name: "Checkpoint — Mastura",   type: "checkpoint",    lat: 23.1300, lng: 38.8600, routeId: "route1" },
-    { name: "Speed cam — KM 200",     type: "speed_camera",  subtype: "spider", side: "left", lat: 23.3500, lng: 38.8800, routeId: "route1" },
-    { name: "Petrol — Bir Derwish",   type: "petrol",        lat: 23.5500, lng: 38.9200, routeId: "route1" },
-    { name: "Checkpoint — Badr",      type: "checkpoint",    lat: 23.7800, lng: 38.7900, routeId: "route1" },
-    { name: "Mobile cam zone",        type: "mobile_camera", side: "left", lat: 23.9500, lng: 39.0500, routeId: "route1" },
-    { name: "Speed cam — KM 80",      type: "speed_camera",  subtype: "box", side: "right", lat: 24.0500, lng: 39.2000, routeId: "route1" },
-    { name: "Speed → 100",            type: "speed_change",  limit: 100, lat: 24.3500, lng: 39.5000, routeId: "route1" },
-    { name: "Petrol — Suwariqyah",    type: "petrol",        lat: 24.2400, lng: 39.4200, routeId: "route1" },
-    { name: "Checkpoint — final",     type: "checkpoint",    lat: 24.4400, lng: 39.5650, routeId: "route1" },
-    { name: "Medina gate",            type: "gate",          lat: 24.4539, lng: 39.5680, routeId: "route1" },
-  ]
+  points: []  // EMPTY by default — user captures their own points
 };
 
 const STORAGE_KEY = 'roadAlert.v8.data';
@@ -1783,7 +1950,13 @@ function loadData() {
   } } catch(e) {}
   return JSON.parse(JSON.stringify(SAMPLE_DATA));
 }
-function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {} }
+function saveData() {
+  try {
+    // Never save demo points to disk
+    const toSave = { ...data, points: data.points.filter(p => !p.isDemo) };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch(e) {}
+}
 function loadSettings() {
   try { const r = localStorage.getItem(SETTINGS_KEY); if (r) {
     const s = JSON.parse(r);
@@ -1791,9 +1964,10 @@ function loadSettings() {
     if (typeof s.announceSide !== 'boolean') s.announceSide = true;
     if (typeof s.useCompass !== 'boolean') s.useCompass = true;
     if (typeof s.clusterMeters !== 'number') s.clusterMeters = 200;
+    if (typeof s.rotateMap !== 'boolean') s.rotateMap = true;
     return s;
   } } catch(e) {}
-  return { theme: 'auto', sound: 'voice', smart: true, limitWarn: true, askSide: true, announceSide: true, useCompass: true, clusterMeters: 200, fbTriggerKm: 2.0, fbTimeoutSec: 180, commonLimits: [40, 60, 80, 100, 120, 140] };
+  return { theme: 'auto', sound: 'voice', smart: true, limitWarn: true, askSide: true, announceSide: true, useCompass: true, rotateMap: true, clusterMeters: 200, fbTriggerKm: 2.0, fbTimeoutSec: 180, commonLimits: [40, 60, 80, 100, 120, 140] };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
 function loadTrips() { try { const r = localStorage.getItem(TRIPS_KEY); if (r) return JSON.parse(r); } catch(e) {} return []; }
@@ -1808,6 +1982,7 @@ let github = loadGitHub();
 let activeTrip = null;
 if (!Array.isArray(settings.commonLimits)) settings.commonLimits = [40, 60, 80, 100, 120, 140];
 let mode = 'idle';
+let appMode = settings.appMode || 'live';  // 'live' | 'log' | 'audit'
 let watchId = null, demoTimer = null, demoStep = 0;
 let currentPos = null, prevPos = null;
 let currentSpeed = 0, currentAccuracy = null, currentHeading = null;
@@ -1878,6 +2053,8 @@ function beepPattern(type) {
 function speakText(text) { if (!('speechSynthesis' in window)) return; try { const u = new SpeechSynthesisUtterance(text); speechSynthesis.speak(u); } catch(e) {} }
 function alertSound(point, distText) {
   if (settings.sound === 'off') return;
+  // In Log/Audit mode, no audible alerts (driver is busy capturing or auditing)
+  if (appMode === 'log' || appMode === 'audit') return;
   let text = `${point.name} in ${distText}`;
   if (settings.announceSide && point.side) {
     text += point.side === 'left' ? ', left side' : ', right side';
@@ -2317,6 +2494,12 @@ function startDemo() {
   mode = 'demo'; setStatus('demo', 'DEMO'); setStartButton(true, 'Stop');
   alertedPoints.clear(); feedbackPromptedKeys.clear();
   distHistory.a.length = 0; distHistory.b.length = 0;
+  // Inject demo points into the active route (only for the demo)
+  const activeRouteIdLocal = data.activeRouteId || (data.routes[0] && data.routes[0].id) || 'route1';
+  const demoCopies = DEMO_POINTS.map(p => ({ ...p, routeId: activeRouteIdLocal, isDemo: true }));
+  data.points.push(...demoCopies);
+  if (currentPos) update();
+  // Renders update next tick automatically
   const start = data.destinations.b, end = data.destinations.a;
   const steps = 100; demoStep = 0;
   demoTimer = setInterval(() => {
@@ -2341,7 +2524,12 @@ function stopAll() {
   if (demoTimer !== null) { clearInterval(demoTimer); demoTimer = null; }
   if (wakeLock) { try { wakeLock.release(); } catch(e) {} wakeLock = null; }
   hideFeedback();
+  // Remove demo points (anything tagged isDemo) — they should never persist
+  if (data && Array.isArray(data.points)) {
+    data.points = data.points.filter(p => !p.isDemo);
+  }
   mode = 'idle'; setStatus('', 'Idle'); setStartButton(false, 'Start GPS');
+  if (currentPos) update();
 }
 async function requestWakeLock() { if (!('wakeLock' in navigator)) return; try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {} }
 function setStatus(cls, text) {
@@ -2608,6 +2796,7 @@ setupToggle('limit-warn-toggle', 'limitWarn');
 setupToggle('ask-side-toggle', 'askSide');
 setupToggle('announce-side-toggle', 'announceSide');
 setupToggle('use-compass-toggle', 'useCompass');
+setupToggle('rotate-map-toggle', 'rotateMap');
 
 document.getElementById('fb-trigger-km').value = settings.fbTriggerKm;
 document.getElementById('fb-timeout-sec').value = settings.fbTimeoutSec;
@@ -3025,6 +3214,8 @@ function ensureMap() {
   mapInstance = L.map('map-leaflet', {
     zoomControl: true, attributionControl: true, tap: true,
     preferCanvas: false,
+    rotate: true, bearing: 0, rotateControl: false,
+    touchRotate: false,
   });
 
   // Tile providers in priority order. Try first, fallback on error.
@@ -3201,6 +3392,13 @@ function refreshMapMarkers() {
     if (mapAutoFollow) {
       mapProgrammaticMove = true;
       mapInstance.panTo([currentPos.lat, currentPos.lng], { animate: true, duration: 0.6 });
+      // Rotate to direction of travel
+      const rotateEnabled = settings.rotateMap !== false;
+      if (rotateEnabled && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
+        try { mapInstance.setBearing(-currentHeading); } catch(e) {}
+      } else if (!rotateEnabled) {
+        try { if (mapInstance.getBearing && mapInstance.getBearing() !== 0) mapInstance.setBearing(0); } catch(e) {}
+      }
       setTimeout(() => { mapProgrammaticMove = false; }, 700);
     }
   }
@@ -3320,6 +3518,8 @@ function ensureHomeMap() {
   homeMapInstance = L.map('home-map-leaflet', {
     zoomControl: true, attributionControl: false, tap: true,
     preferCanvas: false,
+    rotate: true, bearing: 0, rotateControl: false,
+    touchRotate: false,
   });
 
   // Use the same tile providers list as the fullscreen map (share)
@@ -3420,6 +3620,15 @@ function followHomeMap() {
   homeMapProgrammaticMove = true;
   const z = homeMapInstance.getZoom() || 12;
   homeMapInstance.setView([currentPos.lat, currentPos.lng], z, { animate: true, duration: 0.4 });
+  // Rotate map so direction of travel points up — gated by rotateMap setting (default true)
+  // Only rotate when moving (>2 m/s) to avoid jittery rotation while parked
+  const rotateEnabled = settings.rotateMap !== false; // default true
+  if (rotateEnabled && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
+    try { homeMapInstance.setBearing(-currentHeading); } catch(e) {}
+  } else if (!rotateEnabled) {
+    // User wants north-up — reset bearing to 0
+    try { if (homeMapInstance.getBearing && homeMapInstance.getBearing() !== 0) homeMapInstance.setBearing(0); } catch(e) {}
+  }
   setTimeout(() => { homeMapProgrammaticMove = false; }, 500);
 }
 
@@ -3547,6 +3756,15 @@ window.addEventListener('load', () => {
   if (savedSize !== 'off') {
     setTimeout(initHomeMap, 300);
   }
+
+  // Wire mode switcher
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setAppMode(btn.getAttribute('data-mode')));
+  });
+  // Apply saved mode (restores from previous session)
+  setAppMode(appMode);
+  // Wire log panel buttons
+  setupLogPanel();
 });
 
 
@@ -3559,6 +3777,137 @@ function tickMapRefresh() {
   }
 }
 setInterval(tickMapRefresh, 3000);
+// ===================== APP MODES =====================
+function setAppMode(m) {
+  appMode = m;
+  settings.appMode = m;
+  saveSettings();
+  document.body.setAttribute('data-app-mode', m);
+  document.querySelectorAll('.mode-btn').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-mode') === m)
+  );
+  if (m === 'log') renderLogList();
+  if (m === 'audit') renderAuditList();
+  // Re-render map markers since they depend on mode
+  if (homeMapInstance) {
+    setTimeout(() => { homeMapInstance.invalidateSize(true); refreshHomeMapMarkers(); }, 200);
+  }
+}
+
+function renderLogList() {
+  const container = document.getElementById('log-list');
+  if (!container) return;
+  // Show recent captures (real, not demo), most recent first
+  const recent = data.points
+    .filter(p => !p.isDemo)
+    .slice()
+    .reverse()
+    .slice(0, 30);
+  if (recent.length === 0) {
+    container.innerHTML = '<div class="log-status">No captures yet. Start GPS, then tap a button above when you spot something.</div>';
+    return;
+  }
+  container.innerHTML = recent.map(p => {
+    const sideText = p.side ? ' · ' + (p.side === 'left' ? 'L' : 'R') : '';
+    const timeText = p.capturedAt ? new Date(p.capturedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    return `
+      <div class="log-row">
+        <span class="em">${pointDisplayIcon(p)}</span>
+        <span class="name">${escapeHtml(p.name)}<span style="color:var(--ink-faint);font-weight:400;">${sideText}</span></span>
+        <span class="time">${timeText}</span>
+        <button class="del" data-log-del="${escapeHtml(pointKey(p))}">×</button>
+      </div>
+    `;
+  }).join('');
+  container.querySelectorAll('[data-log-del]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const k = b.getAttribute('data-log-del');
+    if (confirm('Delete this captured point?')) {
+      data.points = data.points.filter(p => pointKey(p) !== k);
+      saveData(); renderLogList(); if (currentPos) update();
+    }
+  }));
+}
+
+function renderAuditList() {
+  const container = document.getElementById('audit-list');
+  if (!container) return;
+  const points = activePoints().filter(p => !p.isDemo);
+  document.getElementById('audit-count').textContent = points.length;
+  if (points.length === 0) {
+    container.innerHTML = '<div class="log-status">No points to audit. Capture some points in Log mode first.</div>';
+    return;
+  }
+  // Order by distance from route's A endpoint (top-down along route)
+  const route = activeRoute();
+  const sorted = points.slice().sort((a, b) => distance(a, route.a) - distance(b, route.a));
+  container.innerHTML = sorted.map(p => {
+    const subtypeText = p.subtype ? ' · ' + p.subtype : '';
+    const limitText = p.type === 'speed_change' && p.limit ? ' · ' + p.limit + ' km/h' : '';
+    const sideText = p.side ? ' · ' + (p.side === 'left' ? 'Left' : 'Right') : '';
+    const stateClass = p.status === 'no' ? 'no' : '';
+    return `
+      <div class="audit-row ${stateClass}" data-audit-key="${escapeHtml(pointKey(p))}">
+        <span class="em">${pointDisplayIcon(p)}</span>
+        <div class="info">
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="meta">${typeLabel(p.type)}${subtypeText}${limitText}${sideText}</div>
+        </div>
+        <div class="actions">
+          <button class="keep ${p.status !== 'no' && p.confidence > 0 ? 'active' : ''}" data-audit-action="keep" title="Keep">✓</button>
+          <button class="del ${p.status === 'no' ? 'active' : ''}" data-audit-action="del" title="Delete">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  container.querySelectorAll('[data-audit-key]').forEach(row => {
+    const k = row.getAttribute('data-audit-key');
+    row.querySelector('[data-audit-action="keep"]').addEventListener('click', () => {
+      const p = data.points.find(x => pointKey(x) === k);
+      if (!p) return;
+      p.status = 'active'; p.confidence = (p.confidence || 0) + 1; p.lastConfirmedAt = new Date().toISOString();
+      saveData(); renderAuditList();
+    });
+    row.querySelector('[data-audit-action="del"]').addEventListener('click', () => {
+      if (!confirm('Delete this point?')) return;
+      data.points = data.points.filter(x => pointKey(x) !== k);
+      saveData(); renderAuditList(); if (currentPos) update();
+    });
+  });
+}
+
+// ===================== LOG MODE: capture buttons =====================
+function setupLogPanel() {
+  document.querySelectorAll('[data-log-type]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.getAttribute('data-log-type');
+      if (!currentPos) {
+        showToast('Need GPS fix first');
+        return;
+      }
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), 400);
+      // Use existing capture flow but skip subtype/side prompts for speed in log mode
+      const newPoint = ensurePointDefaults({
+        name: typeLabel(type),
+        type: type,
+        lat: parseFloat(currentPos.lat.toFixed(5)),
+        lng: parseFloat(currentPos.lng.toFixed(5)),
+        capturedAt: new Date().toISOString(),
+        status: 'active',
+        confidence: 1,
+        routeId: data.activeRouteId,
+      });
+      data.points.push(newPoint);
+      saveData();
+      renderLogList();
+      if (currentPos) update();
+      const status = document.getElementById('log-status');
+      if (status) status.textContent = `Captured: ${typeLabel(type)} at ${currentPos.lat.toFixed(4)}, ${currentPos.lng.toFixed(4)}`;
+      showToast('Captured', 'success');
+    });
+  });
+}
 
 
 function showToast(msg, cls) {
