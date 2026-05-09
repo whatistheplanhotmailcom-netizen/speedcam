@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v16</title>
+<title>Road Alert v17</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1894,8 +1894,7 @@ exports.OpenLocationCode = OpenLocationCode;
     border-radius: 12px; overflow: hidden;
     display: flex; flex-direction: column;
     flex-shrink: 0;
-    transition: height 0.3s ease;
-    max-height: 60vh; /* never push the start/demo buttons offscreen */
+    transition: height 0.3s ease, max-height 0.3s ease, min-height 0.3s ease;
   }
   .home-map-head {
     display: flex; align-items: center; gap: 8px;
@@ -1933,6 +1932,16 @@ exports.OpenLocationCode = OpenLocationCode;
     border-radius: 6px;
   }
   #home-map-leaflet { width: 100%; height: 100%; background: #1a1a1a; }
+  /* Debug status pill */
+  #debug-status-pill {
+    position: absolute; top: 6px; left: 6px; z-index: 11;
+    background: rgba(0, 0, 0, 0.85); color: #00ff88;
+    padding: 4px 8px; border-radius: 4px;
+    font-family: var(--mono); font-size: 9px; line-height: 1.4;
+    max-width: 180px; pointer-events: none;
+    border: 1px solid #00ff88;
+  }
+  body.debug-on #debug-status-pill { display: block !important; }
   .home-map-fab {
     position: absolute; right: 8px; bottom: 8px; z-index: 5;
     width: 36px; height: 36px; border-radius: 50%;
@@ -2002,46 +2011,46 @@ exports.OpenLocationCode = OpenLocationCode;
 
   /* Custom marker styles for Leaflet */
   .ra-marker {
-    background: var(--bg-card); color: var(--ink); border: 2px solid;
-    border-radius: 50%; width: 32px !important; height: 32px !important;
-    margin-left: -16px !important; margin-top: -16px !important;
+    background: var(--bg-card); color: var(--ink); border: 3px solid;
+    border-radius: 50%; width: 40px !important; height: 40px !important;
+    margin-left: -20px !important; margin-top: -20px !important;
     display: grid !important; place-items: center;
-    font-size: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    font-size: 20px; box-shadow: 0 3px 8px rgba(0,0,0,0.6);
     position: relative;
   }
   .ra-marker.passed { opacity: 0.4; }
   .ra-marker.disabled { opacity: 0.25; }
   .ra-marker .ra-side {
-    position: absolute; bottom: -5px; right: -5px;
-    width: 14px; height: 14px; border-radius: 3px;
+    position: absolute; bottom: -6px; right: -6px;
+    width: 16px; height: 16px; border-radius: 3px;
     background: #1c1917; color: #f5f1e8;
-    font-size: 9px; font-weight: 800; font-family: monospace;
+    font-size: 10px; font-weight: 800; font-family: monospace;
     display: grid; place-items: center; border: 1.5px solid var(--bg);
   }
-  .ra-marker.t-petrol { color: #84cc16; border-color: #84cc16; background: rgba(132, 204, 22, 0.15); }
-  .ra-marker.t-checkpoint { color: #eab308; border-color: #eab308; background: rgba(234, 179, 8, 0.15); }
-  .ra-marker.t-speed_camera { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.15); }
-  .ra-marker.t-mobile_camera { color: #f97316; border-color: #f97316; background: rgba(249, 115, 22, 0.15); }
-  .ra-marker.t-speed_change { color: #06b6d4; border-color: #06b6d4; background: rgba(6, 182, 212, 0.15); }
-  .ra-marker.t-gate { color: #a78bfa; border-color: #a78bfa; background: rgba(167, 139, 250, 0.15); }
+  .ra-marker.t-petrol { color: #84cc16; border-color: #84cc16; background: rgba(132, 204, 22, 0.25); }
+  .ra-marker.t-checkpoint { color: #eab308; border-color: #eab308; background: rgba(234, 179, 8, 0.25); }
+  .ra-marker.t-speed_camera { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.25); }
+  .ra-marker.t-mobile_camera { color: #f97316; border-color: #f97316; background: rgba(249, 115, 22, 0.25); }
+  .ra-marker.t-speed_change { color: #06b6d4; border-color: #06b6d4; background: rgba(6, 182, 212, 0.25); }
+  .ra-marker.t-gate { color: #a78bfa; border-color: #a78bfa; background: rgba(167, 139, 250, 0.25); }
   .ra-marker.t-other { color: #a8a29e; border-color: #a8a29e; background: #1c1917; }
   .ra-endpoint {
-    width: 36px !important; height: 36px !important;
-    margin-left: -18px !important; margin-top: -18px !important;
-    background: var(--amber); color: #0c0a09; border: 3px solid #fff;
+    width: 44px !important; height: 44px !important;
+    margin-left: -22px !important; margin-top: -22px !important;
+    background: var(--amber); color: #0c0a09; border: 4px solid #fff;
     border-radius: 50%; display: grid !important; place-items: center;
-    font-size: 18px; font-weight: 800; box-shadow: 0 3px 8px rgba(0,0,0,0.6);
+    font-size: 20px; font-weight: 800; box-shadow: 0 4px 10px rgba(0,0,0,0.7);
   }
   .ra-current {
-    width: 24px !important; height: 24px !important;
-    margin-left: -12px !important; margin-top: -12px !important;
-    background: #2563eb; border: 3px solid #fff; border-radius: 50%;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3), 0 2px 6px rgba(0,0,0,0.5);
+    width: 32px !important; height: 32px !important;
+    margin-left: -16px !important; margin-top: -16px !important;
+    background: #2563eb; border: 4px solid #fff; border-radius: 50%;
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.35), 0 3px 8px rgba(0,0,0,0.6);
     animation: currentPulse 2s infinite;
   }
   @keyframes currentPulse {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3), 0 2px 6px rgba(0,0,0,0.5); }
-    50% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0.0), 0 2px 6px rgba(0,0,0,0.5); }
+    0%, 100% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.35), 0 3px 8px rgba(0,0,0,0.6); }
+    50% { box-shadow: 0 0 0 16px rgba(37, 99, 235, 0.0), 0 3px 8px rgba(0,0,0,0.6); }
   }
 
   /* Leaflet popup styling for our theme */
@@ -2115,7 +2124,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v16</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v17</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2273,6 +2282,7 @@ exports.OpenLocationCode = OpenLocationCode;
         <button data-mapsize="l">L</button>
       </div>
     </div>
+    <div id="debug-status-pill" style="display:none;"></div>
     <button class="home-map-pill" id="home-map-follow-btn" title="Follow my location">
       <span class="dot"></span> <span id="home-map-follow-label">Follow: ON</span>
     </button>
@@ -2503,6 +2513,20 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="settings-row">
     <label>Show 📷 cam button</label>
     <span class="toggle on" id="show-fab-cam-toggle"></span>
+  </div>
+  <div class="settings-row">
+    <label>Map style</label>
+    <div class="options" id="map-style-options" style="flex-wrap:wrap;">
+      <button data-mapstyle="esri-street">Streets</button>
+      <button data-mapstyle="esri-imagery">Satellite</button>
+      <button data-mapstyle="opentopo">Topo</button>
+      <button data-mapstyle="cartodb-dark">Dark</button>
+      <button data-mapstyle="cartodb-light">Light</button>
+    </div>
+  </div>
+  <div class="settings-row">
+    <label>Debug overlay on map</label>
+    <span class="toggle" id="debug-mode-toggle"></span>
   </div>
 </div>
 <div class="settings-section-title">Alerts</div>
@@ -2827,6 +2851,33 @@ const SAMPLE_DATA = {
 };
 
 const STORAGE_KEY = 'roadAlert.v8.data';
+
+// ===== DEBUG SYSTEM =====
+const debugMessages = [];
+function debugLog(msg) {
+  const t = new Date().toLocaleTimeString([], {hour12: false});
+  debugMessages.push(`[${t}] ${msg}`);
+  if (debugMessages.length > 8) debugMessages.shift();
+  updateDebugStatus();
+}
+function updateDebugStatus() {
+  const pill = document.getElementById('debug-status-pill');
+  if (!pill) return;
+  const homeMap = document.getElementById('home-map');
+  const sizeNow = settings && settings.mapSize ? settings.mapSize.toUpperCase() : '?';
+  const heightNow = homeMap ? homeMap.offsetHeight : 0;
+  const widthNow = homeMap ? homeMap.offsetWidth : 0;
+  const rotateOn = settings && settings.rotateMap !== false ? 'on' : 'off';
+  const followOn = (typeof homeMapAutoFollow !== 'undefined' && homeMapAutoFollow) ? 'on' : 'off';
+  const status = [
+    `size:${sizeNow} ${widthNow}x${heightNow}px`,
+    `rot:${rotateOn} fol:${followOn}`,
+    ...debugMessages.slice(-4)
+  ].join('\n');
+  pill.textContent = status;
+  pill.style.whiteSpace = 'pre';
+}
+
 const SETTINGS_KEY = 'roadAlert.v8.settings';
 const TRIPS_KEY = 'roadAlert.v9.trips';
 const GH_KEY = 'roadAlert.v9.github';
@@ -2893,6 +2944,8 @@ function loadSettings() {
     if (typeof s.speedAlertFreq !== 'string') s.speedAlertFreq = 'zone';
     if (typeof s.speedAlertCooldown !== 'number') s.speedAlertCooldown = 30;
     if (typeof s.autoBackup !== 'boolean') s.autoBackup = true;
+    if (typeof s.mapStyle !== 'string') s.mapStyle = 'esri-street';
+    if (typeof s.debugMode !== 'boolean') s.debugMode = false;
     return s;
   } } catch(e) {}
   return {
@@ -2902,6 +2955,8 @@ function loadSettings() {
     showFabAdd: true, showFabCam: true,
     speedAlertSound: 'beep', speedAlertOver: 5, speedAlertFreq: 'zone', speedAlertCooldown: 30,
     autoBackup: true,
+    mapStyle: 'esri-street',
+    debugMode: false,
   };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
@@ -3843,6 +3898,58 @@ document.getElementById('auto-backup-toggle').addEventListener('click', () => {
     updateBackupStatusUI();
   }, 50);
 });
+
+// Map style picker
+const MAP_STYLES = {
+  'esri-street': { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'Esri Streets' },
+  'esri-imagery': { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'Esri Imagery' },
+  'opentopo': { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', subdomains: 'abc', maxZoom: 17, label: 'OpenTopoMap' },
+  'cartodb-dark': { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', subdomains: 'abcd', maxZoom: 19, label: 'CartoDB Dark' },
+  'cartodb-light': { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', subdomains: 'abcd', maxZoom: 19, label: 'CartoDB Light' },
+};
+let activeTileLayerHome = null;
+let activeTileLayerModal = null;
+function applyMapStyle(styleKey) {
+  settings.mapStyle = styleKey || 'esri-street';
+  saveSettings();
+  const cfg = MAP_STYLES[settings.mapStyle] || MAP_STYLES['esri-street'];
+  // Apply to home map
+  if (homeMapInstance) {
+    if (activeTileLayerHome) { try { homeMapInstance.removeLayer(activeTileLayerHome); } catch(e) {} }
+    activeTileLayerHome = L.tileLayer(cfg.url, { subdomains: cfg.subdomains || 'abc', maxZoom: cfg.maxZoom, crossOrigin: true }).addTo(homeMapInstance);
+  }
+  // Apply to fullscreen modal map
+  if (mapInstance) {
+    if (activeTileLayerModal) { try { mapInstance.removeLayer(activeTileLayerModal); } catch(e) {} }
+    activeTileLayerModal = L.tileLayer(cfg.url, { subdomains: cfg.subdomains || 'abc', maxZoom: cfg.maxZoom, crossOrigin: true }).addTo(mapInstance);
+  }
+  // Update active button
+  document.querySelectorAll('[data-mapstyle]').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-mapstyle') === settings.mapStyle)
+  );
+  debugLog('mapStyle: ' + settings.mapStyle);
+}
+document.querySelectorAll('[data-mapstyle]').forEach(b =>
+  b.addEventListener('click', () => applyMapStyle(b.getAttribute('data-mapstyle')))
+);
+// Apply current style on load (will be re-applied when maps init)
+document.querySelectorAll('[data-mapstyle]').forEach(b =>
+  b.classList.toggle('active', b.getAttribute('data-mapstyle') === (settings.mapStyle || 'esri-street'))
+);
+
+// Debug overlay toggle
+function applyDebugMode() {
+  document.body.classList.toggle('debug-on', settings.debugMode === true);
+  updateDebugStatus();
+}
+setupToggle('debug-mode-toggle', 'debugMode');
+document.getElementById('debug-mode-toggle').addEventListener('click', () => {
+  setTimeout(applyDebugMode, 50);
+});
+applyDebugMode();
+// Refresh debug pill every second
+setInterval(updateDebugStatus, 1000);
+
 ['show-fab-add-toggle', 'show-fab-cam-toggle'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', () => setTimeout(applyFabVisibility, 50));
@@ -4390,53 +4497,63 @@ async function fetchOSRMRoute(start, end) {
 }
 
 async function drawRouteToActiveDest() {
-  if (!currentPos) return;
+  if (!currentPos) {
+    debugLog('drawRoute: no GPS yet');
+    return;
+  }
   const dest = activeDestObj();
-  if (!dest) return;
+  if (!dest) {
+    debugLog('drawRoute: no destination');
+    return;
+  }
 
   // ALWAYS draw a straight line immediately so user sees something
   const straightCoords = [[currentPos.lat, currentPos.lng], [dest.lat, dest.lng]];
   if (homeMapInstance) {
     if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
     homeMapRouteLine = L.polyline(straightCoords, {
-      color: '#2563eb', weight: 3, opacity: 0.5, dashArray: '8,8'
+      color: '#2563eb', weight: 4, opacity: 0.6, dashArray: '8,8'
     }).addTo(homeMapInstance);
+    debugLog('drawRoute: straight line drawn on home');
   }
   if (mapInstance) {
     if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
     modalMapRouteLine = L.polyline(straightCoords, {
-      color: '#2563eb', weight: 4, opacity: 0.5, dashArray: '8,8'
+      color: '#2563eb', weight: 5, opacity: 0.6, dashArray: '8,8'
     }).addTo(mapInstance);
   }
 
   // Then try to upgrade to a road-following route via OSRM (async, throttled)
   const fetchKey = `${currentPos.lat.toFixed(2)},${currentPos.lng.toFixed(2)}_${dest.lat.toFixed(4)},${dest.lng.toFixed(4)}`;
   if (fetchKey === lastRouteFetchKey && lastRouteCoords) {
-    // Use cached OSRM route if same area
     drawRoadFollowingLine(lastRouteCoords);
+    debugLog('drawRoute: cached OSRM redrawn');
     return;
   }
 
+  debugLog('drawRoute: calling OSRM...');
   const osrmCoords = await fetchOSRMRoute(currentPos, dest);
   if (osrmCoords) {
     lastRouteFetchKey = fetchKey;
     lastRouteCoords = osrmCoords;
     drawRoadFollowingLine(osrmCoords);
+    debugLog('drawRoute: OSRM ' + osrmCoords.length + ' points');
+  } else {
+    debugLog('drawRoute: OSRM failed, keeping straight line');
   }
-  // If OSRM failed, keep the straight line we already drew
 }
 
 function drawRoadFollowingLine(coords) {
   if (homeMapInstance) {
     if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
     homeMapRouteLine = L.polyline(coords, {
-      color: '#2563eb', weight: 4, opacity: 0.85
+      color: '#2563eb', weight: 5, opacity: 0.9
     }).addTo(homeMapInstance);
   }
   if (mapInstance) {
     if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
     modalMapRouteLine = L.polyline(coords, {
-      color: '#2563eb', weight: 5, opacity: 0.85
+      color: '#2563eb', weight: 6, opacity: 0.9
     }).addTo(mapInstance);
   }
 }
@@ -4815,7 +4932,7 @@ function refreshMapMarkers() {
       mapInstance.panTo([currentPos.lat, currentPos.lng], { animate: true, duration: 0.6 });
       // Rotate to direction of travel
       const rotateEnabled = settings.rotateMap !== false;
-      if (rotateEnabled && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
+      if (rotateEnabled && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 0.5) {
         try { mapInstance.setBearing(-currentHeading); } catch(e) {}
       } else if (!rotateEnabled) {
         try { if (mapInstance.getBearing && mapInstance.getBearing() !== 0) mapInstance.setBearing(0); } catch(e) {}
@@ -4943,26 +5060,15 @@ function ensureHomeMap() {
     touchRotate: false,
   });
 
-  // Use the same tile providers list as the fullscreen map (share)
-  const providers = [
-    { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'Esri Streets' },
-    { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', subdomains: 'abc', maxZoom: 17, label: 'OpenTopoMap' },
-    { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'Esri Imagery' },
-  ];
-  let tileLayer = null, providerIdx = 0, errorCount = 0;
-  function loadProvider(idx) {
-    if (tileLayer) { try { homeMapInstance.removeLayer(tileLayer); } catch(e) {} }
-    if (idx >= providers.length) return;
-    const p = providers[idx]; errorCount = 0;
-    tileLayer = L.tileLayer(p.url, { subdomains: p.subdomains || 'abc', maxZoom: p.maxZoom, crossOrigin: true });
-    tileLayer.on('tileerror', () => {
-      errorCount++;
-      if (errorCount > 3 && providerIdx === idx) { providerIdx = idx + 1; loadProvider(providerIdx); }
-    });
-    tileLayer.on('tileload', () => { errorCount = 0; });
-    tileLayer.addTo(homeMapInstance);
-  }
-  loadProvider(0);
+  // Apply user's preferred map style (Settings → Display → Map style)
+  const styleKey = settings.mapStyle || 'esri-street';
+  const cfg = MAP_STYLES[styleKey] || MAP_STYLES['esri-street'];
+  activeTileLayerHome = L.tileLayer(cfg.url, {
+    subdomains: cfg.subdomains || 'abc',
+    maxZoom: cfg.maxZoom,
+    crossOrigin: true,
+  });
+  activeTileLayerHome.addTo(homeMapInstance);
 
   homeMapMarkersLayer = L.layerGroup().addTo(homeMapInstance);
 
@@ -5067,7 +5173,7 @@ function followHomeMap() {
   // Rotate map so direction of travel points up — gated by rotateMap setting (default true)
   // Only rotate when moving (>2 m/s) to avoid jittery rotation while parked
   const rotateEnabled = settings.rotateMap !== false; // default true
-  if (rotateEnabled && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 2) {
+  if (rotateEnabled && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 0.5) {
     try { homeMapInstance.setBearing(-currentHeading); } catch(e) {}
   } else if (!rotateEnabled) {
     // User wants north-up — reset bearing to 0
@@ -5114,27 +5220,46 @@ function setHomeMapSize(size) {
   if (!homeMap) return;
   if (size === 'off') {
     homeMap.style.display = 'none';
+    homeMap.style.height = '';
   } else {
     homeMap.style.display = 'flex';
-    const heights = { s: '30vh', m: '50vh', l: '60vh' };
-    homeMap.style.height = heights[size] || heights.s;
+    // Use dynamic viewport height for iOS reliability + min-height to ensure visibility
+    // dvh adjusts when iOS Safari address bar shows/hides
+    const px = { s: 220, m: 360, l: 480 };
+    const target = px[size] || px.s;
+    homeMap.style.height = target + 'px';
+    homeMap.style.minHeight = target + 'px';
+    homeMap.style.maxHeight = target + 'px';
+    // Also set the body element's flex-basis so it actually resizes
+    const body = homeMap.querySelector('.home-map-body');
+    if (body) {
+      body.style.height = (target - 40) + 'px';  // minus head height
+    }
   }
-  // Update both the floating toggle and the settings toggle
+  // Update all size toggle buttons
   document.querySelectorAll('[data-mapsize]').forEach(b =>
     b.classList.toggle('active', b.getAttribute('data-mapsize') === size)
   );
-  // Update top-bar map button visual (greyed out when off)
   const mapBtn = document.getElementById('map-btn');
   if (mapBtn) mapBtn.classList.toggle('off', size === 'off');
   settings.mapSize = size;
   saveSettings();
+  // Force Leaflet to recalc its container size after CSS settles
   setTimeout(() => {
     if (homeMapInstance) homeMapInstance.invalidateSize(true);
-  }, 350);
+  }, 100);
+  setTimeout(() => {
+    if (homeMapInstance) homeMapInstance.invalidateSize(true);
+  }, 400);
+  setTimeout(() => {
+    if (homeMapInstance) homeMapInstance.invalidateSize(true);
+  }, 1000);
   // If switching from off to on, init the home map
   if (size !== 'off' && !homeMapInstance) {
     setTimeout(initHomeMap, 200);
   }
+  // Update debug indicator if present
+  if (typeof updateDebugStatus === 'function') updateDebugStatus();
 }
 
 function initHomeMap() {
