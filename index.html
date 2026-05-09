@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v15.1</title>
+<title>Road Alert v16</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -2115,7 +2115,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v15.1</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v16</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2165,7 +2165,7 @@ exports.OpenLocationCode = OpenLocationCode;
     <button class="stop-trip" id="stop-trip-btn">End trip</button>
   </div>
 
-  <div style="display: grid; grid-template-rows: auto auto auto auto; gap: 8px; min-height: 0; flex: 1; overflow: hidden;">
+  <div style="display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden;">
 
 ```
 <div class="panel-wrap mode-hide-log mode-hide-audit" data-panel="hero">
@@ -2620,6 +2620,11 @@ exports.OpenLocationCode = OpenLocationCode;
     <label>File path</label>
     <input type="text" id="gh-path-input" placeholder="data/road-alert.json" style="flex:2;">
   </div>
+  <div class="settings-row">
+    <label>Auto-backup every 5 min</label>
+    <span class="toggle on" id="auto-backup-toggle"></span>
+  </div>
+  <div style="font-size:11px;color:var(--ink-soft);font-family:var(--mono);text-align:center;padding:6px;" id="backup-status-text">Auto-backup off</div>
 </div>
 <div class="modal-actions">
   <button class="btn" id="gh-help-btn">How to set up</button>
@@ -2887,6 +2892,7 @@ function loadSettings() {
     if (typeof s.speedAlertOver !== 'number') s.speedAlertOver = 5;
     if (typeof s.speedAlertFreq !== 'string') s.speedAlertFreq = 'zone';
     if (typeof s.speedAlertCooldown !== 'number') s.speedAlertCooldown = 30;
+    if (typeof s.autoBackup !== 'boolean') s.autoBackup = true;
     return s;
   } } catch(e) {}
   return {
@@ -2895,6 +2901,7 @@ function loadSettings() {
     fbTriggerKm: 2.0, fbTimeoutSec: 180, commonLimits: [40, 60, 80, 100, 120, 140],
     showFabAdd: true, showFabCam: true,
     speedAlertSound: 'beep', speedAlertOver: 5, speedAlertFreq: 'zone', speedAlertCooldown: 30,
+    autoBackup: true,
   };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
@@ -3827,6 +3834,15 @@ function applyFabVisibility() {
 }
 setupToggle('show-fab-add-toggle', 'showFabAdd');
 setupToggle('show-fab-cam-toggle', 'showFabCam');
+
+// Auto-backup toggle
+setupToggle('auto-backup-toggle', 'autoBackup');
+document.getElementById('auto-backup-toggle').addEventListener('click', () => {
+  setTimeout(() => {
+    if (settings.autoBackup) startAutoBackupTimer(); else stopAutoBackupTimer();
+    updateBackupStatusUI();
+  }, 50);
+});
 ['show-fab-add-toggle', 'show-fab-cam-toggle'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', () => setTimeout(applyFabVisibility, 50));
@@ -3903,6 +3919,7 @@ document.getElementById('settings-btn').addEventListener('click', () => {
   document.getElementById('gh-token-input').value = github.token || '';
   document.getElementById('gh-repo-input').value = github.repo || '';
   document.getElementById('gh-path-input').value = github.path || '';
+  updateBackupStatusUI();
   // Toggle the start/end trip button label
   const startBtn = document.getElementById('start-trip-btn');
   if (activeTrip) {
@@ -4337,7 +4354,7 @@ function showDestPreview(ll) {
     if (currentPos) {
       if (destPreviewRouteLine) destPreviewMap.removeLayer(destPreviewRouteLine);
       destPreviewRouteLine = L.polyline([[currentPos.lat, currentPos.lng], [ll.lat, ll.lng]], {
-        color: '#f59e0b', weight: 3, opacity: 0.7, dashArray: '4,6'
+        color: '#2563eb', weight: 3, opacity: 0.7, dashArray: '4,6'
       }).addTo(destPreviewMap);
       destPreviewMap.fitBounds([[currentPos.lat, currentPos.lng], [ll.lat, ll.lng]], { padding: [20, 20], maxZoom: 13 });
     }
@@ -4382,13 +4399,13 @@ async function drawRouteToActiveDest() {
   if (homeMapInstance) {
     if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
     homeMapRouteLine = L.polyline(straightCoords, {
-      color: '#f59e0b', weight: 3, opacity: 0.5, dashArray: '8,8'
+      color: '#2563eb', weight: 3, opacity: 0.5, dashArray: '8,8'
     }).addTo(homeMapInstance);
   }
   if (mapInstance) {
     if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
     modalMapRouteLine = L.polyline(straightCoords, {
-      color: '#f59e0b', weight: 4, opacity: 0.5, dashArray: '8,8'
+      color: '#2563eb', weight: 4, opacity: 0.5, dashArray: '8,8'
     }).addTo(mapInstance);
   }
 
@@ -4413,13 +4430,13 @@ function drawRoadFollowingLine(coords) {
   if (homeMapInstance) {
     if (homeMapRouteLine) homeMapInstance.removeLayer(homeMapRouteLine);
     homeMapRouteLine = L.polyline(coords, {
-      color: '#f59e0b', weight: 4, opacity: 0.85
+      color: '#2563eb', weight: 4, opacity: 0.85
     }).addTo(homeMapInstance);
   }
   if (mapInstance) {
     if (modalMapRouteLine) mapInstance.removeLayer(modalMapRouteLine);
     modalMapRouteLine = L.polyline(coords, {
-      color: '#f59e0b', weight: 5, opacity: 0.85
+      color: '#2563eb', weight: 5, opacity: 0.85
     }).addTo(mapInstance);
   }
 }
@@ -4430,14 +4447,52 @@ setInterval(() => {
 }, 30000);
 
 
-async function backupToGitHub() {
+// Compute a hash of current data to detect changes
+function dataHash() {
+  try {
+    const payload = JSON.stringify({ d: data, s: settings, t: trips });
+    let h = 0;
+    for (let i = 0; i < payload.length; i++) {
+      h = ((h << 5) - h + payload.charCodeAt(i)) | 0;
+    }
+    return h.toString();
+  } catch(e) { return String(Date.now()); }
+}
+
+let lastBackupHash = null;
+let lastBackupTime = null;
+let autoBackupTimer = null;
+
+function loadBackupState() {
+  try {
+    const r = localStorage.getItem('roadAlert.v16.backup');
+    if (r) {
+      const s = JSON.parse(r);
+      lastBackupHash = s.hash || null;
+      lastBackupTime = s.time || null;
+    }
+  } catch(e) {}
+}
+function saveBackupState() {
+  try {
+    localStorage.setItem('roadAlert.v16.backup', JSON.stringify({
+      hash: lastBackupHash, time: lastBackupTime
+    }));
+  } catch(e) {}
+}
+
+async function backupToGitHub(opts) {
+  opts = opts || {};
+  const silent = opts.silent === true;
   if (!github.token || !github.repo || !github.path) {
-    showToast('Set token, repo, and path first');
-    document.getElementById('gh-help-modal').classList.add('open');
-    return;
+    if (!silent) {
+      showToast('Set token, repo, and path first');
+      document.getElementById('gh-help-modal').classList.add('open');
+    }
+    return false;
   }
   try {
-    showToast('Backing up...');
+    if (!silent) showToast('Backing up...');
     const apiBase = `https://api.github.com/repos/${github.repo}/contents/${github.path}`;
     const headers = {
       'Authorization': 'token ' + github.token,
@@ -4452,25 +4507,82 @@ async function backupToGitHub() {
         sha = j.sha;
       }
     } catch(e) {}
-    // Encode content to base64 (handle unicode)
     const content = JSON.stringify({ data, settings, trips, exportedAt: new Date().toISOString() }, null, 2);
     const b64 = btoa(unescape(encodeURIComponent(content)));
     const body = {
-      message: 'Road Alert backup ' + new Date().toISOString(),
+      message: (silent ? 'Auto-backup ' : 'Manual backup ') + new Date().toISOString(),
       content: b64,
     };
     if (sha) body.sha = sha;
     const putResp = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) });
     if (putResp.ok) {
-      showToast('Backed up to GitHub', 'success');
+      lastBackupHash = dataHash();
+      lastBackupTime = Date.now();
+      saveBackupState();
+      updateBackupStatusUI();
+      if (!silent) showToast('Backed up to GitHub', 'success');
+      return true;
     } else {
       const err = await putResp.json();
-      showToast('Backup failed: ' + (err.message || putResp.status));
+      if (!silent) showToast('Backup failed: ' + (err.message || putResp.status));
+      return false;
     }
   } catch(e) {
-    showToast('Backup error: ' + e.message);
+    if (!silent) showToast('Backup error: ' + e.message);
+    return false;
   }
 }
+
+// ===== Auto-backup (every 5 min, only if data changed) =====
+async function tryAutoBackup() {
+  if (!settings.autoBackup) return;
+  if (!github.token || !github.repo || !github.path) return; // silent skip
+  const currentHash = dataHash();
+  if (currentHash === lastBackupHash) return; // no change
+  await backupToGitHub({ silent: true });
+}
+
+function startAutoBackupTimer() {
+  if (autoBackupTimer) clearInterval(autoBackupTimer);
+  autoBackupTimer = setInterval(tryAutoBackup, 5 * 60 * 1000); // every 5 min
+}
+function stopAutoBackupTimer() {
+  if (autoBackupTimer) { clearInterval(autoBackupTimer); autoBackupTimer = null; }
+}
+
+function updateBackupStatusUI() {
+  const el = document.getElementById('backup-status-text');
+  if (!el) return;
+  if (!settings.autoBackup) {
+    el.textContent = 'Auto-backup off';
+    el.style.color = 'var(--ink-faint)';
+    return;
+  }
+  if (!github.token || !github.repo) {
+    el.textContent = 'Set up GitHub credentials first';
+    el.style.color = 'var(--red)';
+    return;
+  }
+  if (!lastBackupTime) {
+    el.textContent = 'Auto-backup on · no backup yet';
+    el.style.color = 'var(--ink-soft)';
+    return;
+  }
+  const ageMs = Date.now() - lastBackupTime;
+  const ageMin = Math.floor(ageMs / 60000);
+  const ageHr = Math.floor(ageMin / 60);
+  let ageText;
+  if (ageMin < 1) ageText = 'just now';
+  else if (ageMin < 60) ageText = ageMin + ' min ago';
+  else if (ageHr < 24) ageText = ageHr + ' hr ago';
+  else ageText = Math.floor(ageHr / 24) + ' day(s) ago';
+  el.textContent = 'Last backup: ' + ageText;
+  el.style.color = ageMs < 30 * 60 * 1000 ? 'var(--green)' : 'var(--ink-soft)';
+}
+
+// Refresh status text every minute
+setInterval(updateBackupStatusUI, 60 * 1000);
+
 // ===================== MAP =====================
 let mapInstance = null;
 let mapMarkersLayer = null;
@@ -5105,6 +5217,10 @@ window.addEventListener('load', () => {
   // Wire collapsible panel headers and apply saved panel state
   setupPanelHeads();
   applyPanelState();
+  // Bootstrap auto-backup
+  loadBackupState();
+  if (settings.autoBackup) startAutoBackupTimer();
+  updateBackupStatusUI();
 });
 
 
