@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v18.2</title>
+<title>Road Alert v18.3</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -2072,12 +2072,12 @@ exports.OpenLocationCode = OpenLocationCode;
     background: var(--bg-card); color: var(--ink); border: 2px solid var(--line);
   }
 
-  /* Hide-all controls toggle (top-left corner, always visible) */
+  /* Hide-all controls toggle (bottom-right, above map style cycle) */
   .home-map-fab.hide-controls-btn {
-    top: 8px; left: 8px; bottom: auto; right: auto;
-    width: 36px; height: 36px;
+    bottom: 104px; right: 8px; top: auto; left: auto;
+    width: 40px; height: 40px;
     background: rgba(28, 25, 23, 0.7); backdrop-filter: blur(6px);
-    color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    color: #fff; border: 2px solid rgba(255,255,255,0.3);
     z-index: 1200; /* above other overlays */
   }
   body.map-controls-hidden .map-overlay { display: none !important; }
@@ -2266,7 +2266,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18.2</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18.3</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
