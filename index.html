@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v18</title>
+<title>Road Alert v18.2</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1846,9 +1846,40 @@ exports.OpenLocationCode = OpenLocationCode;
   body.fab-cam-hidden #fab-cam { display: none !important; }
   body.fab-add-hidden #fab-add { display: none !important; }
 
-  /* Destination switcher (top-right under settings) */
-  .dest-switcher-row {
-    display: flex; justify-content: flex-end; padding: 4px 0; position: relative;
+  /* Combined top line: compact mode switcher + destination dropdown */
+  .topline-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0; position: relative;
+  }
+  .mode-switcher-compact {
+    display: flex; gap: 4px;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 3px;
+    flex-shrink: 0;
+  }
+  .mode-btn-compact {
+    appearance: none; cursor: pointer;
+    background: transparent; border: none;
+    border-radius: 6px; padding: 5px 7px;
+    display: flex; align-items: center; gap: 4px;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--ink-soft);
+    transition: background 0.15s, color 0.15s;
+  }
+  .mode-btn-compact .mode-icon { font-size: 14px; line-height: 1; }
+  .mode-btn-compact .mode-label {
+    display: none;
+    font-size: 10px; letter-spacing: 0.05em;
+  }
+  .mode-btn-compact.active {
+    background: var(--amber); color: #0c0a09;
+  }
+  .mode-btn-compact.active .mode-label {
+    display: inline;
+  }
+  .dest-switcher-wrap {
+    flex: 1; display: flex; justify-content: flex-end; position: relative;
+    min-width: 0;
   }
   .dest-switcher-trigger {
     appearance: none; cursor: pointer;
@@ -1856,14 +1887,15 @@ exports.OpenLocationCode = OpenLocationCode;
     border-radius: 8px; padding: 6px 10px;
     display: flex; align-items: center; gap: 6px;
     font-family: var(--mono); font-size: 12px; font-weight: 700;
-    color: var(--ink); max-width: 70%;
+    color: var(--ink); max-width: 100%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    min-width: 0;
   }
   .dest-switcher-trigger:active { background: var(--bg-soft); }
   .dest-switcher-arrow { color: var(--amber); font-size: 14px; flex-shrink: 0; }
   .dest-switcher-name {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    max-width: 200px;
+    min-width: 0;
   }
   .dest-switcher-caret { color: var(--ink-soft); font-size: 11px; flex-shrink: 0; transition: transform 0.2s; }
   .dest-switcher-trigger.open .dest-switcher-caret { transform: rotate(180deg); }
@@ -2009,6 +2041,48 @@ exports.OpenLocationCode = OpenLocationCode;
     border: 1px solid #00ff88;
   }
   body.debug-on #debug-status-pill { display: block !important; }
+
+  /* D-pad for map panning */
+  .map-dpad {
+    position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+    z-index: 1100;
+    display: grid;
+    grid-template-columns: 32px 32px 32px;
+    grid-template-rows: 32px 32px 32px;
+    gap: 2px;
+  }
+  .dpad-btn {
+    appearance: none; cursor: pointer;
+    background: rgba(28, 25, 23, 0.7); backdrop-filter: blur(6px);
+    color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  .dpad-btn:active { background: var(--amber); color: #0c0a09; }
+  .dpad-up { grid-column: 2; grid-row: 1; }
+  .dpad-left { grid-column: 1; grid-row: 2; }
+  .dpad-right { grid-column: 3; grid-row: 2; }
+  .dpad-down { grid-column: 2; grid-row: 3; }
+
+  /* Map style cycle button (above fit/recenter) */
+  .home-map-fab.map-style-cycle {
+    bottom: 56px; right: 8px;
+    background: var(--bg-card); color: var(--ink); border: 2px solid var(--line);
+  }
+
+  /* Hide-all controls toggle (top-left corner, always visible) */
+  .home-map-fab.hide-controls-btn {
+    top: 8px; left: 8px; bottom: auto; right: auto;
+    width: 36px; height: 36px;
+    background: rgba(28, 25, 23, 0.7); backdrop-filter: blur(6px);
+    color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    z-index: 1200; /* above other overlays */
+  }
+  body.map-controls-hidden .map-overlay { display: none !important; }
+  body.map-controls-hidden .leaflet-control-zoom { display: none !important; }
+  body.map-controls-hidden #hide-controls-btn { display: grid !important; opacity: 0.6; }
   .home-map-fab {
     position: absolute; right: 8px; bottom: 8px; z-index: 1100;
     width: 40px; height: 40px; border-radius: 50%;
@@ -2192,7 +2266,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18.2</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2212,34 +2286,35 @@ exports.OpenLocationCode = OpenLocationCode;
     </div>
   </div>
 
-  <div class="dest-switcher-row">
-    <button class="dest-switcher-trigger" id="dest-switcher-trigger">
-      <span class="dest-switcher-arrow">→</span>
-      <span class="dest-switcher-name" id="dest-switcher-name">—</span>
-      <span class="dest-switcher-caret" id="dest-switcher-caret">▾</span>
-    </button>
-    <div class="dest-switcher-dropdown" id="dest-switcher-dropdown" style="display:none;">
-      <div class="dest-switcher-list" id="dest-switcher-list"></div>
-      <div class="dest-switcher-actions">
-        <button class="dest-switcher-cancel" id="dest-switcher-cancel">Cancel</button>
-        <button class="dest-switcher-confirm" id="dest-switcher-confirm" disabled>Set</button>
+  <div class="topline-row">
+    <div class="mode-switcher-compact" id="mode-switcher">
+      <button class="mode-btn-compact active" data-mode="live" title="Live">
+        <span class="mode-icon">🚗</span>
+        <span class="mode-label">LIVE</span>
+      </button>
+      <button class="mode-btn-compact" data-mode="log" title="Log">
+        <span class="mode-icon">📍</span>
+        <span class="mode-label">LOG</span>
+      </button>
+      <button class="mode-btn-compact" data-mode="audit" title="Audit">
+        <span class="mode-icon">✓</span>
+        <span class="mode-label">AUDIT</span>
+      </button>
+    </div>
+    <div class="dest-switcher-wrap">
+      <button class="dest-switcher-trigger" id="dest-switcher-trigger">
+        <span class="dest-switcher-arrow">→</span>
+        <span class="dest-switcher-name" id="dest-switcher-name">—</span>
+        <span class="dest-switcher-caret" id="dest-switcher-caret">▾</span>
+      </button>
+      <div class="dest-switcher-dropdown" id="dest-switcher-dropdown" style="display:none;">
+        <div class="dest-switcher-list" id="dest-switcher-list"></div>
+        <div class="dest-switcher-actions">
+          <button class="dest-switcher-cancel" id="dest-switcher-cancel">Cancel</button>
+          <button class="dest-switcher-confirm" id="dest-switcher-confirm" disabled>Set</button>
+        </div>
       </div>
     </div>
-  </div>
-
-  <div class="mode-switcher" id="mode-switcher">
-    <button class="mode-btn active" data-mode="live">
-      <span class="mode-icon">🚗</span>
-      <span class="mode-label">Live</span>
-    </button>
-    <button class="mode-btn" data-mode="log">
-      <span class="mode-icon">📍</span>
-      <span class="mode-label">Log</span>
-    </button>
-    <button class="mode-btn" data-mode="audit">
-      <span class="mode-icon">✓</span>
-      <span class="mode-label">Audit</span>
-    </button>
   </div>
 
   <div class="hidden-panels-bar" id="hidden-panels-bar"></div>
@@ -2358,7 +2433,7 @@ exports.OpenLocationCode = OpenLocationCode;
   </div>
   <div class="home-map-body">
     <div id="home-map-leaflet"></div>
-    <div class="floating-size-toggle">
+    <div class="floating-size-toggle map-overlay">
       <div class="size-toggle">
         <button data-mapsize="s">S</button>
         <button data-mapsize="m">M</button>
@@ -2366,11 +2441,25 @@ exports.OpenLocationCode = OpenLocationCode;
       </div>
     </div>
     <div id="debug-status-pill" style="display:none;"></div>
-    <button class="home-map-pill" id="home-map-follow-btn" title="Follow my location">
+    <button class="home-map-pill map-overlay" id="home-map-follow-btn" title="Follow my location">
       <span class="dot"></span> <span id="home-map-follow-label">Follow: ON</span>
     </button>
-    <button class="home-map-fab fit" id="home-map-fit-btn" title="Fit all">⛶</button>
-    <button class="home-map-fab" id="home-map-recenter-btn" title="Recenter">📍</button>
+    <button class="home-map-fab fit map-overlay" id="home-map-fit-btn" title="Fit all">⛶</button>
+    <button class="home-map-fab map-overlay" id="home-map-recenter-btn" title="Recenter">📍</button>
+
+    <!-- D-pad for panning -->
+    <div class="map-dpad map-overlay" id="map-dpad">
+      <button class="dpad-btn dpad-up" data-dpad="up" title="Pan up">▲</button>
+      <button class="dpad-btn dpad-left" data-dpad="left" title="Pan left">◀</button>
+      <button class="dpad-btn dpad-right" data-dpad="right" title="Pan right">▶</button>
+      <button class="dpad-btn dpad-down" data-dpad="down" title="Pan down">▼</button>
+    </div>
+
+    <!-- Map style cycle button -->
+    <button class="home-map-fab map-style-cycle map-overlay" id="map-style-cycle-btn" title="Cycle map style">🗺️</button>
+
+    <!-- Hide-all toggle (always visible, even when others are hidden) -->
+    <button class="home-map-fab hide-controls-btn" id="hide-controls-btn" title="Show/hide controls">👁</button>
   </div>
 </div>
 
@@ -5490,6 +5579,48 @@ window.addEventListener('load', () => {
   document.getElementById('home-map-recenter-btn').addEventListener('click', recenterHomeMap);
   document.getElementById('home-map-fit-btn').addEventListener('click', fitHomeMapToAll);
   document.getElementById('home-map-fullscreen').addEventListener('click', openMap);
+
+  // D-pad panning
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!homeMapInstance) return;
+      const dir = btn.getAttribute('data-dpad');
+      // Pan by ~25% of the visible width/height
+      const size = homeMapInstance.getSize();
+      const offset = { x: 0, y: 0 };
+      if (dir === 'up') offset.y = -size.y * 0.25;
+      else if (dir === 'down') offset.y = size.y * 0.25;
+      else if (dir === 'left') offset.x = -size.x * 0.25;
+      else if (dir === 'right') offset.x = size.x * 0.25;
+      // Pan breaks auto-follow
+      if (homeMapAutoFollow) {
+        homeMapAutoFollow = false;
+        updateHomeRecenterBtn();
+      }
+      homeMapInstance.panBy([offset.x, offset.y], { animate: true });
+    });
+  });
+
+  // Map style cycler
+  const STYLE_CYCLE = ['esri-street', 'esri-imagery', 'opentopo', 'cartodb-dark', 'cartodb-light'];
+  document.getElementById('map-style-cycle-btn').addEventListener('click', () => {
+    const cur = settings.mapStyle || 'esri-street';
+    const idx = STYLE_CYCLE.indexOf(cur);
+    const next = STYLE_CYCLE[(idx + 1) % STYLE_CYCLE.length];
+    applyMapStyle(next);
+    const labelMap = {
+      'esri-street': 'Streets', 'esri-imagery': 'Satellite',
+      'opentopo': 'Topo', 'cartodb-dark': 'Dark', 'cartodb-light': 'Light'
+    };
+    showToast(labelMap[next] || next);
+  });
+
+  // Hide all controls toggle
+  document.getElementById('hide-controls-btn').addEventListener('click', () => {
+    const isHidden = document.body.classList.toggle('map-controls-hidden');
+    showToast(isHidden ? 'Controls hidden' : 'Controls visible');
+  });
+
   document.getElementById('home-map-follow-btn').addEventListener('click', () => {
     if (homeMapAutoFollow) {
       homeMapAutoFollow = false;
@@ -5518,7 +5649,7 @@ window.addEventListener('load', () => {
   }
 
   // Wire mode switcher
-  document.querySelectorAll('.mode-btn').forEach(btn => {
+  document.querySelectorAll('.mode-btn, .mode-btn-compact').forEach(btn => {
     btn.addEventListener('click', () => setAppMode(btn.getAttribute('data-mode')));
   });
   // Apply saved mode (restores from previous session)
@@ -5620,7 +5751,7 @@ function setAppMode(m) {
   settings.appMode = m;
   saveSettings();
   document.body.setAttribute('data-app-mode', m);
-  document.querySelectorAll('.mode-btn').forEach(b =>
+  document.querySelectorAll('.mode-btn, .mode-btn-compact').forEach(b =>
     b.classList.toggle('active', b.getAttribute('data-mode') === m)
   );
   if (m === 'log') {
