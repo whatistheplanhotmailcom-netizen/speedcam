@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v18.6</title>
+<title>Road Alert v19</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -2457,6 +2457,21 @@ exports.OpenLocationCode = OpenLocationCode;
     font-family: var(--mono); font-size: 10px; font-weight: 700; text-transform: uppercase;
   }
 
+  /* v19: Per-destination stats bar (replaces trip status bar) */
+  .dest-stats-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: rgba(217, 119, 6, 0.1);
+    border: 1px solid var(--amber); border-radius: 8px;
+    font-size: 11px; font-family: var(--mono); font-weight: 600;
+    color: var(--amber); margin-bottom: 4px;
+  }
+  .dest-stats-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+  .dest-stats-bar .reset-dest-stats {
+    margin-left: auto; appearance: none; border: 1px solid var(--amber); background: transparent;
+    color: var(--amber); padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    font-family: var(--mono); font-size: 10px; font-weight: 700; text-transform: uppercase;
+  }
+
   .route-card {
     background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px;
     padding: 10px 12px; display: flex; align-items: center; gap: 8px;
@@ -2494,7 +2509,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18.6</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v19</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2554,11 +2569,13 @@ exports.OpenLocationCode = OpenLocationCode;
     <button class="dir-btn" data-dir="b">→ B</button>
   </div>
 
-  <div class="trip-status-bar" id="trip-status-bar" style="display:none;">
+  <div class="trip-status-bar" id="trip-status-bar" style="display:none;"></div>
+
+  <div class="dest-stats-bar" id="dest-stats-bar" style="display:none;">
     <span class="dot"></span>
-    <span>Trip <span id="trip-status-text">recording</span></span>
-    <span id="trip-status-stats" style="color:var(--ink);font-weight:400;"></span>
-    <button class="stop-trip" id="stop-trip-btn">End trip</button>
+    <span id="dest-stats-label">→ —</span>
+    <span id="dest-stats-value" style="color:var(--ink);font-weight:400;"></span>
+    <button class="reset-dest-stats" id="reset-dest-stats-btn" title="Reset distance & max speed for this destination">↻ Reset</button>
   </div>
 
   <div style="display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden;">
@@ -3033,8 +3050,8 @@ exports.OpenLocationCode = OpenLocationCode;
     <input type="text" id="common-limits-input" placeholder="40,60,80,100,120,140" style="flex: 2;">
   </div>
 </div>
-<div class="settings-section-title">Trip log</div>
-<div class="modal-actions">
+<div class="settings-section-title" style="display:none;">Trip log</div>
+<div class="modal-actions" style="display:none;">
   <button class="btn" id="start-trip-btn" style="background:var(--green);color:#0c0a09;border-color:var(--green);">▶ Start trip</button>
   <button class="btn" id="trip-log-btn">View trips</button>
 </div>
@@ -3375,6 +3392,22 @@ function loadData() {
     if (!Array.isArray(d.destinations)) d.destinations = JSON.parse(JSON.stringify(SAMPLE_DATA.destinations));
     if (!d.activeDestinationId && d.destinations[0]) d.activeDestinationId = d.destinations[0].id;
     if (!Array.isArray(d.points)) d.points = [];
+    // ===== v19 migration =====
+    // Every capture must have destinationId. Drop tripId concept entirely.
+    if (!d._v19migrated) {
+      d.points.forEach(p => {
+        if (!p.destinationId && d.activeDestinationId) {
+          p.destinationId = d.activeDestinationId;
+        }
+        delete p.tripId; // remove trip linkage
+      });
+      d._v19migrated = true;
+    }
+    // Per-destination stats (km driven, max speed seen for this dest)
+    d.destinations.forEach(dest => {
+      if (typeof dest.distanceKm !== 'number') dest.distanceKm = 0;
+      if (typeof dest.maxSpeed !== 'number') dest.maxSpeed = 0;
+    });
     return d;
   } } catch(e) {}
   return JSON.parse(JSON.stringify(SAMPLE_DATA));
@@ -3417,8 +3450,12 @@ function loadSettings() {
   };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
-function loadTrips() { try { const r = localStorage.getItem(TRIPS_KEY); if (r) return JSON.parse(r); } catch(e) {} return []; }
-function saveTrips() { try { localStorage.setItem(TRIPS_KEY, JSON.stringify(trips)); } catch(e) {} }
+function loadTrips() {
+  // v19: trips removed. Wipe legacy storage and return empty.
+  try { localStorage.removeItem(TRIPS_KEY); } catch(e) {}
+  return [];
+}
+function saveTrips() { /* v19: no-op, trips removed */ }
 function loadGitHub() { try { const r = localStorage.getItem(GH_KEY); if (r) return JSON.parse(r); } catch(e) {} return { token: '', repo: '', path: 'data/road-alert.json' }; }
 function saveGitHub() { try { localStorage.setItem(GH_KEY, JSON.stringify(github)); } catch(e) {} }
 
@@ -3733,11 +3770,18 @@ function update() {
   document.getElementById('speed-value').textContent = speedKmh;
   document.getElementById('speedo').classList.toggle('over', isOverLimit);
 
-  // Trip log: track max speed and distance
-  if (activeTrip) {
-    if (speedKmh > activeTrip.maxSpeed) activeTrip.maxSpeed = speedKmh;
-    if (prevPos && currentSpeed > 1) activeTrip.distanceKm += distance(prevPos, currentPos);
-    updateTripStatusBar();
+  // v19: track distance and max speed per active destination (not per trip)
+  if (dest) {
+    if (typeof dest.maxSpeed !== 'number') dest.maxSpeed = 0;
+    if (typeof dest.distanceKm !== 'number') dest.distanceKm = 0;
+    if (speedKmh > dest.maxSpeed) dest.maxSpeed = speedKmh;
+    if (prevPos && currentSpeed > 1) dest.distanceKm += distance(prevPos, currentPos);
+    // Throttle saves: every 30s
+    if (!window._lastDestStatSave || (Date.now() - window._lastDestStatSave) > 30000) {
+      saveData();
+      window._lastDestStatSave = Date.now();
+    }
+    updateDestStatsBar();
   }
   document.getElementById('dest-label').textContent = '→ ' + dest.name.toUpperCase();
   document.getElementById('dest-km').textContent = kmToDest.toFixed(1);
@@ -3867,15 +3911,7 @@ function update() {
     tripSorted.forEach(p => p.passed = p.distFromDest > kmToDest);
 
     // Trip log: track points just passed
-    if (activeTrip) {
-      tripSorted.forEach(p => {
-        const k = pointKey(p);
-        if (p.passed && !activeTrip.passedKeys.includes(k) && p.status !== 'no') {
-          activeTrip.passedKeys.push(k);
-          activeTrip.pointCounts[p.type] = (activeTrip.pointCounts[p.type] || 0) + 1;
-        }
-      });
-    }
+    // v19: trip-based passed tracking removed
 
     // Find first upcoming index (for divider + auto-scroll)
     const firstUpcomingIdx = tripSorted.findIndex(p => !p.passed);
@@ -4169,6 +4205,12 @@ document.querySelectorAll('.fab-add [data-type]').forEach(btn => {
 
 function beginCapture(type, btnEl, subtype) {
   if (!currentPos) { showToast('Need GPS fix first'); return; }
+  // v19: every capture must have a destination
+  if (!data.activeDestinationId || !activeDest()) {
+    showToast('Pick a destination first');
+    if (typeof openDestSwitcher === 'function') openDestSwitcher();
+    return;
+  }
   if (btnEl) { btnEl.classList.add('flash'); setTimeout(() => btnEl.classList.remove('flash'), 500); }
   const dest = activeDest();
   const headingToName = dest && dest.name ? dest.name : null;
@@ -4182,7 +4224,6 @@ function beginCapture(type, btnEl, subtype) {
     capturedDir: activeDir(),
     capturedHeading: (currentHeading != null && !isNaN(currentHeading)) ? Math.round(currentHeading) : null,
     capturedSpeed: currentSpeed != null ? Math.round(currentSpeed * 3.6) : null,
-    tripId: activeTrip ? activeTrip.id : null,
     status: 'active',
     confidence: 1,
     destinationId: data.activeDestinationId,
@@ -4272,11 +4313,6 @@ function finalizeCapture() {
   } else {
     captureSession.push(newPoint);
     data.points.push(newPoint);
-    if (activeTrip) {
-      if (!Array.isArray(activeTrip.captures)) activeTrip.captures = [];
-      activeTrip.captures.push(pointKey(newPoint));
-      saveTrips();
-    }
     showToast(`${typeLabel(newPoint.type)} saved`, 'success');
   }
   saveData();
@@ -4589,46 +4625,21 @@ document.getElementById('settings-btn').addEventListener('click', () => {
   document.getElementById('gh-repo-input').value = github.repo || '';
   document.getElementById('gh-path-input').value = github.path || '';
   updateBackupStatusUI();
-  // Toggle the start/end trip button label
-  const startBtn = document.getElementById('start-trip-btn');
-  if (activeTrip) {
-    startBtn.textContent = '■ End trip';
-    startBtn.style.background = 'var(--red)';
-    startBtn.style.borderColor = 'var(--red)';
-  } else {
-    startBtn.textContent = '▶ Start trip';
-    startBtn.style.background = 'var(--green)';
-    startBtn.style.borderColor = 'var(--green)';
-  }
+  // v19: trip start/end button hidden (handled by display:none in HTML)
   settingsModal.classList.add('open');
 });
 
-// Trip log
-document.getElementById('start-trip-btn').addEventListener('click', () => {
-  if (activeTrip) endTrip();
-  else startTrip();
-  document.getElementById('settings-btn').click();  // Re-render to update button label
-  settingsModal.classList.remove('open');
-});
-document.getElementById('stop-trip-btn').addEventListener('click', () => endTrip());
-document.getElementById('trip-log-btn').addEventListener('click', () => {
-  renderTripLog();
-  settingsModal.classList.remove('open');
-  document.getElementById('trip-log-modal').classList.add('open');
-});
-document.getElementById('export-trips-btn').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(trips, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `road-alert-trips-${Date.now()}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  showToast('Exported', 'success');
-});
-document.getElementById('clear-trips-btn').addEventListener('click', () => {
-  if (!confirm('Delete all trip log entries?')) return;
-  trips = []; saveTrips(); renderTripLog();
-});
+// v19: trip controls removed
+const _startTripBtn = document.getElementById('start-trip-btn');
+if (_startTripBtn) _startTripBtn.addEventListener('click', () => showToast('Trips removed in v19'));
+const _stopTripBtn = document.getElementById('stop-trip-btn');
+if (_stopTripBtn) _stopTripBtn.addEventListener('click', () => {});
+const _tripLogBtn = document.getElementById('trip-log-btn');
+if (_tripLogBtn) _tripLogBtn.addEventListener('click', () => showToast('Trip log removed in v19'));
+const _exportTripsBtn = document.getElementById('export-trips-btn');
+if (_exportTripsBtn) _exportTripsBtn.addEventListener('click', () => showToast('Trips removed in v19'));
+const _clearTripsBtn = document.getElementById('clear-trips-btn');
+if (_clearTripsBtn) _clearTripsBtn.addEventListener('click', () => showToast('Trips removed in v19'));
 
 // Destinations
 document.getElementById('add-destination-btn').addEventListener('click', () => openDestinationEditor(null));
@@ -4777,86 +4788,34 @@ document.getElementById('copy-btn').addEventListener('click', async () => {
   catch(e) { ta.select(); document.execCommand('copy'); showToast('Copied'); }
 });
 
-// ===================== TRIP LOG =====================
-function startTrip() {
-  if (activeTrip) { showToast('Trip already running'); return; }
-  activeTrip = {
-    id: 't_' + Date.now(),
-    startedAt: new Date().toISOString(),
-    destinationId: data.activeDestinationId,
-    routeName: activeRoute().name,
-    direction: activeDir(),
-    headingTo: activeDest() ? activeDest().name : null,
-    startPos: currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null,
-    distanceKm: 0,
-    maxSpeed: 0,
-    pointCounts: {},
-    passedKeys: [],
-    captures: [],  // keys of points captured during this trip
-  };
-  showToast('Trip started', 'success');
-  updateTripStatusBar();
-  document.getElementById('settings-modal').classList.remove('open');
-  if (appMode === 'log') {
-    renderLogList();
-    const status = document.getElementById('log-status');
-    if (status) status.textContent = `Trip ${activeTrip.id.slice(-4)} recording — tap a button to capture`;
-  }
-}
-function endTrip() {
-  if (!activeTrip) return;
-  activeTrip.endedAt = new Date().toISOString();
-  activeTrip.endPos = currentPos ? { lat: currentPos.lat, lng: currentPos.lng } : null;
-  trips.unshift(activeTrip);
-  saveTrips();
-  showToast(`Trip saved · ${activeTrip.distanceKm.toFixed(1)} km`, 'success');
-  activeTrip = null;
-  updateTripStatusBar();
-  if (appMode === 'log') {
-    renderLogList();
-    const status = document.getElementById('log-status');
-    if (status) status.textContent = 'Trip ended — start a new trip to keep capturing';
-  }
-}
+// ===================== v19: TRIPS REMOVED =====================
+// activeTrip is permanently null. startTrip/endTrip kept as no-ops for any leftover callers.
+function startTrip() { showToast('Trips removed in v19 — use destinations'); }
+function endTrip() { /* no-op */ }
 function updateTripStatusBar() {
   const bar = document.getElementById('trip-status-bar');
-  if (!activeTrip) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
-  document.getElementById('trip-status-stats').textContent = `${activeTrip.distanceKm.toFixed(1)} km · max ${activeTrip.maxSpeed} km/h`;
+  if (bar) bar.style.display = 'none';
 }
+
+// v19: per-destination stats bar (replaces trip status bar)
+function updateDestStatsBar() {
+  const bar = document.getElementById('dest-stats-bar');
+  if (!bar) return;
+  const dest = activeDest();
+  if (!dest) { bar.style.display = 'none'; return; }
+  const distKm = (dest.distanceKm || 0).toFixed(1);
+  const maxSp = Math.round(dest.maxSpeed || 0);
+  const labelEl = document.getElementById('dest-stats-label');
+  const statsEl = document.getElementById('dest-stats-value');
+  if (labelEl) labelEl.textContent = '→ ' + dest.name;
+  if (statsEl) statsEl.textContent = `${distKm} km · max ${maxSp} km/h`;
+  bar.style.display = 'flex';
+}
+
 function renderTripLog() {
   const list = document.getElementById('trip-log-list');
-  if (trips.length === 0) {
-    list.innerHTML = '<div class="upcoming-empty">No trips yet. Tap Start trip in Settings.</div>';
-    return;
-  }
-  list.innerHTML = trips.map((t, i) => {
-    const start = new Date(t.startedAt);
-    const end = t.endedAt ? new Date(t.endedAt) : null;
-    const durMin = end ? Math.round((end - start) / 60000) : 0;
-    const dateStr = start.toLocaleDateString() + ' · ' + start.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const counts = Object.entries(t.pointCounts || {}).map(([k, v]) => typeEmoji(k) + v).join(' ');
-    return `
-      <div class="trip-entry">
-        <div class="trip-entry-head">
-          <div class="trip-entry-date">${dateStr}</div>
-          <button class="row-action" data-trip-del="${i}" style="appearance:none;background:transparent;border:1px solid var(--line);color:var(--red);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:12px;">×</button>
-        </div>
-        <div class="trip-entry-route">${escapeHtml(t.routeName || '')} · → ${(t.direction || '').toUpperCase()}</div>
-        <div class="trip-entry-stats">
-          <span><strong>${(t.distanceKm || 0).toFixed(1)}</strong>km</span>
-          <span><strong>${durMin}</strong>min</span>
-          <span><strong>${t.maxSpeed || 0}</strong>km/h max</span>
-          ${counts ? `<span style="color:var(--ink);">${counts}</span>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
-  list.querySelectorAll('[data-trip-del]').forEach(b => b.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const i = parseInt(b.getAttribute('data-trip-del'));
-    if (confirm('Delete this trip?')) { trips.splice(i, 1); saveTrips(); renderTripLog(); }
-  }));
+  if (!list) return;
+  list.innerHTML = '<div class="upcoming-empty">Trips removed in v19.<br>Captures are now organised by destination.</div>';
 }
 
 // ===================== DESTINATIONS =====================
@@ -5045,6 +5004,8 @@ function setupDestSwitcher() {
     renderDestinationsList();
     if (currentPos) update();
     if (typeof drawRouteToActiveDest === 'function') drawRouteToActiveDest();
+    if (typeof updateDestStatsBar === 'function') updateDestStatsBar();
+    if (appMode === 'log') renderLogList();
     showToast('Destination set', 'success');
   });
   // Close dropdown when tapping outside
@@ -6244,6 +6205,20 @@ window.addEventListener('load', () => {
   document.querySelectorAll('#limit-picker-modal [data-close]').forEach(b =>
     b.addEventListener('click', () => document.getElementById('limit-picker-modal').classList.remove('open'))
   );
+  // v19: wire reset destination stats button
+  const resetDestBtn = document.getElementById('reset-dest-stats-btn');
+  if (resetDestBtn) resetDestBtn.addEventListener('click', () => {
+    const dest = activeDest();
+    if (!dest) return;
+    if (!confirm(`Reset distance & max speed for ${dest.name}?`)) return;
+    dest.distanceKm = 0;
+    dest.maxSpeed = 0;
+    saveData();
+    updateDestStatsBar();
+    showToast('Stats reset', 'success');
+  });
+  // Initial render of dest-stats-bar
+  updateDestStatsBar();
 });
 
 
@@ -6336,10 +6311,11 @@ function setAppMode(m) {
     renderLogList();
     const status = document.getElementById('log-status');
     if (status) {
-      if (activeTrip) {
-        status.textContent = `Trip ${activeTrip.id.slice(-4)} recording — tap a button to capture`;
+      const dest = activeDest();
+      if (dest) {
+        status.textContent = `Logging to ${dest.name} — tap a button to capture`;
       } else {
-        status.textContent = 'No trip yet — Settings → Trip log → Start trip';
+        status.textContent = 'Pick a destination from the top dropdown to start capturing';
       }
     }
   }
@@ -6356,21 +6332,22 @@ function renderLogList() {
   let items;
   let header;
   let extraButton = '';
-  if (activeTrip) {
-    const keys = (activeTrip.captures || []);
-    items = keys.map(k => data.points.find(p => pointKey(p) === k)).filter(p => p && !p.isDemo);
-    header = `Trip ${activeTrip.id.slice(-4)} · ${items.length} captures · started ${new Date(activeTrip.startedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-  } else {
-    const allUnfiled = data.points.filter(p => !p.isDemo && !p.tripId);
-    items = allUnfiled.slice().reverse().slice(0, 50);
-    header = allUnfiled.length === 0 ? 'No active trip · tap "Start trip" in Settings to begin' : `${allUnfiled.length} unfiled captures · start a trip to group them`;
-    if (allUnfiled.length > 0) {
-      extraButton = `<button id="delete-all-unfiled-btn" style="margin-left:auto;background:var(--red);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;">Delete all ${allUnfiled.length}</button>`;
-    }
+  // v19: list captures for the active destination
+  const activeDestId = data.activeDestinationId;
+  const dest = activeDest();
+  if (!activeDestId || !dest) {
+    container.innerHTML = `<div class="log-status">No destination selected — pick one from the top dropdown</div>`;
+    return;
+  }
+  const destPts = data.points.filter(p => !p.isDemo && p.destinationId === activeDestId);
+  items = destPts.slice().reverse().slice(0, 50);
+  header = `→ ${dest.name} · ${destPts.length} capture${destPts.length === 1 ? '' : 's'}`;
+  if (destPts.length > 0) {
+    extraButton = `<button id="delete-all-dest-btn" style="margin-left:auto;background:var(--red);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;">Delete all ${destPts.length}</button>`;
   }
 
   // Compute next-distances (chronological order = capture order)
-  const ordered = activeTrip ? items : items.slice().reverse(); // chronological
+  const ordered = items.slice().reverse(); // chronological
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
     const next = ordered[i + 1];
@@ -6389,12 +6366,12 @@ function renderLogList() {
 
   if (!ordered.length) {
     container.innerHTML = headerHtml;
-    wireDeleteAllUnfiled();
+    wireDeleteAllDest();
     return;
   }
 
-  // Show newest first in UI but links to next reflect chronological order
-  const display = activeTrip ? ordered.slice().reverse() : ordered.slice().reverse();
+  // Show newest first in UI
+  const display = ordered.slice().reverse();
   container.innerHTML = headerHtml + display.map(p => {
     const sideText = p.side ? ' · ' + (p.side === 'left' ? 'L' : 'R') : '';
     const dt = p.capturedAt ? new Date(p.capturedAt) : null;
@@ -6425,11 +6402,6 @@ function renderLogList() {
     const k = b.getAttribute('data-log-del');
     if (confirm('Delete this captured point?')) {
       data.points = data.points.filter(p => pointKey(p) !== k);
-      // Remove from active trip's captures list if present
-      if (activeTrip && Array.isArray(activeTrip.captures)) {
-        activeTrip.captures = activeTrip.captures.filter(x => x !== k);
-        saveTrips();
-      }
       saveData(); renderLogList(); if (currentPos) update();
     }
   }));
@@ -6438,23 +6410,28 @@ function renderLogList() {
     const k = row.getAttribute('data-edit');
     openPointEditor(k);
   }));
-  wireDeleteAllUnfiled();
+  wireDeleteAllDest();
 }
 
-function wireDeleteAllUnfiled() {
-  const btn = document.getElementById('delete-all-unfiled-btn');
+function wireDeleteAllDest() {
+  const btn = document.getElementById('delete-all-dest-btn');
   if (!btn) return;
   btn.addEventListener('click', () => {
-    const allUnfiled = data.points.filter(p => !p.isDemo && !p.tripId);
-    if (allUnfiled.length === 0) return;
-    if (!confirm(`Delete all ${allUnfiled.length} unfiled captures? This cannot be undone.`)) return;
-    data.points = data.points.filter(p => p.isDemo || p.tripId);
+    const dest = activeDest();
+    if (!dest) return;
+    const destPts = data.points.filter(p => !p.isDemo && p.destinationId === dest.id);
+    if (destPts.length === 0) return;
+    if (!confirm(`Delete all ${destPts.length} captures for ${dest.name}? This cannot be undone.`)) return;
+    data.points = data.points.filter(p => p.isDemo || p.destinationId !== dest.id);
     saveData();
     renderLogList();
     if (currentPos) update();
-    showToast(`Deleted ${allUnfiled.length} captures`, 'success');
+    showToast(`Deleted ${destPts.length} captures`, 'success');
   });
 }
+
+// Legacy alias kept so any caller from before doesn't crash
+function wireDeleteAllUnfiled() { wireDeleteAllDest(); }
 
 function formatSec(s) {
   if (s == null || isNaN(s)) return '—';
@@ -6521,6 +6498,12 @@ function setupLogPanel() {
         showToast('Need GPS fix first');
         return;
       }
+      // v19: require destination
+      if (!data.activeDestinationId || !activeDest()) {
+        showToast('Pick a destination first');
+        if (typeof openDestSwitcher === 'function') openDestSwitcher();
+        return;
+      }
       btn.classList.add('flash');
       setTimeout(() => btn.classList.remove('flash'), 400);
       // Determine which destination we're heading toward
@@ -6537,18 +6520,11 @@ function setupLogPanel() {
         capturedDir: destSide,             // 'a' or 'b'
         capturedHeading: (currentHeading != null && !isNaN(currentHeading)) ? Math.round(currentHeading) : null,
         capturedSpeed: currentSpeed != null ? Math.round(currentSpeed * 3.6) : null,
-        tripId: activeTrip ? activeTrip.id : null,
         status: 'active',
         confidence: 1,
         destinationId: data.activeDestinationId,
       });
       data.points.push(newPoint);
-      // If a trip is active, also push key into its captures list
-      if (activeTrip) {
-        if (!Array.isArray(activeTrip.captures)) activeTrip.captures = [];
-        activeTrip.captures.push(pointKey(newPoint));
-        saveTrips();
-      }
       saveData();
       renderLogList();
       if (currentPos) update();
