@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v18.3</title>
+<title>Road Alert v18.6</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1466,21 +1466,25 @@ exports.OpenLocationCode = OpenLocationCode;
     gap: 8px;
   }
 
-  .topbar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 0 2px; font-size: 11px; color: var(--ink-soft); }
-  .brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: var(--ink); }
-  .brand-mark { width: 16px; height: 16px; border: 2px solid var(--amber); border-radius: 50%; box-shadow: 0 0 8px var(--amber-glow); position: relative; }
-  .brand-mark::after { content: ''; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: var(--amber); border-radius: 50%; transform: translate(-50%, -50%); }
-  .topbar-meta { display: flex; gap: 8px; justify-content: center; font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .topbar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px; padding: 0; font-size: 10px; color: var(--ink-soft); }
+  .brand { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 11px; color: var(--ink); }
+  .brand-mark { width: 12px; height: 12px; border: 2px solid var(--amber); border-radius: 50%; box-shadow: 0 0 6px var(--amber-glow); position: relative; flex-shrink: 0; }
+  .brand-mark::after { content: ''; position: absolute; top: 50%; left: 50%; width: 3px; height: 3px; background: var(--amber); border-radius: 50%; transform: translate(-50%, -50%); }
+  .topbar-meta { display: flex; gap: 6px; justify-content: center; font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; }
   .topbar-meta span { color: var(--ink-faint); }
-  .topbar-meta strong { color: var(--ink); font-weight: 700; margin-right: 3px; }
-  .topbar-actions { display: flex; gap: 4px; align-items: center; }
-  .icon-btn { appearance: none; border: 1px solid var(--line); background: var(--bg-card); color: var(--ink-soft); width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; padding: 0; font-size: 14px; }
+  .topbar-meta strong { color: var(--ink); font-weight: 700; margin-right: 2px; }
+  .topbar-actions { display: flex; gap: 3px; align-items: center; }
+  .icon-btn { appearance: none; border: 1px solid var(--line); background: var(--bg-card); color: var(--ink-soft); width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; cursor: pointer; padding: 0; font-size: 12px; }
   .icon-btn:active { transform: scale(0.93); }
-  .icon-btn svg { width: 14px; height: 14px; }
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
-  .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.6s infinite; }
-  .status-dot.demo { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 1.6s infinite; }
+  .icon-btn svg { width: 12px; height: 12px; }
+  .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ink-faint); }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 4px var(--green); animation: pulse 1.6s infinite; }
+  .status-dot.demo { background: var(--cyan); box-shadow: 0 0 4px var(--cyan); animation: pulse 1.6s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  /* On narrow screens, hide compass & status text in topbar; keep them in fullscreen view */
+  @media (max-width: 420px) {
+    .topbar-meta strong#compass, .topbar-meta strong#status-text { display: none; }
+  }
 
   .direction { display: grid; grid-template-columns: 1fr 1fr 1fr; background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
   .dir-btn { appearance: none; border: none; background: transparent; color: var(--ink-soft); font-family: var(--mono); font-weight: 600; font-size: 10px; padding: 6px 4px; border-radius: 7px; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; }
@@ -1845,6 +1849,230 @@ exports.OpenLocationCode = OpenLocationCode;
 
   body.fab-cam-hidden #fab-cam { display: none !important; }
   body.fab-add-hidden #fab-add { display: none !important; }
+
+  /* Speed limit picker grid */
+  .limit-pick-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    padding: 8px 0;
+  }
+  .limit-pick-btn {
+    appearance: none; cursor: pointer;
+    background: var(--bg-card); border: 2px solid var(--line);
+    border-radius: 10px; padding: 14px 8px;
+    font-family: var(--mono); font-size: 18px; font-weight: 800;
+    color: var(--ink);
+  }
+  .limit-pick-btn:active { background: var(--amber); border-color: var(--amber); color: #0c0a09; }
+  .limit-pick-auto { background: var(--bg-soft); font-size: 13px; }
+  .limit-pick-osm { grid-column: span 3; background: #2563eb; color: #fff; border-color: #2563eb; font-size: 13px; padding: 12px; }
+
+  /* Combined hero layout (LCD speed + limit | timeline with progress bars) */
+  .combo-hero {
+    display: grid; grid-template-columns: auto 1fr; gap: 14px;
+    padding: 4px;
+  }
+  .combo-gauge { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .combo-speed {
+    background: #0c0a09; color: #ef4444;
+    border-radius: 10px; padding: 8px 14px;
+    text-align: center; min-width: 100px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: color 0.2s, background 0.2s;
+  }
+  .combo-speed.over { background: #7f1d1d; }
+  .combo-sv { font-family: var(--mono); font-size: 38px; font-weight: 800; line-height: 1; letter-spacing: 0.02em; }
+  .combo-su { font-family: var(--mono); font-size: 9px; color: #a8a29e; letter-spacing: 0.1em; margin-top: 2px; }
+  .combo-limit {
+    width: 90px; height: 90px; border-radius: 50%;
+    border: 6px solid var(--red);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--bg-card);
+    box-shadow: 0 0 0 2px var(--bg-card), 0 3px 8px rgba(0,0,0,0.1);
+    cursor: pointer; padding: 0;
+    font: inherit; color: inherit;
+  }
+  .combo-limit:active { background: var(--bg-soft); }
+  .combo-limit.warning { animation: limitPulse 0.6s infinite; }
+  .combo-limit.flash {
+    animation: limitFlash 0.8s ease-out;
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.4);
+  }
+  .combo-lv { font-family: var(--mono); font-size: 36px; font-weight: 800; line-height: 1; }
+  .combo-lb { font-family: var(--mono); font-size: 8px; color: var(--ink-soft); letter-spacing: 0.08em; font-weight: 700; }
+
+  .combo-timeline {
+    position: relative;
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .combo-timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px; top: 12px; bottom: 12px;
+    width: 2px;
+    background: var(--line);
+  }
+  .combo-step {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .combo-step:last-child { margin-bottom: 0; }
+  .combo-step::before {
+    content: '';
+    position: absolute;
+    left: -20px; top: 4px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 3px solid var(--amber);
+    box-shadow: 0 0 0 2px var(--bg-card);
+  }
+  .combo-step.urgent::before { border-color: var(--red); }
+  .combo-step.empty { opacity: 0.5; }
+  .combo-step.empty::before { border-color: var(--line); }
+  .combo-step-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-soft);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .combo-step.empty .combo-step-tag { color: var(--ink-faint); }
+  .combo-step-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 2px;
+    min-width: 0;
+  }
+  .combo-step-name {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .combo-step.empty .combo-step-name { color: var(--ink-faint); }
+  .combo-step-dist {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--amber);
+    flex-shrink: 0;
+  }
+  .combo-step.urgent .combo-step-dist { color: var(--red); }
+  .combo-step.empty .combo-step-dist { color: var(--ink-faint); font-size: 14px; }
+  .combo-bar {
+    height: 4px;
+    background: var(--bg-soft);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .combo-bar > span {
+    display: block;
+    height: 100%;
+    background: var(--amber);
+    transition: width 0.3s;
+  }
+  .combo-step.urgent .combo-bar > span { background: var(--red); }
+  .combo-step.empty .combo-bar { display: none; }
+
+  /* Driving view trigger button (between modes and dest) */
+  .drive-mode-btn {
+    appearance: none; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 5px 9px;
+    font-size: 14px; line-height: 1; color: var(--ink);
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .drive-mode-btn:active { background: var(--amber); color: #0c0a09; }
+
+  /* Driving view modal — clean, big, full-screen */
+  .drive-mode-modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 9000;
+    background: var(--bg);
+    flex-direction: column;
+  }
+  .drive-mode-modal.open { display: flex; }
+  .drive-mode-content {
+    display: flex; flex-direction: column;
+    width: 100%; height: 100%;
+    padding: 12px; gap: 10px;
+    box-sizing: border-box;
+    position: relative;
+  }
+  .drive-mode-close {
+    position: absolute; top: 12px; right: 12px; z-index: 10;
+    appearance: none; cursor: pointer;
+    background: rgba(28, 25, 23, 0.7); backdrop-filter: blur(6px);
+    color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 18px; font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .drive-mode-top {
+    display: flex; gap: 12px; align-items: stretch;
+    padding-right: 56px; /* space for close button */
+  }
+  .drive-mode-limit {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: var(--bg-card); border: 5px solid var(--red);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px var(--bg-card), 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .drive-mode-limit-value {
+    font-family: var(--mono); font-weight: 800; font-size: 42px; line-height: 1;
+    color: var(--ink); letter-spacing: -0.04em;
+  }
+  .drive-mode-limit-label {
+    font-family: var(--mono); font-size: 8px; font-weight: 700;
+    color: var(--ink-soft); letter-spacing: 0.1em;
+  }
+  .drive-mode-speed {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 10px 16px;
+  }
+  .drive-mode-speed-value {
+    font-family: var(--mono); font-weight: 800; font-size: 64px; line-height: 1;
+    color: var(--ink); letter-spacing: -0.04em;
+  }
+  .drive-mode-speed.over .drive-mode-speed-value { color: var(--red); }
+  .drive-mode-speed-unit {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--ink-soft); letter-spacing: 0.1em; margin-top: 2px;
+  }
+  .drive-mode-dest {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 14px;
+    font-family: var(--mono); font-size: 16px; font-weight: 700;
+  }
+  .drive-mode-arrow { color: var(--amber); font-size: 18px; }
+  .drive-mode-dest-name {
+    flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--ink);
+  }
+  .drive-mode-dest-dist {
+    color: var(--amber); font-weight: 800; font-size: 18px; flex-shrink: 0;
+  }
+  .drive-mode-map {
+    flex: 1; min-height: 0;
+    border-radius: 12px; overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid var(--line);
+  }
 
   /* Combined top line: compact mode switcher + destination dropdown */
   .topline-row {
@@ -2266,7 +2494,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18.3</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18.6</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2301,6 +2529,7 @@ exports.OpenLocationCode = OpenLocationCode;
         <span class="mode-label">AUDIT</span>
       </button>
     </div>
+    <button class="drive-mode-btn" id="drive-mode-btn" title="Driving view">⛶</button>
     <div class="dest-switcher-wrap">
       <button class="dest-switcher-trigger" id="dest-switcher-trigger">
         <span class="dest-switcher-arrow">→</span>
@@ -2337,71 +2566,76 @@ exports.OpenLocationCode = OpenLocationCode;
 ```
 <div class="panel-wrap mode-hide-log mode-hide-audit" data-panel="hero">
   <div class="panel-head">
-    <span class="title">Speed & destination</span>
+    <span class="title">Speed & navigation</span>
     <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
     <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
   </div>
   <div class="panel-body">
-<div class="hero">
-  <div class="gauge-limit" id="limit-sign">
-    <div class="gauge-limit-value" id="limit-value">—</div>
-    <div class="gauge-limit-label">SPEED LIMIT</div>
-  </div>
-  <div class="hero-right">
-    <div class="dest-card">
-      <div class="speedo" id="speedo">
-        <div class="speedo-value" id="speed-value">0</div>
-        <div class="speedo-label">KM/H</div>
+    <div class="combo-hero">
+      <div class="combo-gauge">
+        <div class="combo-speed" id="speedo">
+          <div class="combo-sv" id="speed-value">0</div>
+          <div class="combo-su">KM/H</div>
+        </div>
+        <button class="combo-limit" id="limit-sign" type="button" title="Tap to change speed limit">
+          <div class="combo-lv" id="limit-value">—</div>
+          <div class="combo-lb">LIMIT</div>
+        </button>
       </div>
-      <div class="dest-label" id="dest-label">DESTINATION</div>
-      <div class="dest-distance">
-        <span id="dest-km">—</span>
-        <span class="unit">km</span>
-      </div>
-      <div class="dest-eta" id="dest-eta">—</div>
-      <div class="dest-meta">
-        <span><strong id="accuracy-value">—</strong></span>
-        <span><strong id="dest-trip">—</strong></span>
+      <div class="combo-timeline">
+        <div class="combo-step" id="combo-next-step">
+          <div class="combo-step-tag" id="combo-next-tag">— nothing ahead</div>
+          <div class="combo-step-row">
+            <div class="combo-step-name" id="combo-next-name">clear road</div>
+            <div class="combo-step-dist" id="combo-next-dist">—</div>
+          </div>
+          <div class="combo-bar"><span id="combo-next-bar" style="width:0%;"></span></div>
+        </div>
+        <div class="combo-step" id="combo-dest-step">
+          <div class="combo-step-tag" id="combo-dest-tag">→ Destination</div>
+          <div class="combo-step-row">
+            <div class="combo-step-name" id="combo-dest-name">—</div>
+            <div class="combo-step-dist" id="combo-dest-dist">—</div>
+          </div>
+          <div class="combo-bar"><span id="combo-dest-bar" style="width:0%;"></span></div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-  </div>
-</div>
-
-<div class="panel-wrap mode-hide-log mode-hide-audit" data-panel="next">
-  <div class="panel-head">
-    <span class="title">Next ahead</span>
-    <button class="panel-btn" data-panel-action="collapse" title="Minimize">−</button>
-    <button class="panel-btn" data-panel-action="hide" title="Hide">×</button>
-  </div>
-  <div class="panel-body">
-<div class="next" id="next-card" style="display:none;">
-  <div class="next-row">
-    <div class="next-bar" id="next-bar"></div>
-    <div class="next-icon" id="next-icon">📍</div>
-    <div class="next-body">
-      <div class="next-label">Next ahead</div>
-      <div class="next-name" id="next-name">—</div>
-      <div class="next-meta" id="next-meta"></div>
-    </div>
-    <div>
-      <div class="next-distance">
-        <span id="next-dist">—</span><span class="unit" id="next-unit">km</span>
+    <!-- Hidden but kept for JS compatibility -->
+    <div id="next-card" style="display:none;">
+      <div class="next-row">
+        <div class="next-bar" id="next-bar"></div>
+        <div class="next-icon" id="next-icon">📍</div>
+        <div class="next-body">
+          <div class="next-label">Next ahead</div>
+          <div class="next-name" id="next-name">—</div>
+          <div class="next-meta" id="next-meta"></div>
+        </div>
+        <div>
+          <div class="next-distance">
+            <span id="next-dist">—</span><span class="unit" id="next-unit">km</span>
+          </div>
+          <div class="next-eta" id="next-eta">—</div>
+        </div>
       </div>
-      <div class="next-eta" id="next-eta">—</div>
+      <div class="feedback">
+        <div class="feedback-q">Still there?</div>
+        <div class="feedback-buttons">
+          <button class="fb-btn yes" data-fb="yes">Yes</button>
+          <button class="fb-btn maybe" data-fb="maybe">Maybe</button>
+          <button class="fb-btn no" data-fb="no">No</button>
+        </div>
+        <div class="fb-timer"><div class="fb-timer-fill" id="fb-timer-fill"></div></div>
+      </div>
     </div>
-  </div>
-  <div class="feedback">
-    <div class="feedback-q">Still there?</div>
-    <div class="feedback-buttons">
-      <button class="fb-btn yes" data-fb="yes">Yes</button>
-      <button class="fb-btn maybe" data-fb="maybe">Maybe</button>
-      <button class="fb-btn no" data-fb="no">No</button>
+    <!-- Legacy hidden hero card refs kept for compatibility -->
+    <div style="display:none;">
+      <span id="dest-label"></span>
+      <span id="dest-km"></span>
+      <span id="dest-eta"></span>
+      <span id="accuracy-value"></span>
+      <span id="dest-trip"></span>
     </div>
-    <div class="fb-timer"><div class="fb-timer-fill" id="fb-timer-fill"></div></div>
-  </div>
-</div>
   </div>
 </div>
 
@@ -2584,6 +2818,9 @@ exports.OpenLocationCode = OpenLocationCode;
     <div class="modal-head">
       <div class="modal-title">Edit point</div>
       <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="pe-context" id="pe-context" style="background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);">
+      <!-- Filled in by openPointEditor -->
     </div>
     <div class="settings-list">
       <div class="settings-row">
@@ -2980,6 +3217,41 @@ exports.OpenLocationCode = OpenLocationCode;
   </div>
 </div>
 
+<div class="modal" id="limit-picker-modal">
+  <div class="modal-card" style="max-width: 360px;">
+    <div class="modal-head">
+      <div class="modal-title">Set speed limit</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div style="padding: 8px 0; font-size: 11px; color: var(--ink-soft); font-family: var(--mono); text-align: center;">
+      Pick a limit to override, or fetch from OpenStreetMap
+    </div>
+    <div class="limit-pick-grid" id="limit-picker-list"></div>
+  </div>
+</div>
+
+<div class="drive-mode-modal" id="drive-mode-modal">
+  <div class="drive-mode-content">
+    <button class="drive-mode-close" id="drive-mode-close" title="Exit driving view">✕</button>
+    <div class="drive-mode-top">
+      <div class="drive-mode-limit" id="drive-mode-limit">
+        <span class="drive-mode-limit-value" id="drive-mode-limit-value">120</span>
+        <span class="drive-mode-limit-label">LIMIT</span>
+      </div>
+      <div class="drive-mode-speed" id="drive-mode-speed">
+        <span class="drive-mode-speed-value" id="drive-mode-speed-value">0</span>
+        <span class="drive-mode-speed-unit">km/h</span>
+      </div>
+    </div>
+    <div class="drive-mode-dest" id="drive-mode-dest">
+      <span class="drive-mode-arrow">→</span>
+      <span class="drive-mode-dest-name" id="drive-mode-dest-name">—</span>
+      <span class="drive-mode-dest-dist" id="drive-mode-dest-dist">—</span>
+    </div>
+    <div class="drive-mode-map" id="drive-mode-map"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -3354,16 +3626,26 @@ function alertDistanceKm() {
 }
 
 function computeCurrentLimit() {
+  // Priority 1: manual override (user picked from picker)
+  if (manualLimitOverride != null) return manualLimitOverride;
   if (!currentPos) return data.defaultLimit || 120;
+  // Priority 2: captured speed-zone points (user-tagged)
   const dest = activeDest();
-  const myDist = distance(currentPos, dest);
-  const behind = activePoints()
-    .filter(p => p.type === 'speed_change' && typeof p.limit === 'number' && p.status !== 'no')
-    .map(p => ({ ...p, distFromDest: distance(p, dest) }))
-    .filter(p => p.distFromDest > myDist - 0.05)
-    .sort((a, b) => a.distFromDest - b.distFromDest);
-  if (behind.length === 0) return data.defaultLimit || 120;
-  return behind[0].limit;
+  if (dest) {
+    const myDist = distance(currentPos, dest);
+    const behind = activePoints()
+      .filter(p => p.type === 'speed_change' && typeof p.limit === 'number' && p.status !== 'no')
+      .map(p => ({ ...p, distFromDest: distance(p, dest) }))
+      .filter(p => p.distFromDest > myDist - 0.05)
+      .sort((a, b) => a.distFromDest - b.distFromDest);
+    if (behind.length > 0) return behind[0].limit;
+  }
+  // Priority 3: OSM cached value for current grid cell
+  const cacheKey = `${currentPos.lat.toFixed(2)},${currentPos.lng.toFixed(2)}`;
+  if (speedLimitCache[cacheKey]) return speedLimitCache[cacheKey];
+  // Priority 4: last fetched limit (if any)
+  if (lastFetchedLimit) return lastFetchedLimit;
+  return data.defaultLimit || 120;
 }
 
 function formatDist(km) { if (km < 1) return Math.round(km * 1000) + ' m'; return km.toFixed(1) + ' km'; }
@@ -3461,6 +3743,32 @@ function update() {
   document.getElementById('dest-km').textContent = kmToDest.toFixed(1);
   document.getElementById('dest-eta').textContent = formatEta(kmToDest);
 
+  // ===== Combined hero layout fillers =====
+  const cDestName = document.getElementById('combo-dest-name');
+  const cDestDist = document.getElementById('combo-dest-dist');
+  const cDestBar = document.getElementById('combo-dest-bar');
+  const cDestTag = document.getElementById('combo-dest-tag');
+  if (cDestName) cDestName.textContent = dest.name;
+  if (cDestTag) cDestTag.textContent = '→ ' + (headingToward ? 'Destination' : 'Heading away');
+  if (cDestDist) cDestDist.textContent = kmToDest >= 1 ? kmToDest.toFixed(1) + 'km' : Math.round(kmToDest * 1000) + 'm';
+  if (cDestBar) {
+    // Track start distance per active destination for progress
+    if (!window._comboDestStart) window._comboDestStart = {};
+    const key = dest.id;
+    if (!window._comboDestStart[key] || window._comboDestStart[key] < kmToDest) {
+      window._comboDestStart[key] = kmToDest;
+    }
+    const start = window._comboDestStart[key] || kmToDest;
+    const pct = start > 0 ? Math.max(0, Math.min(100, ((start - kmToDest) / start) * 100)) : 0;
+    cDestBar.style.width = pct + '%';
+  }
+  // Speed gauge highlight when over
+  const speedoEl = document.getElementById('speedo');
+  if (speedoEl) {
+    const overBy = settings.speedAlertOver != null ? settings.speedAlertOver : 5;
+    speedoEl.classList.toggle('over', speedKmh > currentLimit + overBy);
+  }
+
   const accEl = document.getElementById('accuracy-value');
   if (currentAccuracy != null) {
     accEl.textContent = '±' + Math.round(currentAccuracy) + 'm';
@@ -3506,9 +3814,46 @@ function update() {
     const nextKey = pointKey(next);
     if (next.distFromMe <= settings.fbTriggerKm && next.distFromMe >= 0.05 && !feedbackPromptedKeys.has(nextKey)) showFeedbackFor(next);
     else if (activeFeedbackKey && activeFeedbackKey !== nextKey) hideFeedback();
+
+    // ===== Update combo-next-step =====
+    const cStep = document.getElementById('combo-next-step');
+    const cTag = document.getElementById('combo-next-tag');
+    const cName = document.getElementById('combo-next-name');
+    const cDist = document.getElementById('combo-next-dist');
+    const cBar = document.getElementById('combo-next-bar');
+    if (cStep) {
+      cStep.classList.remove('empty');
+      const isUrgent = next.distFromMe <= alertKm;
+      cStep.classList.toggle('urgent', isUrgent);
+      const sideText = next.side === 'left' ? ' · L' : next.side === 'right' ? ' · R' : '';
+      const iconText = pointDisplayIcon(next);
+      if (cTag) cTag.textContent = iconText + ' ' + (typeLabel ? typeLabel(next.type) : next.type) + sideText;
+      if (cName) cName.textContent = next.name;
+      if (cDist) cDist.textContent = next.distFromMe < 1 ? Math.round(next.distFromMe * 1000) + 'm' : next.distFromMe.toFixed(1) + 'km';
+      if (cBar) {
+        // Progress bar: how close are we relative to "ahead detection range" (~5km default)
+        const range = 5; // km
+        const pct = Math.max(0, Math.min(100, ((range - next.distFromMe) / range) * 100));
+        cBar.style.width = pct + '%';
+      }
+    }
   } else {
     nextCard.style.display = 'none';
     if (activeFeedbackKey) hideFeedback();
+    // ===== Empty combo-next-step =====
+    const cStep = document.getElementById('combo-next-step');
+    if (cStep) {
+      cStep.classList.add('empty');
+      cStep.classList.remove('urgent');
+      const cTag = document.getElementById('combo-next-tag');
+      const cName = document.getElementById('combo-next-name');
+      const cDist = document.getElementById('combo-next-dist');
+      const cBar = document.getElementById('combo-next-bar');
+      if (cTag) cTag.textContent = '— nothing ahead';
+      if (cName) cName.textContent = 'clear road';
+      if (cDist) cDist.textContent = '—';
+      if (cBar) cBar.style.width = '0%';
+    }
   }
 
   const list = document.getElementById('upcoming-list');
@@ -3953,6 +4298,38 @@ function openPointEditor(key) {
   document.getElementById('pe-lng').value = p.lng;
   document.querySelectorAll('[data-pe-side]').forEach(b => b.classList.toggle('active', b.getAttribute('data-pe-side') === (p.side || '')));
   document.querySelectorAll('[data-pe-status]').forEach(b => b.classList.toggle('active', b.getAttribute('data-pe-status') === (p.status || 'active')));
+  // Populate read-only context section
+  const ctx = document.getElementById('pe-context');
+  if (ctx) {
+    const rows = [];
+    if (p.capturedAt) {
+      const dt = new Date(p.capturedAt);
+      const dateStr = dt.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+      const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      rows.push(`<div><span style="color:var(--ink-faint);">Captured:</span> ${dateStr} · ${timeStr}</div>`);
+    } else {
+      rows.push(`<div><span style="color:var(--ink-faint);">Captured:</span> <em>unknown</em></div>`);
+    }
+    if (p.tripId) {
+      const trip = (typeof trips !== 'undefined' && Array.isArray(trips)) ? trips.find(t => t.id === p.tripId) : null;
+      const tripLabel = trip
+        ? `${trip.routeName || ('Trip ' + p.tripId.slice(-4))}${trip.startedAt ? ' · ' + new Date(trip.startedAt).toLocaleDateString([], {month:'short', day:'numeric'}) : ''}`
+        : `Trip ${p.tripId.slice(-4)}`;
+      rows.push(`<div><span style="color:var(--ink-faint);">Trip:</span> ${escapeHtml(tripLabel)}</div>`);
+    } else {
+      rows.push(`<div><span style="color:var(--ink-faint);">Trip:</span> <em>unfiled</em></div>`);
+    }
+    if (p.capturedHeadingTo) {
+      rows.push(`<div><span style="color:var(--ink-faint);">Heading to:</span> ${escapeHtml(p.capturedHeadingTo)}</div>`);
+    }
+    if (p.capturedHeading != null && !isNaN(p.capturedHeading)) {
+      rows.push(`<div><span style="color:var(--ink-faint);">Compass:</span> ${Math.round(p.capturedHeading)}°</div>`);
+    }
+    if (p.capturedSpeed != null && !isNaN(p.capturedSpeed)) {
+      rows.push(`<div><span style="color:var(--ink-faint);">Speed at capture:</span> ${Math.round(p.capturedSpeed)} km/h</div>`);
+    }
+    ctx.innerHTML = rows.length ? rows.join('') : '<div><em>No capture metadata</em></div>';
+  }
   togglePEFields();
   peModal.classList.add('open');
 }
@@ -4545,6 +4922,106 @@ function closeDestSwitcher() {
   destSwitcherSelectedId = null;
 }
 
+// ===================== DRIVING VIEW (fullscreen optimized) =====================
+let driveMapInstance = null;
+let driveMapMarkersLayer = null;
+let driveMapRouteLine = null;
+let driveMapTileLayer = null;
+let driveMapCurrentMarker = null;
+
+function initDriveMap() {
+  if (driveMapInstance) return driveMapInstance;
+  const el = document.getElementById('drive-mode-map');
+  if (!el) return null;
+  const center = currentPos ? [currentPos.lat, currentPos.lng] : [21.5433, 39.1728];
+  driveMapInstance = L.map(el, {
+    zoomControl: true, attributionControl: false,
+    rotate: true, touchRotate: false, bearing: 0,
+  }).setView(center, 14);
+  const styleKey = settings.mapStyle || 'esri-street';
+  const cfg = (typeof MAP_STYLES !== 'undefined') ? (MAP_STYLES[styleKey] || MAP_STYLES['esri-street']) : null;
+  if (cfg) {
+    driveMapTileLayer = L.tileLayer(cfg.url, { subdomains: cfg.subdomains || 'abc', maxZoom: cfg.maxZoom, crossOrigin: true }).addTo(driveMapInstance);
+  }
+  driveMapMarkersLayer = L.layerGroup().addTo(driveMapInstance);
+  setTimeout(() => driveMapInstance.invalidateSize(true), 200);
+  return driveMapInstance;
+}
+
+function refreshDriveMap() {
+  if (!driveMapInstance || !currentPos) return;
+  // Recenter on current location
+  driveMapInstance.setView([currentPos.lat, currentPos.lng], driveMapInstance.getZoom() || 14, { animate: false });
+  // Rotate with heading if moving
+  if (settings.rotateMap !== false && currentHeading != null && !isNaN(currentHeading) && currentSpeed > 0.5) {
+    if (driveMapInstance.setBearing) driveMapInstance.setBearing(-currentHeading);
+  }
+  // Current position marker (blue dot)
+  if (driveMapCurrentMarker) driveMapInstance.removeLayer(driveMapCurrentMarker);
+  driveMapCurrentMarker = L.marker([currentPos.lat, currentPos.lng], {
+    icon: L.divIcon({ className: '', html: `<div class="ra-current"></div>`, iconSize: [32, 32], iconAnchor: [16, 16] })
+  }).addTo(driveMapInstance);
+  // Route line
+  const dest = activeDestObj();
+  if (dest) {
+    if (driveMapRouteLine) driveMapInstance.removeLayer(driveMapRouteLine);
+    const coords = (typeof lastRouteCoords !== 'undefined' && lastRouteCoords) ? lastRouteCoords :
+      [[currentPos.lat, currentPos.lng], [dest.lat, dest.lng]];
+    driveMapRouteLine = L.polyline(coords, { color: '#2563eb', weight: 5, opacity: 0.85 }).addTo(driveMapInstance);
+  }
+}
+
+function refreshDriveModeData() {
+  // Speed limit value
+  const limit = (typeof currentLimit !== 'undefined') ? currentLimit : (data.defaultLimit || 120);
+  const limitEl = document.getElementById('drive-mode-limit-value');
+  if (limitEl) limitEl.textContent = limit;
+  // Speed value
+  const speedKmh = currentSpeed ? Math.round(currentSpeed * 3.6) : 0;
+  const speedEl = document.getElementById('drive-mode-speed-value');
+  if (speedEl) speedEl.textContent = speedKmh;
+  const speedContainer = document.getElementById('drive-mode-speed');
+  if (speedContainer) {
+    const overBy = settings.speedAlertOver != null ? settings.speedAlertOver : 5;
+    speedContainer.classList.toggle('over', speedKmh > limit + overBy);
+  }
+  // Destination
+  const dest = activeDestObj();
+  const nameEl = document.getElementById('drive-mode-dest-name');
+  const distEl = document.getElementById('drive-mode-dest-dist');
+  if (nameEl) nameEl.textContent = dest ? dest.name : '— no destination';
+  if (distEl) {
+    if (dest && currentPos) {
+      const km = distance(currentPos, dest);
+      distEl.textContent = formatDist(km);
+    } else {
+      distEl.textContent = '—';
+    }
+  }
+}
+
+let driveModeRefreshTimer = null;
+function openDriveMode() {
+  document.getElementById('drive-mode-modal').classList.add('open');
+  // Initialize map after modal becomes visible
+  setTimeout(() => {
+    initDriveMap();
+    refreshDriveMap();
+    refreshDriveModeData();
+  }, 200);
+  // Refresh continuously
+  if (driveModeRefreshTimer) clearInterval(driveModeRefreshTimer);
+  driveModeRefreshTimer = setInterval(() => {
+    refreshDriveMap();
+    refreshDriveModeData();
+  }, 1000);
+}
+
+function closeDriveMode() {
+  document.getElementById('drive-mode-modal').classList.remove('open');
+  if (driveModeRefreshTimer) { clearInterval(driveModeRefreshTimer); driveModeRefreshTimer = null; }
+}
+
 function setupDestSwitcher() {
   const trigger = document.getElementById('dest-switcher-trigger');
   if (!trigger) return;
@@ -4757,7 +5234,99 @@ function refreshDirectionLabels() {
   // Legacy noop — kept so existing call sites don't break.
 }
 
-// ===================== ROUTE DRAWING (OSRM with straight-line fallback) =====================
+// ===================== OSM SPEED LIMIT FETCH =====================
+// Cache: key is grid cell (lat.toFixed(2), lng.toFixed(2)) ~ 1km grid
+const speedLimitCache = {};
+let manualLimitOverride = null; // user-set override (null = auto)
+let lastFetchedLimit = null;    // last successful OSM fetch result
+let osmFetchInFlight = false;
+
+async function fetchOSMSpeedLimit(lat, lng) {
+  // Use Overpass API to find nearest road with maxspeed tag
+  // Search radius: 30 meters
+  const radius = 30;
+  const query = `[out:json][timeout:8];way(around:${radius},${lat},${lng})[highway][maxspeed];out tags;`;
+  const url = 'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query);
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    const resp = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data.elements || data.elements.length === 0) return null;
+    // Pick the first way that has a numeric maxspeed
+    for (const el of data.elements) {
+      if (el.tags && el.tags.maxspeed) {
+        const ms = el.tags.maxspeed;
+        // Common formats: "120", "120 mph", "RU:rural", "signals"
+        const m = String(ms).match(/^\s*(\d+)/);
+        if (m) {
+          let v = parseInt(m[1]);
+          if (/mph/i.test(ms)) v = Math.round(v * 1.60934);
+          return { value: v, raw: ms, road: el.tags.name || el.tags.ref || 'road' };
+        }
+      }
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function refreshSpeedLimitFromOSM() {
+  if (!currentPos) { showToast('No GPS yet'); return; }
+  if (osmFetchInFlight) return;
+  osmFetchInFlight = true;
+  showToast('Fetching speed limit...');
+  const result = await fetchOSMSpeedLimit(currentPos.lat, currentPos.lng);
+  osmFetchInFlight = false;
+  if (result && result.value) {
+    lastFetchedLimit = result.value;
+    manualLimitOverride = null; // clear manual override since we have fresh data
+    const cacheKey = `${currentPos.lat.toFixed(2)},${currentPos.lng.toFixed(2)}`;
+    speedLimitCache[cacheKey] = result.value;
+    showToast(`Speed limit: ${result.value} km/h (${result.road})`, 'success');
+    if (currentPos) update();
+  } else {
+    showToast('No speed limit data here — pick manually', 'info');
+    openLimitPicker();
+  }
+}
+
+// Manual limit picker (modal)
+function openLimitPicker() {
+  const modal = document.getElementById('limit-picker-modal');
+  if (!modal) return;
+  // Build buttons from settings.commonLimits
+  const list = document.getElementById('limit-picker-list');
+  const limits = settings.commonLimits || [40, 60, 80, 100, 120, 140];
+  list.innerHTML = limits.map(v =>
+    `<button class="limit-pick-btn" data-pick-limit="${v}">${v}</button>`
+  ).join('') + `<button class="limit-pick-btn limit-pick-auto" data-pick-limit="auto">Auto</button>` +
+    `<button class="limit-pick-btn limit-pick-osm" id="limit-pick-osm">Fetch from OSM</button>`;
+  list.querySelectorAll('[data-pick-limit]').forEach(b => {
+    b.addEventListener('click', () => {
+      const val = b.getAttribute('data-pick-limit');
+      if (val === 'auto') {
+        manualLimitOverride = null;
+        showToast('Speed limit: AUTO');
+      } else {
+        manualLimitOverride = parseInt(val);
+        showToast(`Speed limit override: ${val}`);
+      }
+      modal.classList.remove('open');
+      if (currentPos) update();
+    });
+  });
+  document.getElementById('limit-pick-osm').addEventListener('click', () => {
+    modal.classList.remove('open');
+    refreshSpeedLimitFromOSM();
+  });
+  modal.classList.add('open');
+}
+
+
 let homeMapRouteLine = null;
 let modalMapRouteLine = null;
 let lastRouteFetchKey = null;
@@ -5666,6 +6235,15 @@ window.addEventListener('load', () => {
   // Wire destination switcher (top-right dropdown)
   setupDestSwitcher();
   refreshDestSwitcherTrigger();
+  // Wire drive mode (fullscreen optimized view)
+  document.getElementById('drive-mode-btn').addEventListener('click', openDriveMode);
+  document.getElementById('drive-mode-close').addEventListener('click', closeDriveMode);
+  // Wire speed limit sign tap to open picker
+  document.getElementById('limit-sign').addEventListener('click', openLimitPicker);
+  // Wire limit picker close button
+  document.querySelectorAll('#limit-picker-modal [data-close]').forEach(b =>
+    b.addEventListener('click', () => document.getElementById('limit-picker-modal').classList.remove('open'))
+  );
 });
 
 
