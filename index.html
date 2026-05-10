@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v17.1</title>
+<title>Road Alert v18</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1845,6 +1845,73 @@ exports.OpenLocationCode = OpenLocationCode;
 
   body.fab-cam-hidden #fab-cam { display: none !important; }
   body.fab-add-hidden #fab-add { display: none !important; }
+
+  /* Destination switcher (top-right under settings) */
+  .dest-switcher-row {
+    display: flex; justify-content: flex-end; padding: 4px 0; position: relative;
+  }
+  .dest-switcher-trigger {
+    appearance: none; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px;
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--ink); max-width: 70%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .dest-switcher-trigger:active { background: var(--bg-soft); }
+  .dest-switcher-arrow { color: var(--amber); font-size: 14px; flex-shrink: 0; }
+  .dest-switcher-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 200px;
+  }
+  .dest-switcher-caret { color: var(--ink-soft); font-size: 11px; flex-shrink: 0; transition: transform 0.2s; }
+  .dest-switcher-trigger.open .dest-switcher-caret { transform: rotate(180deg); }
+  .dest-switcher-dropdown {
+    position: absolute; top: 100%; right: 0; z-index: 1500;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 6px;
+    min-width: 240px; max-width: 90vw;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    margin-top: 4px;
+  }
+  .dest-switcher-list {
+    max-height: 280px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 2px;
+    margin-bottom: 6px;
+  }
+  .dest-switcher-item {
+    appearance: none; cursor: pointer; text-align: left;
+    background: transparent; border: 1px solid transparent;
+    border-radius: 6px; padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+  }
+  .dest-switcher-item:hover { background: var(--bg-soft); }
+  .dest-switcher-item.selected {
+    background: var(--bg-soft); border-color: var(--amber);
+  }
+  .dest-switcher-item.active::before {
+    content: '✓'; color: var(--green); font-weight: 800; flex-shrink: 0;
+  }
+  .dest-switcher-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .dest-switcher-item .meta { font-size: 10px; color: var(--ink-faint); flex-shrink: 0; }
+  .dest-switcher-actions {
+    display: flex; gap: 6px; border-top: 1px solid var(--line); padding-top: 6px;
+  }
+  .dest-switcher-cancel, .dest-switcher-confirm {
+    flex: 1; appearance: none; cursor: pointer;
+    border-radius: 6px; padding: 8px;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .dest-switcher-cancel { background: var(--bg); border: 1px solid var(--line); color: var(--ink-soft); }
+  .dest-switcher-confirm { background: var(--amber); border: 1px solid var(--amber); color: #0c0a09; }
+  .dest-switcher-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+  .dest-switcher-empty {
+    padding: 12px; text-align: center; font-family: var(--mono);
+    font-size: 11px; color: var(--ink-faint);
+  }
   /* Capture toggle and map toggle button visual state */
   #capture-toggle-btn.off,
   #map-btn.off { opacity: 0.4; text-decoration: line-through; }
@@ -1927,14 +1994,14 @@ exports.OpenLocationCode = OpenLocationCode;
   }
   /* Floating size toggle inside map (always visible, top-right) */
   .floating-size-toggle {
-    position: absolute; top: 6px; right: 6px; z-index: 10;
+    position: absolute; top: 6px; right: 6px; z-index: 1100;
     background: rgba(28, 25, 23, 0.85); backdrop-filter: blur(6px);
     border-radius: 6px;
   }
   #home-map-leaflet { width: 100%; height: 100%; background: #1a1a1a; }
   /* Debug status pill */
   #debug-status-pill {
-    position: absolute; top: 6px; left: 6px; z-index: 11;
+    position: absolute; top: 6px; left: 50px; z-index: 1100;
     background: rgba(0, 0, 0, 0.85); color: #00ff88;
     padding: 4px 8px; border-radius: 4px;
     font-family: var(--mono); font-size: 9px; line-height: 1.4;
@@ -1943,24 +2010,24 @@ exports.OpenLocationCode = OpenLocationCode;
   }
   body.debug-on #debug-status-pill { display: block !important; }
   .home-map-fab {
-    position: absolute; right: 8px; bottom: 8px; z-index: 5;
-    width: 36px; height: 36px; border-radius: 50%;
+    position: absolute; right: 8px; bottom: 8px; z-index: 1100;
+    width: 40px; height: 40px; border-radius: 50%;
     background: var(--amber); color: #0c0a09;
-    border: none; cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    display: grid; place-items: center; font-size: 14px;
+    border: 2px solid #fff; cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+    display: grid; place-items: center; font-size: 16px;
   }
-  .home-map-fab.fit { right: 50px; background: var(--bg-card); color: var(--ink); border: 1px solid var(--line); }
-  .home-map-fab.expand { right: 92px; background: var(--bg-card); color: var(--ink); border: 1px solid var(--line); }
+  .home-map-fab.fit { right: 56px; background: var(--bg-card); color: var(--ink); border: 2px solid var(--line); }
+  .home-map-fab.expand { right: 104px; background: var(--bg-card); color: var(--ink); border: 2px solid var(--line); }
 
   /* Follow pill — clear text indicator */
   .home-map-pill {
-    position: absolute; left: 8px; bottom: 8px; z-index: 5;
+    position: absolute; left: 8px; bottom: 8px; z-index: 1100;
     background: var(--green); color: #0c0a09;
-    border: none; border-radius: 100px; padding: 6px 12px;
+    border: 2px solid #fff; border-radius: 100px; padding: 6px 12px;
     font-family: var(--mono); font-size: 11px; font-weight: 700;
     cursor: pointer; display: flex; align-items: center; gap: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
     text-transform: uppercase; letter-spacing: 0.04em;
   }
   .home-map-pill .dot {
@@ -2125,7 +2192,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v17.1</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v18</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2142,6 +2209,21 @@ exports.OpenLocationCode = OpenLocationCode;
       <button class="icon-btn" id="settings-btn" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
+    </div>
+  </div>
+
+  <div class="dest-switcher-row">
+    <button class="dest-switcher-trigger" id="dest-switcher-trigger">
+      <span class="dest-switcher-arrow">→</span>
+      <span class="dest-switcher-name" id="dest-switcher-name">—</span>
+      <span class="dest-switcher-caret" id="dest-switcher-caret">▾</span>
+    </button>
+    <div class="dest-switcher-dropdown" id="dest-switcher-dropdown" style="display:none;">
+      <div class="dest-switcher-list" id="dest-switcher-list"></div>
+      <div class="dest-switcher-actions">
+        <button class="dest-switcher-cancel" id="dest-switcher-cancel">Cancel</button>
+        <button class="dest-switcher-confirm" id="dest-switcher-confirm" disabled>Set</button>
+      </div>
     </div>
   </div>
 
@@ -4312,6 +4394,104 @@ function renderTripLog() {
 }
 
 // ===================== DESTINATIONS =====================
+// ===================== DESTINATION SWITCHER (top-right dropdown) =====================
+let destSwitcherSelectedId = null; // pending selection
+
+function refreshDestSwitcherTrigger() {
+  const dest = activeDestObj();
+  const nameEl = document.getElementById('dest-switcher-name');
+  if (!nameEl) return;
+  nameEl.textContent = dest ? dest.name : '— no destination';
+}
+
+function openDestSwitcher() {
+  const trigger = document.getElementById('dest-switcher-trigger');
+  const dropdown = document.getElementById('dest-switcher-dropdown');
+  const list = document.getElementById('dest-switcher-list');
+  if (!dropdown || !list) return;
+  destSwitcherSelectedId = data.activeDestinationId; // start with current selected
+  if (!data.destinations || data.destinations.length === 0) {
+    list.innerHTML = '<div class="dest-switcher-empty">No destinations yet.<br>Add one in Settings.</div>';
+  } else {
+    list.innerHTML = data.destinations.map(d => {
+      const isActive = d.id === data.activeDestinationId;
+      const isSelected = d.id === destSwitcherSelectedId;
+      let distLabel = '';
+      if (currentPos) {
+        const km = distance(currentPos, d);
+        distLabel = formatDist(km);
+      }
+      return `
+        <button class="dest-switcher-item ${isActive ? 'active' : ''} ${isSelected ? 'selected' : ''}" data-dest-pick="${d.id}">
+          <span class="name">${escapeHtml(d.name)}</span>
+          <span class="meta">${distLabel}</span>
+        </button>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-dest-pick]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        destSwitcherSelectedId = btn.getAttribute('data-dest-pick');
+        // Update visual highlight
+        list.querySelectorAll('[data-dest-pick]').forEach(b =>
+          b.classList.toggle('selected', b.getAttribute('data-dest-pick') === destSwitcherSelectedId)
+        );
+        // Enable Set button
+        const confirmBtn = document.getElementById('dest-switcher-confirm');
+        if (confirmBtn) confirmBtn.disabled = (destSwitcherSelectedId === data.activeDestinationId);
+      });
+    });
+  }
+  dropdown.style.display = 'block';
+  trigger.classList.add('open');
+  // Initial confirm button state
+  const confirmBtn = document.getElementById('dest-switcher-confirm');
+  if (confirmBtn) confirmBtn.disabled = true;
+}
+
+function closeDestSwitcher() {
+  const dropdown = document.getElementById('dest-switcher-dropdown');
+  const trigger = document.getElementById('dest-switcher-trigger');
+  if (dropdown) dropdown.style.display = 'none';
+  if (trigger) trigger.classList.remove('open');
+  destSwitcherSelectedId = null;
+}
+
+function setupDestSwitcher() {
+  const trigger = document.getElementById('dest-switcher-trigger');
+  if (!trigger) return;
+  trigger.addEventListener('click', () => {
+    const dropdown = document.getElementById('dest-switcher-dropdown');
+    if (dropdown && dropdown.style.display === 'block') closeDestSwitcher();
+    else openDestSwitcher();
+  });
+  document.getElementById('dest-switcher-cancel').addEventListener('click', closeDestSwitcher);
+  document.getElementById('dest-switcher-confirm').addEventListener('click', () => {
+    if (!destSwitcherSelectedId || destSwitcherSelectedId === data.activeDestinationId) {
+      closeDestSwitcher();
+      return;
+    }
+    data.activeDestinationId = destSwitcherSelectedId;
+    saveData();
+    distHistory.a.length = 0; distHistory.b.length = 0;
+    alertedPoints.clear(); feedbackPromptedKeys.clear();
+    closeDestSwitcher();
+    refreshDestSwitcherTrigger();
+    renderDestinationsList();
+    if (currentPos) update();
+    if (typeof drawRouteToActiveDest === 'function') drawRouteToActiveDest();
+    showToast('Destination set', 'success');
+  });
+  // Close dropdown when tapping outside
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('dest-switcher-dropdown');
+    const triggerEl = document.getElementById('dest-switcher-trigger');
+    if (!dropdown || dropdown.style.display !== 'block') return;
+    if (dropdown.contains(e.target) || (triggerEl && triggerEl.contains(e.target))) return;
+    closeDestSwitcher();
+  });
+}
+
+
 function renderDestinationsList() {
   const list = document.getElementById('destinations-list');
   if (!list) return;
@@ -4349,6 +4529,8 @@ function renderDestinationsList() {
   list.querySelectorAll('[data-dest-edit]').forEach(b => b.addEventListener('click', () => {
     openDestinationEditor(b.getAttribute('data-dest-edit'));
   }));
+  // Keep top-right trigger in sync
+  if (typeof refreshDestSwitcherTrigger === 'function') refreshDestSwitcherTrigger();
 }
 
 // Plus Code → lat/lng decoder (uses inlined Open Location Code library)
@@ -5235,20 +5417,19 @@ function setHomeMapSize(size) {
   if (size === 'off') {
     homeMap.style.display = 'none';
     homeMap.style.height = '';
+    homeMap.style.minHeight = '';
+    homeMap.style.maxHeight = '';
   } else {
     homeMap.style.display = 'flex';
-    // Use dynamic viewport height for iOS reliability + min-height to ensure visibility
-    // dvh adjusts when iOS Safari address bar shows/hides
     const px = { s: 220, m: 360, l: 480 };
     const target = px[size] || px.s;
     homeMap.style.height = target + 'px';
     homeMap.style.minHeight = target + 'px';
     homeMap.style.maxHeight = target + 'px';
-    // Also set the body element's flex-basis so it actually resizes
+    // Don't force inline height on body — let flex:1 handle it
+    // (forcing it broke absolute-positioned floating buttons)
     const body = homeMap.querySelector('.home-map-body');
-    if (body) {
-      body.style.height = (target - 40) + 'px';  // minus head height
-    }
+    if (body) body.style.height = '';
   }
   // Update all size toggle buttons
   document.querySelectorAll('[data-mapsize]').forEach(b =>
@@ -5258,21 +5439,12 @@ function setHomeMapSize(size) {
   if (mapBtn) mapBtn.classList.toggle('off', size === 'off');
   settings.mapSize = size;
   saveSettings();
-  // Force Leaflet to recalc its container size after CSS settles
-  setTimeout(() => {
-    if (homeMapInstance) homeMapInstance.invalidateSize(true);
-  }, 100);
-  setTimeout(() => {
-    if (homeMapInstance) homeMapInstance.invalidateSize(true);
-  }, 400);
-  setTimeout(() => {
-    if (homeMapInstance) homeMapInstance.invalidateSize(true);
-  }, 1000);
-  // If switching from off to on, init the home map
+  setTimeout(() => { if (homeMapInstance) homeMapInstance.invalidateSize(true); }, 100);
+  setTimeout(() => { if (homeMapInstance) homeMapInstance.invalidateSize(true); }, 400);
+  setTimeout(() => { if (homeMapInstance) homeMapInstance.invalidateSize(true); }, 1000);
   if (size !== 'off' && !homeMapInstance) {
     setTimeout(initHomeMap, 200);
   }
-  // Update debug indicator if present
   if (typeof updateDebugStatus === 'function') updateDebugStatus();
 }
 
@@ -5360,6 +5532,9 @@ window.addEventListener('load', () => {
   loadBackupState();
   if (settings.autoBackup) startAutoBackupTimer();
   updateBackupStatusUI();
+  // Wire destination switcher (top-right dropdown)
+  setupDestSwitcher();
+  refreshDestSwitcherTrigger();
 });
 
 
@@ -5471,17 +5646,18 @@ function renderLogList() {
   // Show current-trip captures if a trip is running, else show "all-time" recent unassigned captures
   let items;
   let header;
+  let extraButton = '';
   if (activeTrip) {
     const keys = (activeTrip.captures || []);
     items = keys.map(k => data.points.find(p => pointKey(p) === k)).filter(p => p && !p.isDemo);
     header = `Trip ${activeTrip.id.slice(-4)} · ${items.length} captures · started ${new Date(activeTrip.startedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
   } else {
-    items = data.points
-      .filter(p => !p.isDemo && !p.tripId)  // only un-tripped captures
-      .slice()
-      .reverse()
-      .slice(0, 30);
-    header = items.length === 0 ? 'No active trip · tap "Start trip" in Settings to begin' : `${items.length} unfiled captures · start a trip to group them`;
+    const allUnfiled = data.points.filter(p => !p.isDemo && !p.tripId);
+    items = allUnfiled.slice().reverse().slice(0, 50);
+    header = allUnfiled.length === 0 ? 'No active trip · tap "Start trip" in Settings to begin' : `${allUnfiled.length} unfiled captures · start a trip to group them`;
+    if (allUnfiled.length > 0) {
+      extraButton = `<button id="delete-all-unfiled-btn" style="margin-left:auto;background:var(--red);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:10px;font-weight:700;cursor:pointer;">Delete all ${allUnfiled.length}</button>`;
+    }
   }
 
   // Compute next-distances (chronological order = capture order)
@@ -5500,14 +5676,17 @@ function renderLogList() {
     }
   }
 
+  const headerHtml = `<div class="log-status" style="display:flex;align-items:center;gap:8px;">${header}${extraButton}</div>`;
+
   if (!ordered.length) {
-    container.innerHTML = `<div class="log-status">${header}</div>`;
+    container.innerHTML = headerHtml;
+    wireDeleteAllUnfiled();
     return;
   }
 
   // Show newest first in UI but links to next reflect chronological order
   const display = activeTrip ? ordered.slice().reverse() : ordered.slice().reverse();
-  container.innerHTML = `<div class="log-status">${header}</div>` + display.map(p => {
+  container.innerHTML = headerHtml + display.map(p => {
     const sideText = p.side ? ' · ' + (p.side === 'left' ? 'L' : 'R') : '';
     const dt = p.capturedAt ? new Date(p.capturedAt) : null;
     const timeText = dt ? dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '';
@@ -5550,6 +5729,22 @@ function renderLogList() {
     const k = row.getAttribute('data-edit');
     openPointEditor(k);
   }));
+  wireDeleteAllUnfiled();
+}
+
+function wireDeleteAllUnfiled() {
+  const btn = document.getElementById('delete-all-unfiled-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const allUnfiled = data.points.filter(p => !p.isDemo && !p.tripId);
+    if (allUnfiled.length === 0) return;
+    if (!confirm(`Delete all ${allUnfiled.length} unfiled captures? This cannot be undone.`)) return;
+    data.points = data.points.filter(p => p.isDemo || p.tripId);
+    saveData();
+    renderLogList();
+    if (currentPos) update();
+    showToast(`Deleted ${allUnfiled.length} captures`, 'success');
+  });
 }
 
 function formatSec(s) {
