@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v19</title>
+<title>Road Alert v19.1</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -2509,7 +2509,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v19</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v19.1</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -3023,6 +3023,17 @@ exports.OpenLocationCode = OpenLocationCode;
       <input type="number" id="speed-alert-cooldown-input" min="5" max="300" step="5" value="30"> sec
     </div>
   </div>
+  <div class="settings-row">
+    <label>Alert markers (m)<br><span style="font-size:9px;color:var(--ink-faint);font-weight:400;">Distances at which to play the alert. Comma-separated meters.</span></label>
+    <input type="text" id="alert-markers-input" placeholder="2000, 1000, 500" style="flex:2;">
+  </div>
+  <div class="settings-row">
+    <label>Test sound</label>
+    <div style="display:flex;gap:6px;flex:2;">
+      <button class="btn" id="test-beep-btn" style="flex:1;">🔊 Beep</button>
+      <button class="btn" id="test-voice-btn" style="flex:1;">🗣 Voice</button>
+    </div>
+  </div>
 </div>
 <div class="settings-section-title">Feedback prompt</div>
 <div class="settings-list">
@@ -3436,6 +3447,8 @@ function loadSettings() {
     if (typeof s.autoBackup !== 'boolean') s.autoBackup = true;
     if (typeof s.mapStyle !== 'string') s.mapStyle = 'esri-street';
     if (typeof s.debugMode !== 'boolean') s.debugMode = false;
+    // v19.1: alert distance markers (meters, fired in descending order)
+    if (!Array.isArray(s.alertMarkersM)) s.alertMarkersM = [2000, 1000, 500];
     return s;
   } } catch(e) {}
   return {
@@ -3447,6 +3460,7 @@ function loadSettings() {
     autoBackup: true,
     mapStyle: 'esri-street',
     debugMode: false,
+    alertMarkersM: [2000, 1000, 500],
   };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
@@ -3471,7 +3485,8 @@ let watchId = null, demoTimer = null, demoStep = 0;
 let currentPos = null, prevPos = null;
 let currentSpeed = 0, currentAccuracy = null, currentHeading = null;
 let dirChoice = 'auto', detectedDir = 'a';
-let alertedPoints = new Set();
+let alertedPoints = new Map(); // key -> Set of marker distances (meters) already alerted
+let alertHasPassed = new Map(); // key -> true once we've been within 50m and started moving away
 let limitWarned = false;
 let lastSpeedAlertTime = 0;
 let lastSpeedAlertZoneLimit = null; // tracks "zone": once-per-zone only fires when limit changes
@@ -3511,7 +3526,50 @@ function compassFromBearing(deg) {
   return dirs[Math.round(deg / 45) % 8];
 }
 
-function ensureAudio() { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} } if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; }
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(()=>{});
+  }
+  return audioCtx;
+}
+
+// iOS Safari blocks audio until first user gesture. We need to:
+// 1) Create/resume AudioContext on the first tap anywhere
+// 2) Play a silent buffer so the audio system fully unlocks
+// 3) Prime speechSynthesis the same way
+let audioUnlocked = false;
+function unlockAudioOnGesture() {
+  if (audioUnlocked) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // Play a 1-sample silent buffer to fully unlock
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+    // Prime speech synthesis with an empty utterance
+    if ('speechSynthesis' in window) {
+      try {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        speechSynthesis.speak(u);
+      } catch(e) {}
+    }
+    audioUnlocked = true;
+    if (typeof debugLog === 'function') debugLog('Audio unlocked');
+  } catch(e) {
+    // Will retry on next gesture
+  }
+}
+// Attach to multiple gesture events so we catch the first one
+['touchstart', 'touchend', 'mousedown', 'click', 'keydown'].forEach(ev => {
+  document.addEventListener(ev, unlockAudioOnGesture, { once: false, passive: true });
+});
 function beepPattern(type) {
   const ctx = ensureAudio(); if (!ctx) return;
   const patterns = {
@@ -4031,29 +4089,69 @@ function update() {
       if (cluster.length >= 2) {
         // Cluster alert: trigger when first cam in cluster reaches alertKm
         const clusterKey = 'cluster:' + cluster.map(c => pointKey(c)).join('|');
-        if (cluster[0].distFromMe <= alertKm && !alertedPoints.has(clusterKey)) {
-          alertedPoints.add(clusterKey);
-          if (settings.sound !== 'off') {
-            const distText = cluster[0].distFromMe < 1 ? `${Math.round(cluster[0].distFromMe * 1000)} meters` : `${cluster[0].distFromMe.toFixed(1)} kilometers`;
-            const text = `${cluster.length} cameras in ${distText}`;
-            if (settings.sound === 'voice') speakText(text);
-            else if (settings.sound === 'beep') beepPattern('speed_camera');
-            else if (settings.sound === 'both') { beepPattern('speed_camera'); setTimeout(() => speakText(text), 400); }
+        const firedSet = alertedPoints.get(clusterKey) || new Set();
+        const distM = cluster[0].distFromMe * 1000;
+        // Track previous distance for hysteresis-based pass detection
+        const prevDistM = (cluster[0]._prevDistM != null) ? cluster[0]._prevDistM : distM;
+        cluster[0]._prevDistM = distM;
+        // Detect physical pass: was within 50m, now moving away
+        const isPassed = (distM < 50 || (prevDistM < 50 && distM > prevDistM));
+        if (isPassed) alertHasPassed.set(clusterKey, true);
+        // If already passed, don't re-fire
+        if (!alertHasPassed.get(clusterKey)) {
+          const markers = (settings.alertMarkersM || [2000, 1000, 500]).slice().sort((a,b)=>b-a);
+          // Fire any marker we just crossed (distM <= marker and not yet fired)
+          for (const m of markers) {
+            if (distM <= m && !firedSet.has(m)) {
+              firedSet.add(m);
+              if (settings.sound !== 'off') {
+                const distText = m < 1000 ? `${m} meters` : `${m/1000} kilometers`;
+                const text = `${cluster.length} cameras in ${distText}`;
+                if (settings.sound === 'voice') speakText(text);
+                else if (settings.sound === 'beep') beepPattern('speed_camera');
+                else if (settings.sound === 'both') { beepPattern('speed_camera'); setTimeout(() => speakText(text), 400); }
+              }
+              break; // only one marker per tick
+            }
           }
+          alertedPoints.set(clusterKey, firedSet);
         }
-        if (cluster[0].distFromMe > alertKm * 3) alertedPoints.delete(clusterKey);
+        // Reset when we're well past
+        if (distM > 5000 && alertHasPassed.get(clusterKey)) {
+          alertedPoints.delete(clusterKey);
+          alertHasPassed.delete(clusterKey);
+        }
         idx += cluster.length;
         continue;
       }
     }
-    // Single-point alert
+    // Single-point alert with multi-marker readings
     const key = pointKey(p);
-    if (p.distFromMe <= alertKm && !alertedPoints.has(key)) {
-      alertedPoints.add(key);
-      const distText = p.distFromMe < 1 ? `${Math.round(p.distFromMe * 1000)} meters` : `${p.distFromMe.toFixed(1)} kilometers`;
-      alertSound(p, distText);
+    const firedSet = alertedPoints.get(key) || new Set();
+    const distM = p.distFromMe * 1000;
+    const prevDistM = (p._prevDistM != null) ? p._prevDistM : distM;
+    p._prevDistM = distM;
+    // Detect physical pass: was within 50m, now moving away
+    const isPassed = (distM < 50 || (prevDistM < 50 && distM > prevDistM));
+    if (isPassed) alertHasPassed.set(key, true);
+    // Only fire if not already passed
+    if (!alertHasPassed.get(key)) {
+      const markers = (settings.alertMarkersM || [2000, 1000, 500]).slice().sort((a,b)=>b-a);
+      for (const m of markers) {
+        if (distM <= m && !firedSet.has(m)) {
+          firedSet.add(m);
+          const distText = m < 1000 ? `${m} meters` : `${m/1000} kilometers`;
+          alertSound(p, distText);
+          break; // one marker per tick
+        }
+      }
+      alertedPoints.set(key, firedSet);
     }
-    if (p.distFromMe > alertKm * 3) alertedPoints.delete(key);
+    // Reset when we're well past
+    if (distM > 5000 && alertHasPassed.get(key)) {
+      alertedPoints.delete(key);
+      alertHasPassed.delete(key);
+    }
     if (p.distFromMe > settings.fbTriggerKm * 1.5) feedbackPromptedKeys.delete(key);
     idx++;
   }
@@ -4609,6 +4707,33 @@ document.getElementById('fb-timeout-sec').addEventListener('change', e => { cons
 document.getElementById('common-limits-input').addEventListener('change', e => {
   const arr = e.target.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
   if (arr.length) { settings.commonLimits = arr; saveSettings(); }
+});
+// v19.1: alert markers
+document.getElementById('alert-markers-input').value = (settings.alertMarkersM || [2000, 1000, 500]).join(', ');
+document.getElementById('alert-markers-input').addEventListener('change', e => {
+  const arr = e.target.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+  if (arr.length) {
+    // Sort descending so we always fire bigger markers first
+    settings.alertMarkersM = arr.sort((a, b) => b - a);
+    saveSettings();
+    // Reset all fired markers so new config takes effect immediately
+    alertedPoints.clear();
+    alertHasPassed.clear();
+    showToast(`Alert markers: ${settings.alertMarkersM.join('m, ')}m`);
+  } else {
+    showToast('Invalid input — keep numbers like 2000,1000,500');
+  }
+});
+// v19.1: test sound buttons (also unlocks audio on tap)
+document.getElementById('test-beep-btn').addEventListener('click', () => {
+  unlockAudioOnGesture();
+  beepPattern('speed_camera');
+  showToast('Beep test');
+});
+document.getElementById('test-voice-btn').addEventListener('click', () => {
+  unlockAudioOnGesture();
+  speakText('Speed camera in five hundred meters');
+  showToast('Voice test');
 });
 document.getElementById('cluster-meters-input').value = settings.clusterMeters;
 document.getElementById('cluster-meters-input').addEventListener('change', e => {
