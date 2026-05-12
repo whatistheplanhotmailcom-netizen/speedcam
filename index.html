@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v19.1</title>
+<title>Road Alert v19.2</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1850,6 +1850,34 @@ exports.OpenLocationCode = OpenLocationCode;
   body.fab-cam-hidden #fab-cam { display: none !important; }
   body.fab-add-hidden #fab-add { display: none !important; }
 
+  /* v19.2: floating Start GPS button (bottom-left) */
+  .start-gps-fab {
+    position: fixed; left: 16px; bottom: 16px; z-index: 1300;
+    appearance: none; cursor: pointer;
+    background: var(--green); color: #0c0a09;
+    border: 3px solid var(--bg);
+    border-radius: 100px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 12px; font-weight: 800;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    box-shadow: 0 6px 20px rgba(101, 163, 13, 0.5), 0 0 0 4px var(--bg);
+  }
+  .start-gps-fab:active { transform: scale(0.95); }
+  .start-gps-fab.running {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5), 0 0 0 4px var(--bg);
+    animation: gpsPulse 2s infinite;
+  }
+  @keyframes gpsPulse {
+    0%, 100% { box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5), 0 0 0 4px var(--bg); }
+    50% { box-shadow: 0 6px 26px rgba(220, 38, 38, 0.8), 0 0 0 4px var(--bg); }
+  }
+  @media (max-width: 380px) {
+    .start-gps-fab { padding: 8px 11px; font-size: 11px; }
+  }
+
   /* Speed limit picker grid */
   .limit-pick-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
@@ -2509,7 +2537,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v19.1</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v19.2</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2753,7 +2781,7 @@ exports.OpenLocationCode = OpenLocationCode;
 
   </div>
 
-  <div class="controls">
+  <div class="controls" style="display:none;">
     <button class="btn btn-primary" id="start-btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
       <span id="start-label">Start GPS</span>
@@ -2764,6 +2792,13 @@ exports.OpenLocationCode = OpenLocationCode;
   </div>
 
 </div>
+
+<!-- v19.2: small floating Start GPS button bottom-left -->
+
+<button class="start-gps-fab" id="start-gps-fab" title="Start GPS">
+  <svg id="start-gps-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px;height:20px;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+  <span id="start-gps-fab-label">GPS</span>
+</button>
 
 <div class="fab-group">
   <div class="fab fab-cam" id="fab-cam">
@@ -2964,6 +2999,14 @@ exports.OpenLocationCode = OpenLocationCode;
       <button data-sound-set="beep">🔉 Beep</button>
       <button data-sound-set="both">Both</button>
       <button data-sound-set="off">🔇 Off</button>
+    </div>
+  </div>
+  <div class="settings-row">
+    <label>Voice type</label>
+    <div class="options" id="voice-gender-options">
+      <button data-voice-gender="male">♂ Male</button>
+      <button data-voice-gender="female">♀ Female</button>
+      <button data-voice-gender="none">None</button>
     </div>
   </div>
   <div class="settings-row">
@@ -3418,6 +3461,9 @@ function loadData() {
     d.destinations.forEach(dest => {
       if (typeof dest.distanceKm !== 'number') dest.distanceKm = 0;
       if (typeof dest.maxSpeed !== 'number') dest.maxSpeed = 0;
+      // v19.2: sanitize previously corrupted values
+      if (!isFinite(dest.maxSpeed) || dest.maxSpeed > 350 || dest.maxSpeed < 0) dest.maxSpeed = 0;
+      if (!isFinite(dest.distanceKm) || dest.distanceKm < 0) dest.distanceKm = 0;
     });
     return d;
   } } catch(e) {}
@@ -3449,6 +3495,8 @@ function loadSettings() {
     if (typeof s.debugMode !== 'boolean') s.debugMode = false;
     // v19.1: alert distance markers (meters, fired in descending order)
     if (!Array.isArray(s.alertMarkersM)) s.alertMarkersM = [2000, 1000, 500];
+    // v19.2: voice gender preference (male/female/none)
+    if (typeof s.voiceGender !== 'string') s.voiceGender = 'female';
     return s;
   } } catch(e) {}
   return {
@@ -3461,6 +3509,7 @@ function loadSettings() {
     mapStyle: 'esri-street',
     debugMode: false,
     alertMarkersM: [2000, 1000, 500],
+    voiceGender: 'female',
   };
 }
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {} }
@@ -3595,7 +3644,45 @@ function beepPattern(type) {
     t += b.d;
   });
 }
-function speakText(text) { if (!('speechSynthesis' in window)) return; try { const u = new SpeechSynthesisUtterance(text); speechSynthesis.speak(u); } catch(e) {} }
+// v19.2: voice gender support. iOS gives a list of voices we can pick from.
+// We pick a voice once and cache it; refresh on preference change.
+let _cachedVoice = null;
+let _cachedVoiceFor = null;
+function pickVoice(pref) {
+  if (!('speechSynthesis' in window)) return null;
+  if (pref === 'none') return null;
+  if (_cachedVoiceFor === pref && _cachedVoice) return _cachedVoice;
+  const voices = speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+  // Known iOS voice names by gender (heuristic)
+  const femaleNames = ['Samantha', 'Karen', 'Moira', 'Tessa', 'Veena', 'Fiona', 'Victoria', 'Allison', 'Ava', 'Susan', 'Joanna', 'Nicky', 'Zira'];
+  const maleNames   = ['Daniel', 'Alex', 'Aaron', 'Fred', 'Tom', 'Oliver', 'Rishi', 'Lee', 'Albert', 'Bruce', 'Ralph', 'David'];
+  const wanted = pref === 'male' ? maleNames : femaleNames;
+  // Prefer English voices in the preferred gender list
+  const enVoices = voices.filter(v => /en[-_]/i.test(v.lang) || v.lang === 'en');
+  for (const name of wanted) {
+    const v = enVoices.find(x => x.name.includes(name));
+    if (v) { _cachedVoice = v; _cachedVoiceFor = pref; return v; }
+  }
+  // Fallback: any English voice
+  if (enVoices[0]) { _cachedVoice = enVoices[0]; _cachedVoiceFor = pref; return enVoices[0]; }
+  _cachedVoice = voices[0]; _cachedVoiceFor = pref; return voices[0];
+}
+function speakText(text) {
+  if (!('speechSynthesis' in window)) return;
+  const pref = settings.voiceGender || 'female';
+  if (pref === 'none') return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    const v = pickVoice(pref);
+    if (v) { u.voice = v; u.lang = v.lang; }
+    speechSynthesis.speak(u);
+  } catch(e) {}
+}
+// Refresh voice cache when system voices become available (async on iOS)
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => { _cachedVoice = null; _cachedVoiceFor = null; };
+}
 
 function fireSpeedAlert(limit, currentSpeedKmh, isOver) {
   // Mute in Log/Audit modes
@@ -3832,8 +3919,17 @@ function update() {
   if (dest) {
     if (typeof dest.maxSpeed !== 'number') dest.maxSpeed = 0;
     if (typeof dest.distanceKm !== 'number') dest.distanceKm = 0;
-    if (speedKmh > dest.maxSpeed) dest.maxSpeed = speedKmh;
-    if (prevPos && currentSpeed > 1) dest.distanceKm += distance(prevPos, currentPos);
+    // v19.2: sanity-cap maxSpeed at 350 km/h (faster than any production car).
+    // Also fix any previously-saved corrupt value.
+    if (dest.maxSpeed > 350 || !isFinite(dest.maxSpeed)) dest.maxSpeed = 0;
+    if (speedKmh > 0 && speedKmh < 350 && speedKmh > dest.maxSpeed) {
+      dest.maxSpeed = speedKmh;
+    }
+    if (prevPos && currentSpeed > 1) {
+      const segKm = distance(prevPos, currentPos);
+      // Reject single-tick jumps > 1km (GPS glitch)
+      if (segKm < 1) dest.distanceKm += segKm;
+    }
     // Throttle saves: every 30s
     if (!window._lastDestStatSave || (Date.now() - window._lastDestStatSave) > 30000) {
       saveData();
@@ -4182,6 +4278,27 @@ function applySoundSelector() {
 }
 applySoundSelector();
 
+// v19.2: voice gender selector
+function applyVoiceGenderSelector() {
+  document.querySelectorAll('[data-voice-gender]').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-voice-gender') === (settings.voiceGender || 'female'))
+  );
+}
+applyVoiceGenderSelector();
+document.querySelectorAll('[data-voice-gender]').forEach(b => b.addEventListener('click', () => {
+  settings.voiceGender = b.getAttribute('data-voice-gender');
+  saveSettings();
+  _cachedVoice = null; _cachedVoiceFor = null; // bust cache
+  applyVoiceGenderSelector();
+  unlockAudioOnGesture();
+  // Play a sample so user hears the voice change
+  if (settings.voiceGender !== 'none') {
+    speakText('Voice set');
+  } else {
+    showToast('Voice off');
+  }
+}));
+
 function onGPS(pos) {
   const wasFirstFix = !currentPos;
   prevPos = currentPos;
@@ -4269,8 +4386,18 @@ function setStatus(cls, text) {
 }
 function setStartButton(active, label) {
   const btn = document.getElementById('start-btn');
-  btn.classList.toggle('active', active);
-  document.getElementById('start-label').textContent = label;
+  if (btn) {
+    btn.classList.toggle('active', active);
+    const lbl = document.getElementById('start-label');
+    if (lbl) lbl.textContent = label;
+  }
+  // v19.2: mirror state into the floating FAB
+  const fab = document.getElementById('start-gps-fab');
+  const fabLabel = document.getElementById('start-gps-fab-label');
+  if (fab) {
+    fab.classList.toggle('running', active);
+    if (fabLabel) fabLabel.textContent = active ? 'STOP' : 'GPS';
+  }
 }
 
 const fabCam = document.getElementById('fab-cam');
@@ -4538,6 +4665,8 @@ document.querySelectorAll('.dir-btn').forEach(btn => {
 refreshDirectionLabels();
 
 document.getElementById('start-btn').addEventListener('click', () => mode === 'idle' ? startGPS() : stopAll());
+// v19.2: floating Start GPS button mirrors the above
+document.getElementById('start-gps-fab').addEventListener('click', () => mode === 'idle' ? startGPS() : stopAll());
 document.getElementById('demo-btn').addEventListener('click', () => mode === 'demo' ? stopAll() : startDemo());
 
 document.getElementById('sound-btn').addEventListener('click', () => {
