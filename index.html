@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v19.2</title>
+<title>Road Alert v20.1</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%230c0a09","theme_color":"%230c0a09","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%230c0a09%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23f59e0b%22 stroke-width=%228%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2210%22 fill=%22%23f59e0b%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1850,6 +1850,192 @@ exports.OpenLocationCode = OpenLocationCode;
   body.fab-cam-hidden #fab-cam { display: none !important; }
   body.fab-add-hidden #fab-add { display: none !important; }
 
+  /* =================== v20 SIMPLIFIED LAYOUT =================== */
+  /* When body.v20 is on, the screen becomes: top bar | info row | map | controls */
+  body.v20 .topbar {
+    padding: 2px 6px !important;
+    font-size: 9px !important;
+    gap: 4px !important;
+  }
+  body.v20 .topbar-meta { display: none !important; }
+  body.v20 .topbar .brand { font-size: 10px !important; gap: 3px !important; }
+  body.v20 .topbar .brand-mark { width: 8px !important; height: 8px !important; border-width: 1px !important; }
+  body.v20 .topbar .brand-mark::after { width: 2px !important; height: 2px !important; }
+  body.v20 .topbar .brand span span { font-size: 8px !important; }
+  body.v20 .topbar-actions { gap: 2px !important; }
+  body.v20 .topbar-actions .icon-btn {
+    width: 22px !important; height: 22px !important;
+    font-size: 11px !important; border-radius: 4px !important;
+    padding: 0 !important;
+  }
+  body.v20 .topbar-actions .icon-btn svg { width: 10px !important; height: 10px !important; }
+  /* Hide some non-essential icon buttons in v20 (sound is in ⋯ menu, map in ⋯ menu) */
+  body.v20 .topbar #map-btn,
+  body.v20 .topbar #capture-toggle-btn,
+  body.v20 .topbar #sound-btn,
+  body.v20 .topbar #theme-btn { display: none !important; }
+  /* Keep only settings, smaller */
+  body.v20 .topbar #settings-btn {
+    width: 22px !important; height: 22px !important;
+  }
+  body.v20 .topline-row { display: none !important; }
+  body.v20 .dest-stats-bar { display: none !important; }
+  body.v20 .panel-wrap[data-panel="hero"] { display: none !important; }
+  body.v20 .panel-wrap[data-panel="next"] { display: none !important; }
+  body.v20 .panel-wrap[data-panel="upcoming"] { display: none !important; }
+  body.v20 .panel-wrap[data-panel="trip"] { display: none !important; }
+  body.v20 #log-panel { display: none !important; }
+  body.v20 #audit-panel { display: none !important; }
+  body.v20 #panel-recovery { display: none !important; }
+  body.v20 .hidden-rec-bar { display: none !important; }
+  body.v20 .controls { display: none !important; }
+  body.v20 #fab-cam, body.v20 #fab-add { display: none !important; }
+  body.v20 #start-gps-fab { display: none !important; }
+  body.v20 .floating-size-toggle { display: none !important; }
+  body.v20 .home-map-fab.expand,
+  body.v20 .home-map-fab.fit,
+  body.v20 .home-map-fab.map-style-cycle,
+  body.v20 .home-map-fab.hide-controls-btn,
+  body.v20 .home-map-pill,
+  body.v20 .map-dpad { display: none !important; }
+
+  /* v20 root container */
+  .v20-shell { display: none; flex-direction: column; height: 100%; }
+  body.v20 .v20-shell { display: flex; }
+  body.v20 .container > *:not(.topbar):not(.v20-shell):not(#toast):not(#global-error-bar):not(.drive-mode-modal):not(.modal):not(.dest-switcher-dropdown) {
+    display: none !important;
+  }
+
+  /* Compact topbar mini-row showing destination */
+  .v20-destrow {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 8px; background: var(--bg-card);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10px;
+  }
+  .v20-destrow .dest-pill {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--amber); font-weight: 700;
+    border: 1px solid var(--line); background: var(--bg-card);
+    padding: 4px 8px; border-radius: 6px;
+    cursor: pointer; appearance: none;
+    text-align: left;
+  }
+  .v20-destrow .v20-menu {
+    appearance: none; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--line);
+    width: 28px; height: 26px; border-radius: 6px;
+    font-size: 14px; line-height: 1;
+    display: grid; place-items: center;
+  }
+
+  /* Info row: speed (with limit) | next ahead */
+  .v20-info {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 8px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--line);
+  }
+  .v20-box {
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 10px;
+    min-width: 0;
+  }
+  .v20-box-tag {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--ink-soft); letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .v20-speed-inner { display: flex; align-items: center; gap: 8px; }
+  .v20-limit {
+    width: 54px; height: 54px; border-radius: 50%;
+    border: 4px solid var(--red); background: var(--bg-card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .v20-limit:active { background: var(--bg-soft); }
+  .v20-limit-num { font-family: var(--mono); font-size: 20px; font-weight: 800; line-height: 1; }
+  .v20-limit-lbl { font-family: var(--mono); font-size: 7px; color: var(--ink-soft); letter-spacing: 0.06em; }
+  .v20-speed-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .v20-speed-num { font-family: var(--mono); font-size: 30px; font-weight: 800; line-height: 1; color: var(--ink); letter-spacing: -0.02em; }
+  .v20-speed-num.over { color: var(--red); }
+  .v20-speed-unit { font-family: var(--mono); font-size: 9px; color: var(--ink-soft); }
+  /* Next ahead */
+  .v20-next-row { display: flex; align-items: center; gap: 6px; }
+  .v20-next-icon { font-size: 22px; flex-shrink: 0; }
+  .v20-next-mid { flex: 1; min-width: 0; }
+  .v20-next-name { font-family: var(--mono); font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .v20-next-side { font-family: var(--mono); font-size: 9px; color: var(--ink-soft); }
+  .v20-next-dist { font-family: var(--mono); font-size: 20px; font-weight: 800; color: var(--amber); flex-shrink: 0; line-height: 1; }
+  .v20-next-empty { color: var(--ink-faint); font-style: italic; font-size: 11px; font-family: var(--mono); }
+
+  /* Map (middle, fills remaining vertical space) */
+  .v20-map-wrap { flex: 1; min-height: 0; position: relative; background: var(--bg-card); }
+  body.v20 #home-map { display: flex !important; height: 100% !important; min-height: 0 !important; max-height: none !important; border: none !important; border-radius: 0 !important; margin: 0 !important; }
+  body.v20 #home-map > .home-map-head { display: none !important; }
+  body.v20 #home-map > .home-map-body { flex: 1; min-height: 0; }
+  body.v20 .v20-map-wrap #home-map { width: 100%; height: 100%; }
+
+  /* Controls (bottom) */
+  .v20-controls {
+    display: flex; gap: 6px; padding: 8px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--line);
+  }
+  .v20-btn {
+    appearance: none; cursor: pointer;
+    padding: 10px 8px;
+    border: 1px solid var(--line); background: var(--bg-card);
+    border-radius: 8px;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 0;
+  }
+  .v20-btn:active { transform: scale(0.96); }
+  .v20-btn.capture { flex: 1; background: var(--red); color: #fff; border-color: var(--red); }
+  .v20-btn.start { flex: 1.4; background: var(--green); color: #0c0a09; border-color: var(--green); }
+  .v20-btn.start.running { background: var(--red); color: #fff; border-color: var(--red); animation: gpsPulse 2s infinite; }
+  .v20-btn.menu { width: 42px; padding: 10px; }
+
+  /* Menu sheet (replaces ⋯) */
+  .v20-menu-sheet {
+    position: fixed; inset: 0; z-index: 9500;
+    background: rgba(0,0,0,0.4); display: none;
+    align-items: flex-end;
+  }
+  .v20-menu-sheet.open { display: flex; }
+  .v20-menu-card {
+    background: var(--bg-card); width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 14px 14px 24px; max-height: 80%; overflow-y: auto;
+  }
+  .v20-menu-grip {
+    width: 40px; height: 4px; background: var(--line);
+    border-radius: 2px; margin: 0 auto 12px;
+  }
+  .v20-menu-title {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-soft);
+    letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;
+    padding: 8px 4px;
+  }
+  .v20-menu-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    margin-bottom: 12px;
+  }
+  .v20-menu-btn {
+    appearance: none; cursor: pointer;
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 10px;
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--ink);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .v20-menu-btn .ic { font-size: 20px; }
+  .v20-menu-btn.active { background: var(--amber); color: #0c0a09; border-color: var(--amber); }
+
   /* v19.2: floating Start GPS button (bottom-left) */
   .start-gps-fab {
     position: fixed; left: 16px; bottom: 16px; z-index: 1300;
@@ -2537,7 +2723,7 @@ exports.OpenLocationCode = OpenLocationCode;
   <div class="topbar">
     <div class="brand">
       <div class="brand-mark"></div>
-      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v19.2</span></span>
+      <span>Road Alert <span style="color:var(--amber);font-family:var(--mono);font-size:10px;font-weight:700;">v20.1</span></span>
     </div>
     <div class="topbar-meta">
       <span><strong id="clock">—:—</strong></span>
@@ -2556,6 +2742,64 @@ exports.OpenLocationCode = OpenLocationCode;
       </button>
     </div>
   </div>
+
+<!-- =================== v20 SIMPLIFIED LAYOUT =================== -->
+
+<div class="v20-shell">
+  <div class="v20-destrow">
+    <button class="dest-pill" id="v20-dest-pill">→ —</button>
+    <button class="v20-menu" id="v20-menu-btn" title="Menu">⋯</button>
+  </div>
+  <div class="v20-info">
+    <div class="v20-box">
+      <div class="v20-box-tag">Speed</div>
+      <div class="v20-speed-inner">
+        <button class="v20-limit" id="v20-limit-btn" title="Tap to change limit">
+          <div class="v20-limit-num" id="v20-limit-num">—</div>
+          <div class="v20-limit-lbl">LIMIT</div>
+        </button>
+        <div class="v20-speed-text">
+          <div class="v20-speed-num" id="v20-speed-num">0</div>
+          <div class="v20-speed-unit">KM/H</div>
+        </div>
+      </div>
+    </div>
+    <div class="v20-box">
+      <div class="v20-box-tag">Next ahead</div>
+      <div id="v20-next-content">
+        <div class="v20-next-empty">— nothing ahead —</div>
+      </div>
+    </div>
+  </div>
+  <div class="v20-map-wrap" id="v20-map-wrap"></div>
+  <div class="v20-controls">
+    <button class="v20-btn capture" id="v20-capture-btn">📷 Capture</button>
+    <button class="v20-btn start" id="v20-start-btn">▶ Start GPS</button>
+    <button class="v20-btn menu" id="v20-settings-btn" title="Settings">⚙</button>
+  </div>
+</div>
+
+<!-- v20 menu sheet (opens when ⋯ tapped) -->
+
+<div class="v20-menu-sheet" id="v20-menu-sheet">
+  <div class="v20-menu-card">
+    <div class="v20-menu-grip"></div>
+    <div class="v20-menu-title">Mode</div>
+    <div class="v20-menu-grid">
+      <button class="v20-menu-btn" data-v20-mode="live"><span class="ic">🚗</span><span>Live</span></button>
+      <button class="v20-menu-btn" data-v20-mode="log"><span class="ic">📍</span><span>Log</span></button>
+      <button class="v20-menu-btn" data-v20-mode="audit"><span class="ic">✓</span><span>Audit</span></button>
+      <button class="v20-menu-btn" id="v20-menu-classic"><span class="ic">↩</span><span>Classic UI</span></button>
+    </div>
+    <div class="v20-menu-title">Quick actions</div>
+    <div class="v20-menu-grid">
+      <button class="v20-menu-btn" id="v20-menu-settings"><span class="ic">⚙</span><span>Settings</span></button>
+      <button class="v20-menu-btn" id="v20-menu-map"><span class="ic">🗺</span><span>Big map</span></button>
+      <button class="v20-menu-btn" id="v20-menu-sound"><span class="ic">🔊</span><span>Sound</span></button>
+      <button class="v20-menu-btn" id="v20-menu-close"><span class="ic">✕</span><span>Close menu</span></button>
+    </div>
+  </div>
+</div>
 
   <div class="topline-row">
     <div class="mode-switcher-compact" id="mode-switcher">
@@ -4035,6 +4279,10 @@ function update() {
         cBar.style.width = pct + '%';
       }
     }
+    // v20: mirror to simplified next-ahead box
+    if (typeof refreshV20Next === 'function') {
+      refreshV20Next(next, next.distFromMe, next.distFromMe <= alertKm);
+    }
   } else {
     nextCard.style.display = 'none';
     if (activeFeedbackKey) hideFeedback();
@@ -4052,6 +4300,8 @@ function update() {
       if (cDist) cDist.textContent = '—';
       if (cBar) cBar.style.width = '0%';
     }
+    // v20: empty next-ahead box
+    if (typeof refreshV20Next === 'function') refreshV20Next(null);
   }
 
   const list = document.getElementById('upcoming-list');
@@ -6473,7 +6723,192 @@ window.addEventListener('load', () => {
   });
   // Initial render of dest-stats-bar
   updateDestStatsBar();
+  // v20: Enable simplified UI by default + wire all v20 controls
+  setupV20();
 });
+
+
+// ============== v20 SIMPLIFIED UI WIRING ==============
+function setupV20() {
+  // Move the home map into the v20 map slot (preserves all map logic)
+  const homeMap = document.getElementById('home-map');
+  const v20MapWrap = document.getElementById('v20-map-wrap');
+  if (homeMap && v20MapWrap) v20MapWrap.appendChild(homeMap);
+  // Turn on v20 layout
+  document.body.classList.add('v20');
+  // Make sure home map is sized properly
+  setTimeout(() => {
+    homeMap.style.height = '100%';
+    homeMap.style.minHeight = '0';
+    homeMap.style.maxHeight = 'none';
+    if (homeMapInstance) homeMapInstance.invalidateSize(true);
+  }, 200);
+  // Initialize home map if not already
+  if (!homeMapInstance && typeof initHomeMap === 'function') {
+    setTimeout(initHomeMap, 300);
+  }
+  // Destination pill -> open dest switcher
+  document.getElementById('v20-dest-pill').addEventListener('click', () => {
+    if (typeof openDestSwitcher === 'function') openDestSwitcher();
+  });
+  // Menu button -> open menu sheet
+  document.getElementById('v20-menu-btn').addEventListener('click', () => {
+    document.getElementById('v20-menu-sheet').classList.add('open');
+  });
+  // Settings cog
+  document.getElementById('v20-settings-btn').addEventListener('click', () => {
+    document.getElementById('settings-btn').click();
+  });
+  // Limit tap -> picker
+  document.getElementById('v20-limit-btn').addEventListener('click', () => {
+    if (typeof openLimitPicker === 'function') openLimitPicker();
+  });
+  // Start GPS button -> mirror existing logic
+  document.getElementById('v20-start-btn').addEventListener('click', () => {
+    if (mode === 'idle') startGPS(); else stopAll();
+  });
+  // Capture -> open FAB cam menu (simulate the capture flow)
+  document.getElementById('v20-capture-btn').addEventListener('click', () => {
+    if (!currentPos) { showToast('Need GPS fix first'); return; }
+    if (!data.activeDestinationId || !activeDest()) {
+      showToast('Pick a destination first');
+      if (typeof openDestSwitcher === 'function') openDestSwitcher();
+      return;
+    }
+    // Toggle cam FAB menu open so user can pick type
+    const fab = document.getElementById('fab-cam');
+    if (fab) {
+      // Force-show even though FAB is hidden in v20
+      fab.style.display = 'block';
+      fab.classList.add('open');
+      showToast('Pick a type');
+      // Auto-hide after pick or timeout
+      setTimeout(() => {
+        if (!fab.classList.contains('open')) fab.style.display = '';
+      }, 8000);
+    }
+  });
+  // Menu sheet items
+  document.querySelectorAll('[data-v20-mode]').forEach(b => {
+    b.addEventListener('click', () => {
+      const m = b.getAttribute('data-v20-mode');
+      if (typeof setAppMode === 'function') setAppMode(m);
+      document.getElementById('v20-menu-sheet').classList.remove('open');
+      refreshV20MenuActive();
+    });
+  });
+  document.getElementById('v20-menu-classic').addEventListener('click', () => {
+    document.body.classList.remove('v20');
+    document.getElementById('v20-menu-sheet').classList.remove('open');
+    showToast('Classic UI');
+  });
+  document.getElementById('v20-menu-settings').addEventListener('click', () => {
+    document.getElementById('v20-menu-sheet').classList.remove('open');
+    document.getElementById('settings-btn').click();
+  });
+  document.getElementById('v20-menu-map').addEventListener('click', () => {
+    document.getElementById('v20-menu-sheet').classList.remove('open');
+    if (typeof openMap === 'function') openMap();
+  });
+  document.getElementById('v20-menu-sound').addEventListener('click', () => {
+    const cycle = ['voice', 'beep', 'both', 'off'];
+    const idx = cycle.indexOf(settings.sound || 'voice');
+    settings.sound = cycle[(idx + 1) % cycle.length];
+    saveSettings();
+    if (typeof applySoundSelector === 'function') applySoundSelector();
+    showToast('Sound: ' + settings.sound);
+  });
+  document.getElementById('v20-menu-close').addEventListener('click', () => {
+    document.getElementById('v20-menu-sheet').classList.remove('open');
+  });
+  // Close sheet on backdrop tap
+  document.getElementById('v20-menu-sheet').addEventListener('click', (e) => {
+    if (e.target.id === 'v20-menu-sheet') {
+      e.target.classList.remove('open');
+    }
+  });
+  refreshV20();
+}
+
+function refreshV20MenuActive() {
+  document.querySelectorAll('[data-v20-mode]').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-v20-mode') === appMode);
+  });
+}
+
+// Called from update() every tick to refresh v20 numbers
+function refreshV20() {
+  if (!document.body.classList.contains('v20')) return;
+  // Destination pill
+  const dest = (typeof activeDest === 'function') ? activeDest() : null;
+  const destPill = document.getElementById('v20-dest-pill');
+  if (destPill) {
+    if (dest) {
+      const kmTxt = currentPos ? ' · ' + distance(currentPos, dest).toFixed(1) + 'km' : '';
+      destPill.textContent = '→ ' + dest.name + kmTxt;
+    } else {
+      destPill.textContent = '→ pick destination';
+    }
+  }
+  // Limit value
+  const limitEl = document.getElementById('v20-limit-num');
+  if (limitEl) {
+    const lim = (typeof computeCurrentLimit === 'function') ? computeCurrentLimit() : null;
+    limitEl.textContent = lim != null ? lim : '—';
+  }
+  // Speed value
+  const speedEl = document.getElementById('v20-speed-num');
+  if (speedEl) {
+    const sp = currentSpeed ? Math.round(currentSpeed * 3.6) : 0;
+    speedEl.textContent = sp;
+    const lim = (typeof computeCurrentLimit === 'function') ? computeCurrentLimit() : 120;
+    const overBy = settings.speedAlertOver != null ? settings.speedAlertOver : 5;
+    speedEl.classList.toggle('over', sp > lim + overBy);
+  }
+  // Start button state
+  const startBtn = document.getElementById('v20-start-btn');
+  if (startBtn) {
+    const running = (mode === 'gps' || mode === 'demo');
+    startBtn.classList.toggle('running', running);
+    startBtn.textContent = running ? '■ Stop' : '▶ Start GPS';
+  }
+  refreshV20MenuActive();
+}
+
+// Hook v20 refresh into the main update tick
+const _v20OrigUpdate = (typeof update === 'function') ? update : null;
+if (_v20OrigUpdate) {
+  window.update = function() {
+    _v20OrigUpdate.apply(this, arguments);
+    try { refreshV20(); } catch(e) {}
+  };
+}
+setInterval(() => { try { refreshV20(); } catch(e) {} }, 1000);
+
+// Hook next-ahead update too: when fillNextCard (or equivalent) runs, we mirror to v20
+function refreshV20Next(point, distKm, isUrgent) {
+  if (!document.body.classList.contains('v20')) return;
+  const el = document.getElementById('v20-next-content');
+  if (!el) return;
+  if (!point) {
+    el.innerHTML = '<div class="v20-next-empty">— nothing ahead —</div>';
+    return;
+  }
+  const distTxt = distKm < 1 ? Math.round(distKm * 1000) + 'm' : distKm.toFixed(1) + 'km';
+  const sideTxt = point.side === 'left' ? 'left side' : point.side === 'right' ? 'right side' : '';
+  const icon = (typeof pointDisplayIcon === 'function') ? pointDisplayIcon(point) : '📷';
+  const color = isUrgent ? 'var(--red)' : 'var(--amber)';
+  el.innerHTML = `
+    <div class="v20-next-row">
+      <span class="v20-next-icon">${icon}</span>
+      <div class="v20-next-mid">
+        <div class="v20-next-name">${escapeHtml(point.name || '')}</div>
+        <div class="v20-next-side">${sideTxt}</div>
+      </div>
+      <div class="v20-next-dist" style="color:${color};">${distTxt}</div>
+    </div>
+  `;
+}
 
 
 function tickMapRefresh() {
