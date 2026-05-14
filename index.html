@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.24</title>
+<title>Road Alert v22.25</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -503,6 +503,8 @@ body {
 .ra-marker.t-checkpoint    { border-color: #ca8a04; background: #fef9c3; }
 .ra-marker.t-speed_camera  { border-color: #dc2626; background: #fee2e2; }
 .ra-marker.t-mobile_camera { border-color: #ea580c; background: #ffedd5; }
+.ra-marker.t-pole_camera   { border-color: #b91c1c; background: #fecaca; }
+.ra-marker.t-spider_camera { border-color: #7e22ce; background: #f3e8ff; }
 .ra-marker.t-speed_change  { border-color: #0891b2; background: #cffafe; }
 .ra-marker.t-gate          { border-color: #7c3aed; background: #ede9fe; }
 .ra-marker.t-other         { border-color: #57534e; background: #f5f1e8; }
@@ -776,6 +778,8 @@ body[data-nav="on"] .ra-current::after { display: block; }
 .cap-btn.t-checkpoint    { border-color: #ca8a04; }
 .cap-btn.t-speed_camera  { border-color: #dc2626; }
 .cap-btn.t-mobile_camera { border-color: #ea580c; }
+.cap-btn.t-pole_camera   { border-color: #b91c1c; }
+.cap-btn.t-spider_camera { border-color: #7e22ce; }
 .cap-btn.t-speed_change  { border-color: #0891b2; }
 .cap-btn.t-gate          { border-color: #7c3aed; }
 .cap-btn.t-other         { border-color: #57534e; }
@@ -980,7 +984,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.24</span>
+      <span class="version">v22.25</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1246,6 +1250,8 @@ body[data-nav="on"] .ra-current::after { display: block; }
       <button class="cap-btn t-checkpoint"    data-cap="checkpoint"><span class="em">🛂</span>Checkpoint</button>
       <button class="cap-btn t-speed_camera"  data-cap="speed_camera"><span class="em">📷</span>Speed cam</button>
       <button class="cap-btn t-mobile_camera" data-cap="mobile_camera"><span class="em">📱</span>Mobile cam</button>
+      <button class="cap-btn t-pole_camera"   data-cap="pole_camera"><span class="em">📹</span>Pole speed cam</button>
+      <button class="cap-btn t-spider_camera" data-cap="spider_camera"><span class="em">🕷️</span>Spider speed cam</button>
       <button class="cap-btn t-speed_change"  data-cap="speed_change"><span class="em">⇅</span>Speed zone</button>
       <button class="cap-btn t-gate"          data-cap="gate"><span class="em">🚪</span>Gate</button>
       <button class="cap-btn t-other"         data-cap="other" style="grid-column:span 2;"><span class="em">📝</span>Other / Custom</button>
@@ -1316,6 +1322,8 @@ body[data-nav="on"] .ra-current::after { display: block; }
         <option value="checkpoint">🛂 Checkpoint</option>
         <option value="speed_camera">📷 Speed cam</option>
         <option value="mobile_camera">📱 Mobile cam</option>
+        <option value="pole_camera">📹 Pole speed cam</option>
+        <option value="spider_camera">🕷️ Spider speed cam</option>
         <option value="speed_change">⇅ Speed zone</option>
         <option value="gate">🚪 Gate</option>
         <option value="other">📝 Other</option>
@@ -1668,11 +1676,13 @@ const Utils = {
     if (subtype === 'box') return '📦';
     if (subtype === 'spider') return '🕷️';
     return { petrol:'⛽', checkpoint:'🛂', speed_camera:'📷',
-             mobile_camera:'📱', speed_change:'⇅', gate:'🚪', other:'📝' }[type] || '•';
+             mobile_camera:'📱', pole_camera:'📹', spider_camera:'🕷️',
+             speed_change:'⇅', gate:'🚪', other:'📝' }[type] || '•';
   },
   typeLabel(t) {
     return { petrol:'Petrol', checkpoint:'Checkpoint', speed_camera:'Speed cam',
-             mobile_camera:'Mobile cam', speed_change:'Speed zone', gate:'Gate', other:'Custom' }[t] || t;
+             mobile_camera:'Mobile cam', pole_camera:'Pole speed cam', spider_camera:'Spider speed cam',
+             speed_change:'Speed zone', gate:'Gate', other:'Custom' }[t] || t;
   },
   toast(msg, cls) {
     const el = document.getElementById('toast');
@@ -1936,6 +1946,8 @@ const Audio = {
     const pattern = {
       speed_camera:  [1,0,1,0,1],   // 3 pulses
       mobile_camera: [1,0,1],        // 2 pulses
+      pole_camera:   [1,1,0,1],      // double + single (distinctive)
+      spider_camera: [1,0,1,0,1,0,1],// 4 rapid pulses ("many eyes")
       checkpoint:    [1,1],          // double
       speed_change:  [1,0,1,0],      // 2 spaced
       petrol:        [1],            // single
@@ -3384,7 +3396,9 @@ const UI = {
       createdAt: new Date().toISOString(),
     };
     this.closeAllModals();
-    if (type === 'speed_camera' || type === 'mobile_camera') this.openModal('m-side');
+    // v22.25: pole + spider speed cams also need a side selection
+    if (type === 'speed_camera' || type === 'mobile_camera' ||
+        type === 'pole_camera'  || type === 'spider_camera') this.openModal('m-side');
     else if (type === 'speed_change') this.openLimitPicker('speedchange');
     else if (type === 'other') this.openModal('m-other');
     else this.finalizeCapture();
@@ -3481,7 +3495,10 @@ const UI = {
   togglePEFields() {
     const t = document.getElementById('e-type').value;
     document.getElementById('e-limit-row').style.display = t === 'speed_change' ? 'flex' : 'none';
-    document.getElementById('e-side-row').style.display  = (t === 'speed_camera' || t === 'mobile_camera') ? 'flex' : 'none';
+    // v22.25: pole + spider speed cams also have a side
+    const hasSide = t === 'speed_camera' || t === 'mobile_camera' ||
+                    t === 'pole_camera' || t === 'spider_camera';
+    document.getElementById('e-side-row').style.display  = hasSide ? 'flex' : 'none';
   },
 
   savePoint() {
