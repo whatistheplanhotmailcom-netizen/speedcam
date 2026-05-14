@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.6</title>
+<title>Road Alert v22.8</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -827,7 +827,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.6</span>
+      <span class="version">v22.8</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -905,6 +905,65 @@ body {
 </div>
 
 <!-- ============== MODALS ============== -->
+
+<!-- v22.8: Sound Check diagnostic -->
+
+<div class="modal" id="m-sound-check">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">🔊 Sound check</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div id="sound-check-results" style="font-family:var(--mono,monospace);font-size:11px;line-height:1.6;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;"></div>
+
+```
+<div class="section-title">Tests</div>
+<button class="btn" id="sc-tone">▶ Play tone (current style)</button>
+<button class="btn" id="sc-tone-cam">▶ Play speed-cam pattern</button>
+<button class="btn" id="sc-voice">▶ Speak "Speed camera in 500 meters"</button>
+<button class="btn" id="sc-alert">▶ Full alert (tone + voice)</button>
+<button class="btn" id="sc-repeat">▶ Test repeat (3× with gap)</button>
+
+<div class="section-title">Troubleshooting</div>
+<div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
+  <strong>If you hear nothing on iOS:</strong><br>
+  • Check the silent-mode switch on the side of the phone — flip it OFF (no orange).<br>
+  • Tones use Web Audio which is muted by the silent switch. Voice is NOT muted.<br>
+  • Turn up the volume buttons (Ringer volume, not Media).<br>
+  <br>
+  <strong>If voice doesn't work:</strong><br>
+  • iOS may need a few seconds to load voices on first launch.<br>
+  • Wait, then re-open Sound check.<br>
+  • Some voices need download in Settings → Accessibility → Spoken Content.<br>
+  <br>
+  <strong>If tested in an in-app browser (TikTok/Facebook):</strong><br>
+  • Open the page in real Safari or Chrome instead.
+</div>
+```
+
+  </div>
+</div>
+
+<!-- v22.7: Start GPS confirm destination -->
+
+<div class="modal" id="m-confirm-start">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Confirm destination</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div style="text-align:center;padding:14px 8px 8px;">
+      <div style="font-size:11px;color:var(--ink-2);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Drive to</div>
+      <div id="confirm-dest-name" style="font-size:22px;font-weight:800;color:var(--amber-2);">—</div>
+      <div id="confirm-dest-meta" style="font-size:11px;color:var(--ink-3);margin-top:4px;">—</div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="confirm-cancel" style="flex:1;">Cancel</button>
+      <button class="btn" id="confirm-change" style="flex:1.2;">Change</button>
+      <button class="btn btn-go" id="confirm-start" style="flex:1.5;">▶ Start</button>
+    </div>
+  </div>
+</div>
 
 <!-- Capture -->
 
@@ -1174,7 +1233,7 @@ body {
   <button class="btn" id="btn-edit-json">Edit JSON</button>
 </div>
 <input type="file" id="import-file" accept="application/json" style="display:none">
-<button class="btn" id="btn-test-sound">🔊 Test sound</button>
+<button class="btn" id="btn-test-sound">🔊 Sound check</button>
 ```
 
   </div>
@@ -2222,6 +2281,88 @@ const UI = {
     State.pendingCapture = null;
   },
 
+  /** v22.8: build a diagnostic readout of the audio environment. */
+  openSoundCheck() {
+    Audio.unlock();
+    const platform = (() => {
+      const ua = navigator.userAgent || '';
+      if (/iPhone|iPad|iPod/.test(ua)) return 'iOS';
+      if (/Android/.test(ua)) return 'Android';
+      return 'Other';
+    })();
+    const inStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    const ctx = Audio.ctx;
+    const hasAC = !!(window.AudioContext || window.webkitAudioContext);
+    const hasSS = 'speechSynthesis' in window;
+    const voices = hasSS ? speechSynthesis.getVoices() : [];
+    const enVoices = voices.filter(v => /en[-_]/i.test(v.lang) || v.lang === 'en');
+
+    const pick = Audio.pickVoice();
+    const rows = [
+      ['Platform', platform],
+      ['Mode', inStandalone ? 'PWA (home screen)' : 'Browser tab'],
+      ['AudioContext supported', hasAC ? '✓ yes' : '✗ NO'],
+      ['AudioContext state', ctx ? ctx.state : 'not yet created'],
+      ['Audio unlocked', Audio._unlocked ? '✓ yes' : '✗ not yet (tap any button)'],
+      ['SpeechSynthesis supported', hasSS ? '✓ yes' : '✗ NO'],
+      ['Total voices loaded', voices.length],
+      ['English voices', enVoices.length],
+      ['Selected voice', pick ? (pick.name + ' (' + pick.lang + ')') : '(none — voice disabled or no English voice)'],
+      ['Voice preference', State.settings.voiceGender],
+      ['Tone style', State.settings.toneStyle],
+      ['Sound mode', State.settings.sound],
+      ['Repeat × times', State.settings.alertRepeatCount],
+      ['Repeat gap (s)', State.settings.alertRepeatGapS],
+    ];
+    const html = rows.map(function(row) {
+      const k = row[0], v = row[1];
+      const sv = String(v);
+      const ok = sv.indexOf('✓') === 0;
+      const bad = sv.indexOf('✗') === 0;
+      const color = ok ? 'var(--green)' : bad ? 'var(--red)' : 'var(--ink)';
+      return '<div><span style="color:var(--ink-2);">' + Utils.escapeHtml(k) + ':</span> <span style="color:' + color + ';font-weight:700;">' + Utils.escapeHtml(sv) + '</span></div>';
+    }).join('');
+    document.getElementById('sound-check-results').innerHTML = html;
+    this.openModal('m-sound-check');
+  },
+
+  /** v22.7: confirm destination before starting GPS.
+   *  - If no destination is set → block, toast, open dest picker.
+   *  - If a destination is set → show confirm dialog with Cancel / Change / Start.
+   *  - On Start → play tone + voice announcement + actually start GPS. */
+  confirmStart() {
+    const dest = State.activeDest();
+    if (!dest) {
+      Utils.toast('Pick a destination first', 'bad');
+      this.renderRoutesList();
+      this.openModal('m-routes');
+      return;
+    }
+    // Populate confirm modal
+    document.getElementById('confirm-dest-name').textContent = dest.name;
+    let meta = `${dest.lat.toFixed(4)}, ${dest.lng.toFixed(4)}`;
+    if (State.pos) {
+      const km = Utils.distKm(State.pos, dest);
+      meta += `  ·  ${Utils.fmtDist(km)} away`;
+    }
+    document.getElementById('confirm-dest-meta').textContent = meta;
+    this.openModal('m-confirm-start');
+  },
+
+  /** v22.7: actually start GPS after confirmation — with tone + voice. */
+  doStart() {
+    const dest = State.activeDest();
+    this.closeAllModals();
+    Audio.unlock();
+    // Tone confirmation (uses currently selected tone style)
+    Audio.beep('checkpoint');
+    // Voice announcement (skipped if voice is off)
+    if (dest && State.settings.sound !== 'off' && State.settings.voiceGender !== 'none') {
+      setTimeout(() => Audio.say('Heading to ' + dest.name), 250);
+    }
+    GPS.start();
+  },
+
   openCaptureMenu() {
     if (!State.pos) { Utils.toast('Need GPS fix first', 'bad'); return; }
     Audio.unlock();
@@ -2743,7 +2884,19 @@ function wire() {
   document.getElementById('btn-route').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-route-menu').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
-  document.getElementById('btn-go').onclick = () => State.mode === 'idle' ? GPS.start() : GPS.stop();
+  document.getElementById('btn-go').onclick = () => {
+    if (State.mode !== 'idle') { GPS.stop(); return; }
+    // v22.7: confirm destination before starting
+    UI.confirmStart();
+  };
+  // v22.7: confirm-start modal buttons
+  document.getElementById('confirm-cancel').onclick = () => UI.closeAllModals();
+  document.getElementById('confirm-change').onclick = () => {
+    UI.closeAllModals();
+    UI.renderRoutesList();
+    UI.openModal('m-routes');
+  };
+  document.getElementById('confirm-start').onclick = () => UI.doStart();
   document.getElementById('btn-demo').onclick = () => State.mode === 'demo' ? GPS.stop() : GPS.demo();
   document.getElementById('btn-fit').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter').onclick = () => MapView.recenter();
@@ -2927,10 +3080,38 @@ function wire() {
   };
   document.getElementById('btn-test-sound').onclick = () => {
     Audio.unlock();
-    if (State.settings.sound === 'beep' || State.settings.sound === 'both') Audio.beep('speed_camera');
-    if (State.settings.sound === 'voice' || State.settings.sound === 'both') {
-      setTimeout(() => Audio.say('Speed camera in 500 meters'), 400);
-    }
+    UI.openSoundCheck();
+  };
+  // v22.8: Sound check test buttons
+  document.getElementById('sc-tone').onclick = () => {
+    Audio.unlock();
+    Audio.beep('petrol');
+  };
+  document.getElementById('sc-tone-cam').onclick = () => {
+    Audio.unlock();
+    Audio.beep('speed_camera');
+  };
+  document.getElementById('sc-voice').onclick = () => {
+    Audio.unlock();
+    Audio.say('Speed camera in 500 meters');
+  };
+  document.getElementById('sc-alert').onclick = () => {
+    Audio.unlock();
+    // Build a fake point and call alert() once
+    Audio.alert({ name: 'Speed camera', type: 'speed_camera' }, 500);
+  };
+  document.getElementById('sc-repeat').onclick = () => {
+    Audio.unlock();
+    // Temporarily run a 3-rep test regardless of settings
+    const original = { count: State.settings.alertRepeatCount, gap: State.settings.alertRepeatGapS };
+    State.settings.alertRepeatCount = 3;
+    State.settings.alertRepeatGapS = 1.5;
+    Audio.alert({ name: 'Test', type: 'speed_camera' }, 500);
+    // Restore after the test finishes
+    setTimeout(() => {
+      State.settings.alertRepeatCount = original.count;
+      State.settings.alertRepeatGapS = original.gap;
+    }, 5500);
   };
 
   document.querySelectorAll('[data-close]').forEach(b =>
