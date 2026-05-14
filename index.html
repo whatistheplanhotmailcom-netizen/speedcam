@@ -989,9 +989,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-sound" title="Sound mode">🔊</button>
-      <button class="icon-btn" id="btn-theme" title="Theme">☀</button>
-      <button class="icon-btn" id="btn-fit-top" title="Fit all">⛶</button>
-      <button class="icon-btn" id="btn-recenter-top" title="Recenter">📍</button>
+      <button class="icon-btn" id="btn-theme" title="Theme: Day / Night / Device">☀</button>
       <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
     </div>
   </div>
@@ -4140,15 +4138,15 @@ function wire() {
   };
   document.getElementById('btn-theme').onclick = () => {
     const cycle = ['light', 'dark', 'auto'];
+    const labels = { light: 'Day', dark: 'Night', auto: 'Device settings' };
     const i = cycle.indexOf(State.settings.theme);
     State.settings.theme = cycle[(i + 1) % cycle.length];
     State.saveSettings();
     UI.applyTheme();
     UI.updateThemeIcon();
-    Utils.toast('Theme: ' + State.settings.theme, 'good');
+    UI.syncSettings();
+    Utils.toast('Theme: ' + labels[State.settings.theme], 'good');
   };
-  document.getElementById('btn-fit-top').onclick = () => MapView.fitAll();
-  document.getElementById('btn-recenter-top').onclick = () => MapView.recenter();
   document.getElementById('btn-route').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-route-menu').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
