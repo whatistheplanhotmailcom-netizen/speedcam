@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.12</title>
+<title>Road Alert v22.14</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -80,7 +80,19 @@ body {
   height: 100vh; height: 100dvh;
   padding: 8px;
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto auto;
+  /* v22.14 FIX: the 1fr row must align with .map-wrap so the map fills
+     remaining vertical space. v22.12 added a .diag-strip child between
+     route-bar and stats, which shifted the 1fr from map → stats and made
+     the stats area HUGE while squishing the map.
+     Children, in order:
+       1. .topbar             auto
+       2. .route-bar          auto
+       3. .diag-strip         auto   ← added v22.12
+       4. .stats              auto
+       5. .map-wrap           1fr    ← THE map should grow
+       6. .actions            auto
+       7. status line (text)  auto */
+  grid-template-rows: auto auto auto auto 1fr auto auto;
   gap: 8px;
   position: relative;
 }
@@ -197,7 +209,10 @@ body {
 /* STATS ROW */
 .stats {
   display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,1.1fr);
+  /* v22.13 FIX: equal columns. Previously was 1fr / 1.1fr which made
+     the Next-ahead card 10% wider than the Speed card — looked off
+     especially when empty. */
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
   gap: 8px;
   min-height: 0;
 }
@@ -292,10 +307,14 @@ body {
   justify-content: center;
   min-width: 0;
 }
+/* v22.13: compact empty state — when nothing is ahead the card should
+   not dominate the screen with empty space. */
 .next-empty {
   font-style: italic;
   color: var(--ink-3);
-  font-size: 13px;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px 0;
 }
 .next-name {
   font-weight: 700;
@@ -321,19 +340,23 @@ body {
 .next-dist .unit { font-size: 12px; color: var(--ink-2); margin-left: 3px; font-weight: 600; }
 .next-dist.urgent { color: var(--red); }
 
-/* v22.6: red neon flash on the Next-ahead stat card when a point is near */
+/* v22.13: red neon flash on the Next-ahead stat card when a point is near.
+   Uses outline + box-shadow only (NOT border-color). This way even if the
+   class lingers or animation gets interrupted, the card border stays the
+   normal tan colour — no red residue. */
 .stat-card.flash-near {
-  border-color: var(--red);
   animation: neonflash 0.7s infinite;
 }
 @keyframes neonflash {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239,68,68,0.0), inset 0 0 0 0 rgba(239,68,68,0);
-    border-color: var(--red);
+    box-shadow: 0 0 0 0 rgba(239,68,68,0);
+    outline: 2px solid rgba(239,68,68,0.6);
+    outline-offset: -2px;
   }
   50% {
-    box-shadow: 0 0 12px 2px rgba(239,68,68,0.85), inset 0 0 8px rgba(239,68,68,0.4);
-    border-color: #ff6b6b;
+    box-shadow: 0 0 14px 3px rgba(239,68,68,0.85);
+    outline: 2px solid rgba(255,107,107,1);
+    outline-offset: -2px;
   }
 }
 
@@ -849,7 +872,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.12</span>
+      <span class="version">v22.14</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2331,14 +2354,16 @@ const UI = {
 
     const aheadList = Alerts.ahead();
     const body = document.getElementById('next-body');
-    // v22.6: flash the Next-ahead box border red when nearest point
-    // is inside the configured flashStartM distance
+    // v22.13: flash the Next-ahead box border red when nearest point
+    // is inside the configured flashStartM distance.
+    // Defensive: always set the class explicitly (don't rely on prior state).
     const card = body.closest('.stat-card');
     if (card) {
       const flashAt = +State.settings.flashStartM || 500;
       const nearest = aheadList[0];
-      const shouldFlash = nearest && nearest.dist * 1000 <= flashAt;
-      card.classList.toggle('flash-near', shouldFlash);
+      const shouldFlash = !!(nearest && nearest.dist * 1000 <= flashAt);
+      if (shouldFlash) card.classList.add('flash-near');
+      else card.classList.remove('flash-near');
     }
     if (aheadList.length === 0) {
       const dest = State.activeDest();
