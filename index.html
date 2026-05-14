@@ -3,591 +3,1202 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#f5f1e8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Road Alert v21.4</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';">
+<meta name="apple-mobile-web-app-title" content="Road Alert">
+<title>Road Alert v22</title>
+
+<link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';">
+
 <style>
-  :root {
-    --bg: #f5f1e8;
-    --bg-card: #fffcf5;
-    --bg-soft: #ede5d3;
-    --ink: #1c1917;
-    --ink-soft: #57534e;
-    --ink-faint: #a8a29e;
-    --line: #d6d3c4;
-    --amber: #d97706;
-    --red: #dc2626;
-    --green: #65a30d;
-    --blue: #2563eb;
-    --mono: 'SF Mono', Menlo, Consolas, monospace;
-  }
-
-- { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-  body {
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  background: var(–bg);
-  color: var(–ink);
-  -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  }
-  button { font-family: inherit; }
-
-/* === Main shell === */
-.shell {
-display: flex;
-flex-direction: column;
-height: 100vh;
-height: 100dvh;
+/* ============================================================
+   THEME
+   ============================================================ */
+:root, [data-theme="light"] {
+  --bg: #f5f1e8;
+  --surface: #ffffff;
+  --surface-2: #faf7f0;
+  --line: rgba(28,25,23,0.10);
+  --line-2: rgba(28,25,23,0.18);
+  --ink: #1c1917;
+  --ink-2: #57534e;
+  --ink-3: #a8a29e;
+  --amber: #f59e0b;
+  --amber-2: #d97706;
+  --red: #ef4444;
+  --green: #65a30d;
+  --green-2: #84cc16;
+  --blue: #2563eb;
+  --cyan: #06b6d4;
+  --sign-bg: #ffffff;
+  --sign-ring: #ef4444;
+  --sign-ink: #2563eb;
+  --speedo-bg: #1c1917;
+  --speedo-ink: #ffffff;
+  --shadow: 0 2px 8px rgba(28,25,23,0.06);
+}
+[data-theme="dark"] {
+  --bg: #0c0a09;
+  --surface: #1c1917;
+  --surface-2: #292524;
+  --line: rgba(245,241,232,0.10);
+  --line-2: rgba(245,241,232,0.20);
+  --ink: #f5f1e8;
+  --ink-2: #a8a29e;
+  --ink-3: #57534e;
+  --shadow: 0 2px 12px rgba(0,0,0,0.5);
 }
 
-/* === Top bar (compact) === */
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  background: var(--bg);
+  color: var(--ink);
+  height: 100vh; height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  user-select: none; -webkit-user-select: none;
+  font-size: 14px;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  height: 100vh; height: 100dvh;
+  padding: 8px;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto auto;
+  gap: 8px;
+  position: relative;
+}
+
+/* TOP BAR */
 .topbar {
-display: flex; align-items: center; gap: 6px;
-padding: 4px 8px;
-background: var(–bg-card);
-border-bottom: 1px solid var(–line);
-font-family: var(–mono);
-font-size: 11px;
-flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 0;
 }
-.topbar .brand {
-display: flex; align-items: center; gap: 4px;
-font-weight: 700; color: var(–ink); font-size: 11px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
 }
-.topbar .brand-dot {
-width: 8px; height: 8px; border-radius: 50%;
-border: 1.5px solid var(–amber);
-position: relative;
+.brand .dot {
+  width: 12px; height: 12px;
+  border: 2px solid var(--amber);
+  border-radius: 50%;
+  position: relative;
 }
-.topbar .brand-dot::after {
-content: ‘’; position: absolute;
-top: 50%; left: 50%;
-width: 2px; height: 2px; border-radius: 50%; background: var(–amber);
-transform: translate(-50%, -50%);
+.brand .dot::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: var(--amber);
+  border-radius: 50%;
 }
-.topbar .v { color: var(–amber); font-size: 9px; font-weight: 700; }
-.topbar .dest {
-flex: 1; min-width: 0;
-overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-color: var(–ink-soft); font-weight: 600;
-text-align: center;
-padding: 0 4px;
+.brand .version {
+  color: var(--amber-2);
+  font-size: 11px;
+  font-weight: 600;
 }
-.topbar .menu-btn {
-width: 28px; height: 26px;
-background: var(–bg-card); border: 1px solid var(–line);
-border-radius: 6px; cursor: pointer;
-display: grid; place-items: center;
-font-size: 13px; line-height: 1; color: var(–ink);
+.topbar-spacer { flex: 1; }
+.icon-btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  font-size: 14px;
+  padding: 0;
+  transition: transform 0.1s;
 }
-.topbar .menu-btn:active { background: var(–bg-soft); }
+.icon-btn:active { transform: scale(0.92); }
 
-/* === Info row === */
-.info {
-display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-padding: 6px 8px;
-background: var(–bg-card);
-border-bottom: 1px solid var(–line);
-flex-shrink: 0;
+/* ROUTE BAR */
+.route-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
 }
-.box {
-background: var(–bg-soft); border: 1px solid var(–line);
-border-radius: 10px; padding: 8px;
-min-width: 0;
+.route-current {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  color: var(--amber-2);
+  font-weight: 700;
+  font-size: 15px;
 }
-.box-tag {
-font-family: var(–mono); font-size: 9px;
-color: var(–ink-soft); letter-spacing: 0.06em;
-text-transform: uppercase; font-weight: 700;
-margin-bottom: 4px;
+.route-current:active { background: var(--surface-2); }
+.route-current .arrow { color: var(--amber); }
+.route-menu {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  width: 56px;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--ink-2);
+  letter-spacing: 2px;
 }
+.route-menu:active { background: var(--surface-2); }
 
-/* Speed box (limit sign + speed number) */
-.speed-inner {
-display: flex; align-items: center; gap: 8px;
+/* STATS ROW */
+.stats {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1.1fr);
+  gap: 8px;
+  min-height: 0;
 }
-.limit-sign {
-appearance: none; cursor: pointer;
-width: 54px; height: 54px; border-radius: 50%;
-border: 4px solid var(–red);
-background: var(–bg-card);
-display: flex; flex-direction: column; align-items: center; justify-content: center;
-flex-shrink: 0;
-padding: 0;
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
-.limit-sign:active { background: var(–bg-soft); }
-.limit-num {
-font-family: var(–mono); font-size: 20px; font-weight: 800; line-height: 1;
-color: var(–ink);
+.stat-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
 }
-.limit-lbl {
-font-family: var(–mono); font-size: 7px; color: var(–ink-soft);
-letter-spacing: 0.06em;
+.speed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
 }
-.speed-text {
-display: flex; flex-direction: column; min-width: 0; flex: 1;
+.sign {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 5px solid var(--sign-ring);
+  background: var(--sign-bg);
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
 }
-.speed-num {
-font-family: var(–mono); font-size: 30px; font-weight: 800; line-height: 1;
-color: var(–ink); letter-spacing: -0.02em;
+.sign-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--sign-ink);
+  line-height: 1;
+  letter-spacing: -0.04em;
 }
-.speed-num.over { color: var(–red); }
-.speed-unit {
-font-family: var(–mono); font-size: 9px; color: var(–ink-soft);
+.sign-label {
+  position: absolute;
+  bottom: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink-2);
+  letter-spacing: 0.04em;
 }
-
-/* Next ahead box */
-.next-row {
-display: flex; align-items: center; gap: 8px;
+.sign.flash { animation: signflash 0.6s ease-out; }
+@keyframes signflash {
+  0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.8); transform: scale(1); }
+  50% { box-shadow: 0 0 0 16px rgba(239,68,68,0); transform: scale(1.05); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); transform: scale(1); }
 }
-.next-icon { font-size: 24px; flex-shrink: 0; }
-.next-mid { flex: 1; min-width: 0; }
-.next-name {
-font-family: var(–mono); font-size: 12px; font-weight: 700;
-overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.speedo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
-.next-sub {
-font-family: var(–mono); font-size: 9px; color: var(–ink-soft);
+.speedo-val {
+  background: var(--speedo-bg);
+  color: var(--speedo-ink);
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+  text-align: center;
 }
-.next-dist {
-font-family: var(–mono); font-size: 22px; font-weight: 800; color: var(–amber);
-flex-shrink: 0; line-height: 1;
+.speedo-val.over { background: var(--red); animation: overpulse 0.6s infinite; }
+@keyframes overpulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
 }
-.next-dist.urgent { color: var(–red); animation: pulse 1s infinite; }
-@keyframes pulse {
-0%, 100% { opacity: 1; }
-50% { opacity: 0.5; }
+.speedo-unit {
+  font-size: 10px;
+  color: var(--ink-2);
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.next-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 .next-empty {
-color: var(–ink-faint); font-style: italic;
-font-size: 11px; font-family: var(–mono);
+  font-style: italic;
+  color: var(--ink-3);
+  font-size: 13px;
 }
+.next-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.next-meta {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+.next-dist {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--amber-2);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+.next-dist .unit { font-size: 12px; color: var(--ink-2); margin-left: 3px; font-weight: 600; }
+.next-dist.urgent { color: var(--red); }
 
-/* === Map (fills middle) === */
+/* MAP */
 .map-wrap {
-flex: 1; min-height: 0;
-position: relative;
-background: #2a2520;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  min-height: 200px;
 }
-#map {
-position: absolute;
-top: 0; left: 0; right: 0; bottom: 0;
-width: 100%; height: 100%;
-background: #2a2520;
+#map { width: 100%; height: 100%; background: var(--surface-2); }
+.map-overlay-btns {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 500;
 }
-.map-overlay-btn {
-position: absolute; right: 12px; bottom: 12px;
-width: 44px; height: 44px; border-radius: 50%;
-background: var(–bg-card); border: 1px solid var(–line);
-cursor: pointer; z-index: 600;
-display: grid; place-items: center; font-size: 18px;
-box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+.map-btn {
+  appearance: none;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  width: 36px; height: 36px;
+  cursor: pointer;
+  display: grid; place-items: center;
+  font-size: 14px;
+  box-shadow: var(--shadow);
 }
-.map-overlay-btn:active { background: var(–bg-soft); }
+.map-btn:active { transform: scale(0.92); }
+.follow-pill {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 500;
+  background: var(--green-2);
+  color: #0c0a09;
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font: 600 10px ui-monospace, monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: var(--shadow);
+}
+.follow-pill.off {
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.follow-pill .blink {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #0c0a09;
+  animation: blink 1.5s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.follow-pill.off .blink { background: var(--ink-3); animation: none; }
 
-/* === Bottom controls === */
-.controls {
-display: flex; gap: 6px;
-padding: 6px 8px;
-background: var(–bg-card);
-border-top: 1px solid var(–line);
-flex-shrink: 0;
+/* MAP MARKERS */
+.ra-marker {
+  width: 36px !important; height: 36px !important;
+  margin-left: -18px !important; margin-top: -18px !important;
+  border: 3px solid;
+  border-radius: 50%;
+  display: grid !important; place-items: center;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  background: var(--surface);
+  position: relative;
 }
-.ctrl-btn {
-appearance: none; cursor: pointer;
-padding: 10px 8px;
-border: 1px solid var(–line);
-background: var(–bg-card);
-color: var(–ink);
-border-radius: 8px;
-font-family: var(–mono); font-size: 12px; font-weight: 700;
-display: flex; align-items: center; justify-content: center; gap: 4px;
-min-width: 0;
+.ra-marker.passed { opacity: 0.4; }
+.ra-marker.disabled { opacity: 0.3; filter: grayscale(1); }
+.ra-marker.t-petrol        { border-color: #65a30d; background: #ecfccb; }
+.ra-marker.t-checkpoint    { border-color: #ca8a04; background: #fef9c3; }
+.ra-marker.t-speed_camera  { border-color: #dc2626; background: #fee2e2; }
+.ra-marker.t-mobile_camera { border-color: #ea580c; background: #ffedd5; }
+.ra-marker.t-speed_change  { border-color: #0891b2; background: #cffafe; }
+.ra-marker.t-gate          { border-color: #7c3aed; background: #ede9fe; }
+.ra-marker.t-other         { border-color: #57534e; background: #f5f1e8; }
+.ra-marker .side {
+  position: absolute;
+  bottom: -6px; right: -6px;
+  width: 16px; height: 16px;
+  background: #1c1917;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 3px;
+  border: 2px solid var(--surface);
+  display: grid; place-items: center;
 }
-.ctrl-btn:active { transform: scale(0.97); }
-.ctrl-btn.capture {
-flex: 1; background: var(–red); color: #fff; border-color: var(–red);
+.ra-current {
+  width: 22px !important; height: 22px !important;
+  margin-left: -11px !important; margin-top: -11px !important;
+  background: #2563eb;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.3), 0 2px 6px rgba(0,0,0,0.5);
+  animation: pulsedot 2s infinite;
 }
-.ctrl-btn.start {
-flex: 1.3; background: var(–green); color: #0c0a09; border-color: var(–green);
+@keyframes pulsedot {
+  0%,100% { box-shadow: 0 0 0 4px rgba(37,99,235,0.3), 0 2px 6px rgba(0,0,0,0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(37,99,235,0), 0 2px 6px rgba(0,0,0,0.5); }
 }
-.ctrl-btn.start.running {
-background: var(–red); color: #fff; border-color: var(–red);
-animation: gpsRun 2s infinite;
+.ra-dest {
+  width: 36px !important; height: 36px !important;
+  margin-left: -18px !important; margin-top: -18px !important;
+  background: var(--green-2);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  display: grid !important; place-items: center;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
-@keyframes gpsRun {
-0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.5); }
-50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
-}
-.ctrl-btn.icon { width: 44px; padding: 10px; }
 
-/* === Toast === */
-.toast {
-position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-background: rgba(28,25,23,0.95); color: #fff;
-padding: 10px 18px; border-radius: 100px;
-font-family: var(–mono); font-size: 12px;
-z-index: 9999;
-opacity: 0; pointer-events: none;
-transition: opacity 0.2s;
-box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-max-width: 90%; text-align: center;
+/* ACTIONS */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 6px;
 }
-.toast.show { opacity: 1; }
+.btn {
+  appearance: none;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  font: 700 14px ui-monospace, monospace;
+  padding: 14px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.1s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-capture { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-go { background: var(--green-2); color: #0c0a09; border-color: var(--green-2); }
+.btn-go.active { background: var(--surface); color: var(--red); border-color: var(--red); }
+.btn-square { width: 48px; padding: 14px 0; }
 
-/* === Modal (sheet) === */
+/* STATUS LINE */
+.status-line {
+  font-size: 10px;
+  color: var(--ink-3);
+  text-align: center;
+  letter-spacing: 0.04em;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+.status-line strong { color: var(--ink-2); margin-right: 3px; }
+.status-line .live { color: var(--green); }
+.status-line .demo { color: var(--cyan); }
+
+/* MODALS - improved backdrop visibility */
 .modal {
-position: fixed; inset: 0; z-index: 9500;
-background: rgba(0,0,0,0.65);
-display: none;
-align-items: flex-end; justify-content: center;
--webkit-backdrop-filter: blur(2px);
-backdrop-filter: blur(2px);
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  display: none;
+  align-items: flex-end;
+  z-index: 1000;
 }
 .modal.open { display: flex; }
 .modal-card {
-background: var(–bg-card);
-width: 100%; max-width: 480px;
-border-radius: 16px 16px 0 0;
-padding: 14px 14px 24px;
-max-height: 85vh; overflow-y: auto;
-padding-bottom: calc(24px + env(safe-area-inset-bottom));
-box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
-border-top: 2px solid var(–amber);
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--bg);
+  border-top: 2px solid var(--amber);
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.3);
 }
-.modal-grip {
-width: 40px; height: 4px; background: var(–line);
-border-radius: 2px; margin: 0 auto 12px;
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-.modal-title {
-font-family: var(–mono); font-size: 11px;
-color: var(–ink-soft); letter-spacing: 0.08em;
-text-transform: uppercase; font-weight: 700;
-padding: 8px 4px 6px;
+.modal-title { font-weight: 700; font-size: 16px; }
+.modal-close {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
 }
-.modal-grid {
-display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
-margin-bottom: 10px;
+.section-title {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 6px;
+  padding: 0 4px;
 }
-.modal-btn {
-appearance: none; cursor: pointer;
-background: var(–bg-soft); border: 1px solid var(–line);
-border-radius: 10px;
-padding: 14px 10px;
-font-family: var(–mono); font-size: 12px; font-weight: 700;
-color: var(–ink);
-display: flex; flex-direction: column; align-items: center; gap: 4px;
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
 }
-.modal-btn .ic { font-size: 20px; }
-.modal-btn:active { transform: scale(0.97); }
-.modal-btn.active { background: var(–amber); color: #0c0a09; border-color: var(–amber); }
-.modal-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.modal-row {
-appearance: none; cursor: pointer;
-background: var(–bg-soft); border: 1px solid var(–line);
-border-radius: 10px;
-padding: 12px 14px;
-text-align: left;
-font-family: var(–mono); font-size: 13px; color: var(–ink);
-display: flex; align-items: center; gap: 8px;
+.row .label { flex: 1; color: var(--ink); }
+.row input, .row select {
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  color: var(--ink);
+  font: inherit;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: right;
 }
-.modal-row.active { background: var(–amber); color: #0c0a09; border-color: var(–amber); }
-.modal-row .label { flex: 1; font-weight: 700; }
-.modal-row .meta { font-size: 10px; color: var(–ink-soft); }
-.modal-row.active .meta { color: rgba(0,0,0,0.6); }
+.row input[type=number] { width: 72px; text-align: center; }
+.row input[type=text]   { flex: 2; text-align: left; }
+.opts {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.opts button {
+  appearance: none;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font: 600 11px ui-monospace, monospace;
+  cursor: pointer;
+}
+.opts button.active {
+  background: var(--amber);
+  color: #0c0a09;
+  border-color: var(--amber);
+}
+.toggle {
+  width: 36px; height: 20px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  left: 2px; top: 2px;
+  width: 14px; height: 14px;
+  background: var(--ink-3);
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+}
+.toggle.on { background: var(--amber); border-color: var(--amber); }
+.toggle.on::after { transform: translateX(16px); background: #0c0a09; }
 
-/* Settings rows */
-.set-row {
-display: flex; flex-direction: column; gap: 4px;
-padding: 10px 4px;
-border-bottom: 1px solid var(–line);
-}
-.set-row:last-child { border-bottom: none; }
-.set-row label {
-font-family: var(–mono); font-size: 11px;
-color: var(–ink-soft); font-weight: 700;
-}
-.set-row .opts { display: flex; gap: 4px; flex-wrap: wrap; }
-.set-row .opts button {
-appearance: none; cursor: pointer;
-flex: 1; min-width: 60px;
-padding: 8px 10px;
-background: var(–bg-card); border: 1px solid var(–line);
-border-radius: 8px;
-font-family: var(–mono); font-size: 11px; font-weight: 700;
-color: var(–ink);
-}
-.set-row .opts button.active {
-background: var(–amber); color: #0c0a09; border-color: var(–amber);
-}
-.set-input {
-padding: 8px 10px;
-background: var(–bg-card); border: 1px solid var(–line);
-border-radius: 8px;
-font-family: var(–mono); font-size: 12px;
-color: var(–ink); width: 100%;
-}
-
-/* Limit picker grid */
-.limit-grid {
-display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
-margin-bottom: 10px;
-}
-.limit-pick {
-appearance: none; cursor: pointer;
-aspect-ratio: 1;
-background: var(–bg-card); border: 3px solid var(–red);
-border-radius: 50%;
-font-family: var(–mono); font-size: 18px; font-weight: 800;
-color: var(–ink);
-}
-.limit-pick.clear { border-color: var(–line); border-style: dashed; font-size: 11px; }
-
-/* Capture grid */
+/* CAPTURE GRID */
 .cap-grid {
-display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 .cap-btn {
-appearance: none; cursor: pointer;
-background: var(–bg-soft); border: 1px solid var(–line);
-border-radius: 10px; padding: 14px 10px;
-font-family: var(–mono); font-size: 12px; font-weight: 700;
-color: var(–ink);
-display: flex; flex-direction: column; align-items: center; gap: 4px;
+  appearance: none;
+  border: 2px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 16px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font: 700 12px ui-monospace, monospace;
+  min-height: 80px;
 }
-.cap-btn:active { background: var(–bg-card); }
-.cap-btn.active { background: var(–amber); color: #0c0a09; border-color: var(–amber); }
-.cap-btn .ic { font-size: 26px; }
+.cap-btn:active { transform: scale(0.95); }
+.cap-btn .em { font-size: 28px; }
+.cap-btn.t-petrol        { border-color: #65a30d; }
+.cap-btn.t-checkpoint    { border-color: #ca8a04; }
+.cap-btn.t-speed_camera  { border-color: #dc2626; }
+.cap-btn.t-mobile_camera { border-color: #ea580c; }
+.cap-btn.t-speed_change  { border-color: #0891b2; }
+.cap-btn.t-gate          { border-color: #7c3aed; }
+.cap-btn.t-other         { border-color: #57534e; }
 
-/* Leaflet map background dark */
-.leaflet-container { background: #2a2520 !important; }
+/* SHEET BUTTONS */
+.sheet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.sheet-btn {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  color: var(--ink);
+  padding: 18px;
+  border-radius: 12px;
+  font: 700 14px ui-monospace, monospace;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.sheet-btn:active { transform: scale(0.97); }
+.sheet-btn .em { font-size: 26px; }
+
+.limit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.limit-pick {
+  appearance: none;
+  border: 3px solid var(--red);
+  background: #fff;
+  color: #1c1917;
+  font: 800 22px ui-monospace, monospace;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.limit-pick:active { transform: scale(0.94); }
+
+/* LISTS */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.list-row .em { font-size: 20px; flex-shrink: 0; }
+.list-row .info { flex: 1; min-width: 0; }
+.list-row .name {
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-row .meta { font-size: 10px; color: var(--ink-3); }
+.list-row.disabled .name { text-decoration: line-through; opacity: 0.5; }
+.list-row .row-btn {
+  appearance: none;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  display: grid; place-items: center;
+}
+.list-row .row-btn.del { color: var(--red); border-color: var(--red); }
+.list-row .row-btn.keep { color: var(--green); border-color: var(--green); }
+.list-row .row-btn.active.keep { background: var(--green); color: #fff; }
+.list-row .row-btn.active.del { background: var(--red); color: #fff; }
+.empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--ink-3);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font: 600 11px ui-monospace, monospace;
+  cursor: pointer;
+  text-transform: uppercase;
+  flex: 1;
+  min-width: max-content;
+}
+.tab.active { background: var(--amber); color: #0c0a09; }
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font: 600 12px ui-monospace, monospace;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2000;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: var(--shadow);
+  max-width: 90%;
+  text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.good { background: var(--green); color: #fff; }
+.toast.bad { background: var(--red); color: #fff; }
+
+/* Leaflet overrides */
+.leaflet-container { background: var(--surface-2); font-family: ui-monospace, monospace; }
+.leaflet-control-attribution {
+  background: rgba(255,255,255,0.7) !important;
+  font-size: 9px !important;
+  color: var(--ink-2) !important;
+}
+.leaflet-control-attribution a { color: var(--amber-2) !important; }
+.leaflet-popup-content-wrapper {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--line-2);
+}
+.leaflet-popup-tip { background: var(--surface) !important; }
+.leaflet-popup-content { margin: 10px 14px !important; font-size: 12px; }
+.leaflet-popup-content .pop-name { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
+.leaflet-popup-content .pop-meta { font-size: 10px; color: var(--ink-2); margin-bottom: 6px; }
+.leaflet-popup-content button {
+  appearance: none;
+  border: none;
+  background: var(--amber);
+  color: #0c0a09;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  margin-right: 4px;
+}
+.leaflet-control-zoom a {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* Tight phone screens */
+@media (max-height: 700px) {
+  .sign { width: 60px; height: 60px; border-width: 4px; }
+  .sign-value { font-size: 22px; }
+  .sign-label { bottom: 7px; font-size: 8px; }
+  .speedo-val { font-size: 22px; padding: 6px 8px; }
+  .next-dist { font-size: 18px; }
+}
 </style>
 
 </head>
-<body>
-<div class="shell">
-  <!-- Top bar -->
+<body data-theme="light">
+
+<div class="app">
+  <!-- TOP BAR -->
   <div class="topbar">
     <div class="brand">
-      <span class="brand-dot"></span>
+      <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="v">v21.4</span>
+      <span class="version">v22</span>
     </div>
-    <button class="dest" id="dest-btn">→ Pick destination</button>
-    <button class="menu-btn" id="menu-btn" title="Menu">⋯</button>
+    <span class="topbar-spacer"></span>
+    <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
   </div>
 
-  <!-- Info row -->
+  <!-- ROUTE BAR -->
 
-  <div class="info">
-    <div class="box">
-      <div class="box-tag">Speed</div>
-      <div class="speed-inner">
-        <button class="limit-sign" id="limit-btn" title="Tap to change limit">
-          <div class="limit-num" id="limit-num">—</div>
-          <div class="limit-lbl">LIMIT</div>
-        </button>
-        <div class="speed-text">
-          <div class="speed-num" id="speed-num">0</div>
-          <div class="speed-unit">KM/H</div>
+  <div class="route-bar">
+    <button class="route-current" id="btn-route">
+      <span class="arrow">→</span>
+      <span id="route-name">Pick a destination</span>
+    </button>
+    <button class="route-menu" id="btn-route-menu" title="Switch route">⋯</button>
+  </div>
+
+  <!-- STATS -->
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Speed</div>
+      <div class="speed-row">
+        <div class="sign" id="sign" title="Tap to set limit">
+          <div class="sign-value" id="sign-value">—</div>
+          <div class="sign-label">LIMIT</div>
+        </div>
+        <div class="speedo">
+          <div class="speedo-val" id="speedo-val">0</div>
+          <div class="speedo-unit">KM/H</div>
         </div>
       </div>
     </div>
-    <div class="box">
-      <div class="box-tag">Next ahead</div>
-      <div id="next-content">
+    <div class="stat-card">
+      <div class="stat-label">Next ahead</div>
+      <div class="next-body" id="next-body">
         <div class="next-empty">— nothing ahead —</div>
       </div>
     </div>
   </div>
 
-  <!-- Map -->
+  <!-- MAP -->
 
   <div class="map-wrap">
     <div id="map"></div>
-    <button class="map-overlay-btn" id="recenter-btn" title="Recenter">📍</button>
-  </div>
-
-  <!-- Bottom controls -->
-
-  <div class="controls">
-    <button class="ctrl-btn capture" id="capture-btn">📷 Capture</button>
-    <button class="ctrl-btn start" id="start-btn">▶ Start GPS</button>
-    <button class="ctrl-btn icon" id="settings-btn" title="Settings">⚙</button>
-  </div>
-</div>
-
-<!-- Toast -->
-
-<div class="toast" id="toast"></div>
-
-<!-- Modals -->
-
-<!-- Menu sheet -->
-
-<div class="modal" id="menu-modal">
-  <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title">Quick actions</div>
-    <div class="modal-grid">
-      <button class="modal-btn" id="m-dest"><span class="ic">📍</span><span>Destinations</span></button>
-      <button class="modal-btn" id="m-points"><span class="ic">📋</span><span>Saved points</span></button>
-      <button class="modal-btn" id="m-export"><span class="ic">⬇</span><span>Backup data</span></button>
-      <button class="modal-btn" id="m-import"><span class="ic">⬆</span><span>Restore backup</span></button>
-      <button class="modal-btn" id="m-close" style="grid-column:span 2;"><span class="ic">✕</span><span>Close</span></button>
-    </div>
-    <input type="file" id="m-import-file" accept="application/json,.json" style="display:none;">
-  </div>
-</div>
-
-<!-- Destination picker -->
-
-<div class="modal" id="dest-modal">
-  <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title">Pick destination</div>
-    <div class="modal-list" id="dest-list">
-      <div style="color:var(--ink-faint);font-style:italic;padding:10px;text-align:center;font-family:var(--mono);font-size:11px;">No destinations yet — add one</div>
-    </div>
-    <div class="modal-title">Add new</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-      <input class="set-input" id="dest-name-input" placeholder="Name (e.g. Work to home)">
-      <button class="ctrl-btn capture" id="dest-add-here" style="flex:1;">📍 Use current GPS location</button>
+    <button class="follow-pill" id="follow-pill">
+      <span class="blink"></span>
+      <span id="follow-label">Follow: ON</span>
+    </button>
+    <div class="map-overlay-btns">
+      <button class="map-btn" id="btn-fit" title="Fit all">⛶</button>
+      <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
     </div>
   </div>
-</div>
 
-<!-- Saved points -->
+  <!-- ACTIONS -->
 
-<div class="modal" id="points-modal">
-  <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title" id="points-title">Saved points</div>
-    <div class="modal-list" id="points-list"></div>
+  <div class="actions">
+    <button class="btn btn-capture" id="btn-capture">📷 Capture</button>
+    <button class="btn btn-go" id="btn-go">▶ Start GPS</button>
+    <button class="btn btn-square" id="btn-demo" title="Demo">▷</button>
+  </div>
+
+  <!-- STATUS LINE -->
+
+  <div class="status-line">
+    <span><strong id="status-mode">Idle</strong></span>
+    <span><strong id="status-gps">—</strong></span>
+    <span id="status-pts">0 pts</span>
   </div>
 </div>
 
-<!-- Capture type picker -->
+<!-- ============== MODALS ============== -->
 
-<div class="modal" id="capture-modal">
+<!-- Capture -->
+
+<div class="modal" id="m-capture">
   <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title">What did you spot?</div>
+    <div class="modal-head">
+      <div class="modal-title">Capture point</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
     <div class="cap-grid">
-      <button class="cap-btn" data-cap="speed_cam"><span class="ic">📷</span><span>Speed cam</span></button>
-      <button class="cap-btn" data-cap="mobile_cam"><span class="ic">📸</span><span>Mobile cam</span></button>
-      <button class="cap-btn" data-cap="checkpoint"><span class="ic">🛂</span><span>Checkpoint</span></button>
-      <button class="cap-btn" data-cap="speed_zone"><span class="ic">🚧</span><span>Speed zone</span></button>
-      <button class="cap-btn" data-cap="petrol"><span class="ic">⛽</span><span>Petrol</span></button>
-      <button class="cap-btn" data-cap="gate"><span class="ic">🚪</span><span>Gate</span></button>
-      <button class="cap-btn" data-cap="other"><span class="ic">📌</span><span>Other</span></button>
-      <button class="cap-btn" data-cap="cancel" style="background:transparent;"><span class="ic">✕</span><span>Cancel</span></button>
+      <button class="cap-btn t-petrol"        data-cap="petrol"><span class="em">⛽</span>Petrol</button>
+      <button class="cap-btn t-checkpoint"    data-cap="checkpoint"><span class="em">🛂</span>Checkpoint</button>
+      <button class="cap-btn t-speed_camera"  data-cap="speed_camera"><span class="em">📷</span>Speed cam</button>
+      <button class="cap-btn t-mobile_camera" data-cap="mobile_camera"><span class="em">📱</span>Mobile cam</button>
+      <button class="cap-btn t-speed_change"  data-cap="speed_change"><span class="em">⇅</span>Speed zone</button>
+      <button class="cap-btn t-gate"          data-cap="gate"><span class="em">🚪</span>Gate</button>
+      <button class="cap-btn t-other"         data-cap="other" style="grid-column:span 2;"><span class="em">📝</span>Other / Custom</button>
     </div>
   </div>
 </div>
 
-<!-- Edit point modal (v21.4) -->
+<!-- Side picker -->
 
-<div class="modal" id="edit-point-modal">
+<div class="modal" id="m-side">
   <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title">Edit point</div>
-    <div class="set-row">
-      <label>Custom name (optional)</label>
-      <input class="set-input" id="ep-name" placeholder="e.g. Speed cam by gas station">
+    <div class="modal-head">
+      <div class="modal-title">Which side of the road?</div>
+      <button class="modal-close" data-close>×</button>
     </div>
-    <div class="set-row">
-      <label>Type</label>
-      <div class="cap-grid" style="margin-top:6px;">
-        <button class="cap-btn" data-ep-type="speed_cam"><span class="ic">📷</span><span>Speed cam</span></button>
-        <button class="cap-btn" data-ep-type="mobile_cam"><span class="ic">📸</span><span>Mobile cam</span></button>
-        <button class="cap-btn" data-ep-type="checkpoint"><span class="ic">🛂</span><span>Checkpoint</span></button>
-        <button class="cap-btn" data-ep-type="speed_zone"><span class="ic">🚧</span><span>Speed zone</span></button>
-        <button class="cap-btn" data-ep-type="petrol"><span class="ic">⛽</span><span>Petrol</span></button>
-        <button class="cap-btn" data-ep-type="gate"><span class="ic">🚪</span><span>Gate</span></button>
-        <button class="cap-btn" data-ep-type="other"><span class="ic">📌</span><span>Other</span></button>
+    <div class="sheet-grid">
+      <button class="sheet-btn" data-side="left"><span class="em">⬅️</span>Left</button>
+      <button class="sheet-btn" data-side="right"><span class="em">➡️</span>Right</button>
+    </div>
+    <button class="btn" data-side="none">Skip / unsure</button>
+  </div>
+</div>
+
+<!-- Speed limit picker -->
+
+<div class="modal" id="m-limit">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title" id="limit-title">New speed limit (km/h)</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="limit-grid" id="limit-grid"></div>
+    <div class="row">
+      <input type="number" id="limit-custom" placeholder="Custom" min="20" max="200" step="5">
+      <button class="btn btn-go" id="limit-save" style="flex:0 0 auto;padding:8px 16px;">Save</button>
+    </div>
+    <button class="btn" id="limit-clear" style="color:var(--red);border-color:var(--red);">Clear manual limit</button>
+  </div>
+</div>
+
+<!-- Custom name -->
+
+<div class="modal" id="m-other">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Name the point</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="row">
+      <input type="text" id="other-name" placeholder="e.g. Bridge, Toll, Hole" autocomplete="off">
+    </div>
+    <button class="btn btn-go" id="other-save">Save</button>
+  </div>
+</div>
+
+<!-- Point editor -->
+
+<div class="modal" id="m-edit">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Edit point</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="row"><span class="label">Name</span><input type="text" id="e-name"></div>
+    <div class="row"><span class="label">Type</span>
+      <select id="e-type">
+        <option value="petrol">⛽ Petrol</option>
+        <option value="checkpoint">🛂 Checkpoint</option>
+        <option value="speed_camera">📷 Speed cam</option>
+        <option value="mobile_camera">📱 Mobile cam</option>
+        <option value="speed_change">⇅ Speed zone</option>
+        <option value="gate">🚪 Gate</option>
+        <option value="other">📝 Other</option>
+      </select>
+    </div>
+    <div class="row" id="e-limit-row" style="display:none;">
+      <span class="label">Speed limit</span>
+      <input type="number" id="e-limit" min="20" max="200" step="10">
+    </div>
+    <div class="row" id="e-side-row" style="display:none;">
+      <span class="label">Side</span>
+      <div class="opts" id="e-side-opts">
+        <button data-side="left">Left</button>
+        <button data-side="right">Right</button>
+        <button data-side="">—</button>
       </div>
     </div>
-    <div style="display:flex;gap:6px;margin-top:14px;">
-      <button class="ctrl-btn" id="ep-cancel" style="flex:1;">Cancel</button>
-      <button class="ctrl-btn capture" id="ep-delete" style="flex:1;">🗑 Delete</button>
-      <button class="ctrl-btn start" id="ep-save" style="flex:1.2;">✓ Save</button>
+    <div class="row"><span class="label">Status</span>
+      <div class="opts" id="e-status-opts">
+        <button data-status="active">Active</button>
+        <button data-status="maybe">Maybe</button>
+        <button data-status="no">Off</button>
+      </div>
+    </div>
+    <div class="row"><span class="label">Lat</span><input type="number" id="e-lat" step="0.00001"></div>
+    <div class="row"><span class="label">Lng</span><input type="number" id="e-lng" step="0.00001"></div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="e-gmap">📍 Maps</button>
+      <button class="btn" id="e-delete" style="color:var(--red);border-color:var(--red);">Delete</button>
+      <button class="btn btn-go" id="e-save" style="flex:2;">Save</button>
     </div>
   </div>
 </div>
 
-<!-- Limit picker -->
+<!-- Destinations list -->
 
-<div class="modal" id="limit-modal">
+<div class="modal" id="m-routes">
   <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title">Set speed limit</div>
-    <div class="limit-grid">
-      <button class="limit-pick" data-lim="40">40</button>
-      <button class="limit-pick" data-lim="60">60</button>
-      <button class="limit-pick" data-lim="80">80</button>
-      <button class="limit-pick" data-lim="100">100</button>
-      <button class="limit-pick" data-lim="120">120</button>
-      <button class="limit-pick" data-lim="140">140</button>
-      <button class="limit-pick clear" data-lim="">Clear</button>
-      <button class="limit-pick clear" data-lim="-">Cancel</button>
+    <div class="modal-head">
+      <div class="modal-title">Destinations</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="list" id="routes-list"></div>
+    <button class="btn btn-go" id="route-add">+ Add destination</button>
+  </div>
+</div>
+
+<!-- Destination editor -->
+
+<div class="modal" id="m-route-edit">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title" id="re-title">Add destination</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="row"><span class="label">Name</span><input type="text" id="re-name" placeholder="e.g. Home, Work"></div>
+    <div class="tabs" id="re-tabs">
+      <button class="tab active" data-retab="here">Here</button>
+      <button class="tab" data-retab="latlng">Lat/Lng</button>
+      <button class="tab" data-retab="tap">Tap map</button>
+    </div>
+    <div data-pane="here" class="re-pane">
+      <div class="row" style="font-size:12px;color:var(--ink-2);">Use current GPS position. Start GPS first to get a fix.</div>
+      <button class="btn" id="re-here-grab">Use my current location</button>
+    </div>
+    <div data-pane="latlng" class="re-pane" style="display:none;">
+      <div class="row"><span class="label">Lat</span><input type="number" id="re-lat" step="0.00001"></div>
+      <div class="row"><span class="label">Lng</span><input type="number" id="re-lng" step="0.00001"></div>
+    </div>
+    <div data-pane="tap" class="re-pane" style="display:none;">
+      <div class="row" style="font-size:12px;color:var(--ink-2);">Close this dialog, then long-press the map. Coordinates fill in automatically.</div>
+    </div>
+    <div class="row" id="re-coords-display" style="display:none;font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-2);"></div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="re-delete" style="color:var(--red);border-color:var(--red);display:none;">Delete</button>
+      <button class="btn btn-go" id="re-save" style="flex:2;">Save</button>
     </div>
   </div>
 </div>
 
 <!-- Settings -->
 
-<div class="modal" id="settings-modal">
+<div class="modal" id="m-settings">
   <div class="modal-card">
-    <div class="modal-grip"></div>
-    <div class="modal-title">Settings</div>
-    <div class="set-row">
-      <label>Sound</label>
-      <div class="opts" id="opt-sound">
-        <button data-sound="voice">🔊 Voice</button>
-        <button data-sound="beep">🔉 Beep</button>
-        <button data-sound="both">Both</button>
-        <button data-sound="off">🔇 Off</button>
-      </div>
+    <div class="modal-head">
+      <div class="modal-title">Settings</div>
+      <button class="modal-close" data-close>×</button>
     </div>
-    <div class="set-row">
-      <label>Voice type</label>
-      <div class="opts" id="opt-voice">
-        <button data-voice="female">♀ Female</button>
-        <button data-voice="male">♂ Male</button>
-        <button data-voice="none">None</button>
-      </div>
+
+```
+<div class="section-title">Display</div>
+<div class="row">
+  <span class="label">Theme</span>
+  <div class="opts" id="theme-opts">
+    <button data-theme="auto">Auto</button>
+    <button data-theme="light">Day</button>
+    <button data-theme="dark">Night</button>
+  </div>
+</div>
+
+<div class="section-title">Alerts</div>
+<div class="row">
+  <span class="label">Sound</span>
+  <div class="opts" id="sound-opts">
+    <button data-sound="voice">Voice</button>
+    <button data-sound="beep">Beep</button>
+    <button data-sound="both">Both</button>
+    <button data-sound="off">Off</button>
+  </div>
+</div>
+<div class="row">
+  <span class="label">Voice type</span>
+  <div class="opts" id="voice-opts">
+    <button data-voice="female">♀ Female</button>
+    <button data-voice="male">♂ Male</button>
+    <button data-voice="none">None</button>
+  </div>
+</div>
+<div class="row"><span class="label">Announce side in voice</span><span class="toggle" id="t-side"></span></div>
+<div class="row">
+  <span class="label">Alert distances (m)</span>
+  <input type="text" id="i-markers" placeholder="2000, 1000, 500">
+</div>
+
+<div class="section-title">Speed limit alerts</div>
+<div class="row">
+  <span class="label">Mode</span>
+  <div class="opts" id="speed-opts">
+    <button data-speed="off">Off</button>
+    <button data-speed="beep">Beep</button>
+    <button data-speed="voice">Voice</button>
+    <button data-speed="both">Both</button>
+  </div>
+</div>
+<div class="row"><span class="label">Trigger when over by (km/h)</span><input type="number" id="i-over" min="0" max="50"></div>
+
+<div class="section-title">Trips</div>
+<div style="display:flex;gap:6px;">
+  <button class="btn" id="trip-toggle">▶ Start trip</button>
+  <button class="btn" id="trip-list">View trips</button>
+</div>
+
+<div class="section-title">GitHub backup</div>
+<div class="row"><span class="label">Token</span><input type="password" id="i-gh-token" placeholder="ghp_..."></div>
+<div class="row"><span class="label">Repo</span><input type="text" id="i-gh-repo" placeholder="user/repo"></div>
+<div class="row"><span class="label">File path</span><input type="text" id="i-gh-path" placeholder="road-alert.json"></div>
+<div class="row"><span class="label">Auto-backup every 5 min</span><span class="toggle" id="t-autobackup"></span></div>
+<div id="backup-status" style="font-size:10px;color:var(--ink-3);text-align:center;padding:4px;">No backup yet</div>
+<button class="btn btn-go" id="btn-backup-now">☁ Backup now</button>
+
+<div class="section-title">Data</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;">
+  <button class="btn" id="btn-audit">Audit points</button>
+  <button class="btn" id="btn-disabled">Disabled (<span id="disabled-count">0</span>)</button>
+  <button class="btn" id="btn-export">Export</button>
+  <button class="btn" id="btn-import">Import</button>
+  <button class="btn" id="btn-edit-json">Edit JSON</button>
+</div>
+<input type="file" id="import-file" accept="application/json" style="display:none">
+<button class="btn" id="btn-test-sound">🔊 Test sound</button>
+```
+
+  </div>
+</div>
+
+<!-- Audit -->
+
+<div class="modal" id="m-audit">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Audit · <span id="audit-count">0</span> points</div>
+      <button class="modal-close" data-close>×</button>
     </div>
-    <div class="set-row">
-      <label>Alert distances (meters, comma separated)</label>
-      <input class="set-input" id="opt-markers" placeholder="2000, 1000, 500">
+    <div class="list" id="audit-list"></div>
+  </div>
+</div>
+
+<!-- Disabled -->
+
+<div class="modal" id="m-disabled">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Disabled points</div>
+      <button class="modal-close" data-close>×</button>
     </div>
-    <div class="set-row">
-      <label>Speed over limit alert (km/h)</label>
-      <input class="set-input" id="opt-over" type="number" min="0" max="50" placeholder="5">
+    <div class="list" id="disabled-list"></div>
+  </div>
+</div>
+
+<!-- Trips -->
+
+<div class="modal" id="m-trips">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Trip log</div>
+      <button class="modal-close" data-close>×</button>
     </div>
-    <div style="margin-top:10px;">
-      <button class="ctrl-btn capture" id="opt-test-sound" style="flex:1;width:100%;">🔊 Test sound</button>
+    <div class="list" id="trips-list"></div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="btn-export-trips">Export trips</button>
+      <button class="btn" id="btn-clear-trips" style="color:var(--red);border-color:var(--red);">Clear all</button>
     </div>
   </div>
 </div>
 
+<!-- JSON editor -->
+
+<div class="modal" id="m-json">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">Edit data (JSON)</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <textarea id="json-text" spellcheck="false"
+      style="min-height:280px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font:11px ui-monospace,monospace;padding:10px;border-radius:8px;resize:vertical;"></textarea>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="btn-json-copy">Copy</button>
+      <button class="btn btn-go" id="btn-json-save" style="flex:2;">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Leaflet with CDN fallback -->
+
 <script>
-// v21.3: load Leaflet with fallback CDN.
-(function loadLeaflet(){
-  function tryLoad(url, onfail){
+(function loadLeaflet() {
+  function tryLoad(url, onfail) {
     var s = document.createElement('script');
     s.src = url;
-    s.onload = function(){ console.log('Leaflet loaded from', url); };
-    s.onerror = function(){ console.warn('Leaflet load failed from', url); if (onfail) onfail(); };
+    s.onload = function() { window._leafletReady = true; };
+    s.onerror = function() { if (onfail) onfail(); };
     document.head.appendChild(s);
   }
-  tryLoad('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', function(){
-    tryLoad('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', function(){
+  tryLoad('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', function() {
+    tryLoad('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', function() {
       tryLoad('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js');
     });
   });
@@ -595,1049 +1206,1604 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
 </script>
 
 <script>
-// =====================================================
-// Road Alert v21 - Clean fresh build
-// =====================================================
 'use strict';
 
-// v21.3: catch any uncaught errors and surface them
-window.addEventListener('error', (e) => {
+// Global error handler — surface real errors
+window.addEventListener('error', function(e) {
   console.error('[uncaught]', e.message, e.filename, e.lineno);
-  try {
-    const t = document.getElementById('toast');
-    if (t) {
-      t.textContent = 'Error: ' + (e.message || 'unknown') + (e.lineno ? ' (line ' + e.lineno + ')' : '');
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 6000);
-    }
-  } catch(_){}
-});
-window.addEventListener('unhandledrejection', (e) => {
-  console.error('[promise]', e.reason);
+  var t = document.getElementById('toast');
+  if (t) {
+    t.textContent = 'Error: ' + (e.message || 'unknown');
+    t.className = 'toast show bad';
+    setTimeout(function() { t.className = 'toast'; }, 5000);
+  }
 });
 
-// --- Storage keys (same as old app so data carries over) ---
-const STORAGE_DATA = 'roadAlert.v8.data';
-const STORAGE_SETTINGS = 'roadAlert.v8.settings';
-
-// --- State ---
-let data = {
-  destinations: [],
-  points: [],
-  activeDestinationId: null,
+/* ============================================================
+   0. UTILITIES
+   ============================================================ */
+const Utils = {
+  uid() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  },
+  distKm(a, b) {
+    const R = 6371;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+    const x = Math.sin(dLat/2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng/2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+  },
+  bearing(a, b) {
+    const toRad = d => d * Math.PI / 180;
+    const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  },
+  fmtDist(km) {
+    if (km == null || isNaN(km)) return '—';
+    if (km < 1) return Math.round(km * 1000) + ' m';
+    return km.toFixed(1) + ' km';
+  },
+  escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  },
+  emoji(type, subtype) {
+    if (subtype === 'box') return '📦';
+    if (subtype === 'spider') return '🕷️';
+    return { petrol:'⛽', checkpoint:'🛂', speed_camera:'📷',
+             mobile_camera:'📱', speed_change:'⇅', gate:'🚪', other:'📝' }[type] || '•';
+  },
+  typeLabel(t) {
+    return { petrol:'Petrol', checkpoint:'Checkpoint', speed_camera:'Speed cam',
+             mobile_camera:'Mobile cam', speed_change:'Speed zone', gate:'Gate', other:'Custom' }[t] || t;
+  },
+  toast(msg, cls) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (cls ? ' ' + cls : '');
+    clearTimeout(Utils._toastT);
+    Utils._toastT = setTimeout(() => el.className = 'toast', 2400);
+  },
 };
-let settings = {
-  sound: 'voice',
-  voiceGender: 'female',
-  alertMarkersM: [2000, 1000, 500],
-  speedAlertOver: 5,
-  manualLimit: null, // current manual override (not persisted)
-};
-let mode = 'idle'; // 'idle' | 'gps'
-let watchId = null;
-let currentPos = null;
-let prevPos = null;
-let lastGPSTimestamp = null; // v21.1: track timestamps for speed fallback
-let currentSpeed = 0; // m/s
-let map = null;
-let userMarker = null;
-let pointMarkers = [];
-let followUser = true;
-const alertedMarkers = new Map(); // pointKey -> Set of meters
-const passedPoints = new Set(); // pointKeys already passed
-const lastDistByPoint = new Map(); // v21.1: track last distance per point for threshold crossing
-let editingPointId = null; // v21.4: which point is being edited
-let editingPointType = null; // v21.4: tentative type during edit
 
-// =====================================================
-// Storage
-// =====================================================
-function loadData() {
-  try {
-    const r = localStorage.getItem(STORAGE_DATA);
-    if (r) {
-      const d = JSON.parse(r);
-      if (d && Array.isArray(d.destinations)) data.destinations = d.destinations;
-      if (d && Array.isArray(d.points)) data.points = d.points;
-      if (d && d.activeDestinationId) data.activeDestinationId = d.activeDestinationId;
-    }
-  } catch(e) { console.warn('loadData', e); }
-}
-function saveData() {
-  try { localStorage.setItem(STORAGE_DATA, JSON.stringify({
-    destinations: data.destinations,
-    points: data.points,
-    activeDestinationId: data.activeDestinationId,
-  })); } catch(e) {}
-}
-function loadSettings() {
-  try {
-    const r = localStorage.getItem(STORAGE_SETTINGS);
-    if (r) {
-      const s = JSON.parse(r);
-      if (s) {
-        if (typeof s.sound === 'string') settings.sound = s.sound;
-        if (typeof s.voiceGender === 'string') settings.voiceGender = s.voiceGender;
-        if (Array.isArray(s.alertMarkersM)) settings.alertMarkersM = s.alertMarkersM;
-        if (typeof s.speedAlertOver === 'number') settings.speedAlertOver = s.speedAlertOver;
-        if (typeof s.manualLimit === 'number') settings.manualLimit = s.manualLimit;
+/* ============================================================
+   1. STORAGE
+   ============================================================ */
+const Storage = {
+  KEYS: {
+    data: 'roadAlert.v22.data',
+    settings: 'roadAlert.v22.settings',
+    trips: 'roadAlert.v22.trips',
+    gh: 'roadAlert.v22.gh',
+    // Legacy keys for migration
+    legacyData: 'roadAlert.v17.data',
+    legacyDataV8: 'roadAlert.v8.data',
+    legacySettings: 'roadAlert.v17.settings',
+    legacySettingsV8: 'roadAlert.v8.settings',
+    legacyTrips: 'roadAlert.v17.trips',
+    legacyGh: 'roadAlert.v17.gh',
+    safetyShown: 'roadAlert.v22.safetyShown',
+  },
+  load(key, def) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return def;
+  },
+  save(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch (e) { Utils.toast('Storage full', 'bad'); return false; }
+  },
+  defaultData() {
+    return { version: 22, activeDestId: null, destinations: [], points: [] };
+  },
+  defaultSettings() {
+    return {
+      theme: 'light',
+      sound: 'voice',
+      voiceGender: 'female',
+      announceSide: true,
+      alertMarkersM: [2000, 1000, 500],
+      speedAlertMode: 'beep',
+      overBy: 5,
+      autoBackup: false,
+    };
+  },
+  /** One-time migration from older storage keys */
+  migrate() {
+    // Check if we already have v22 data
+    if (localStorage.getItem(this.KEYS.data)) return;
+    // Try v17 first, then v8
+    const legacyData = this.load(this.KEYS.legacyData) || this.load(this.KEYS.legacyDataV8);
+    if (legacyData) {
+      const newData = this.defaultData();
+      if (Array.isArray(legacyData.destinations)) newData.destinations = legacyData.destinations;
+      if (Array.isArray(legacyData.points)) newData.points = legacyData.points;
+      if (legacyData.activeDestId || legacyData.activeDestinationId) {
+        newData.activeDestId = legacyData.activeDestId || legacyData.activeDestinationId;
       }
+      // Ensure every point has an id
+      newData.points.forEach(p => {
+        if (!p.id) p.id = Utils.uid();
+        if (!p.status) p.status = 'active';
+      });
+      this.save(this.KEYS.data, newData);
+      console.log('Migrated', newData.points.length, 'points from legacy storage');
     }
-  } catch(e) { console.warn('loadSettings', e); }
-}
-function saveSettings() {
-  try { localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings)); } catch(e) {}
-}
+    const legacySettings = this.load(this.KEYS.legacySettings) || this.load(this.KEYS.legacySettingsV8);
+    if (legacySettings) {
+      const s = { ...this.defaultSettings(), ...legacySettings };
+      this.save(this.KEYS.settings, s);
+    }
+    const legacyTrips = this.load(this.KEYS.legacyTrips);
+    if (Array.isArray(legacyTrips)) this.save(this.KEYS.trips, legacyTrips);
+    const legacyGh = this.load(this.KEYS.legacyGh);
+    if (legacyGh) this.save(this.KEYS.gh, legacyGh);
+  },
+};
 
-// =====================================================
-// Geometry helpers
-// =====================================================
-function toRad(x) { return x * Math.PI / 180; }
-function distanceKm(a, b) {
-  if (!a || !b) return Infinity;
-  const R = 6371;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const A = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(A), Math.sqrt(1-A));
-}
-function bearing(a, b) {
-  if (!a || !b) return 0;
-  const y = Math.sin(toRad(b.lng-a.lng)) * Math.cos(toRad(b.lat));
-  const x = Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
-            Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lng-a.lng));
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
+Storage.migrate();
 
-// =====================================================
-// Audio (iOS-safe)
-// =====================================================
-let audioCtx = null;
-let audioUnlocked = false;
-function ensureAudio() {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    try { audioCtx.resume(); } catch(e) {}
-  }
-}
-function unlockAudio() {
-  if (audioUnlocked) return;
-  ensureAudio();
-  if (audioCtx) {
+/* ============================================================
+   2. STATE
+   ============================================================ */
+const State = {
+  data: Storage.load(Storage.KEYS.data, Storage.defaultData()),
+  settings: { ...Storage.defaultSettings(), ...Storage.load(Storage.KEYS.settings, {}) },
+  trips: Storage.load(Storage.KEYS.trips, []),
+  gh: Storage.load(Storage.KEYS.gh, { token: '', repo: '', path: 'road-alert.json' }),
+
+  // Runtime
+  mode: 'idle',
+  watchId: null,
+  demoTimer: null,
+  pos: null,
+  prevPos: null,
+  prevTs: null,
+  accuracy: null,
+  speedMps: 0,
+  heading: null,
+  speedBuffer: [],
+  manualLimit: null, // user override via tap on sign
+  // v22: threshold-crossing alerts
+  // Map: pointId -> Set of marker meters already fired
+  alertedMarkers: new Map(),
+  // Map: pointId -> last seen distance in meters
+  lastDistByPoint: new Map(),
+  passedPoints: new Set(),
+
+  wakeLock: null,
+  activeTrip: null,
+  followMap: true,
+  speedAlertWasOver: false,
+  lastSpeedAlertZone: null,
+  backupTimer: null,
+  lastBackup: null,
+  lastBackupHash: null,
+  pendingCapture: null,
+  editingPointId: null,
+  editingDestId: null,
+  limitPickerMode: 'manual', // 'manual' | 'speedchange'
+
+  saveData()     { Storage.save(Storage.KEYS.data, this.data); UI.updateMapPoints(); UI.render(); },
+  saveSettings() { Storage.save(Storage.KEYS.settings, this.settings); },
+  saveTrips()    { Storage.save(Storage.KEYS.trips, this.trips); },
+  saveGh()       { Storage.save(Storage.KEYS.gh, this.gh); },
+
+  activeDest() {
+    return this.data.destinations.find(d => d.id === this.data.activeDestId) || null;
+  },
+  activePoints() {
+    const id = this.data.activeDestId;
+    return this.data.points.filter(p => !p.destId || p.destId === id);
+  },
+};
+
+/* ============================================================
+   3. AUDIO
+   ============================================================ */
+const Audio = {
+  ctx: null,
+  _voiceCache: null,
+  _voiceCacheFor: null,
+  _unlocked: false,
+
+  ensure() {
+    if (!this.ctx) {
+      try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { return null; }
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+
+  unlock() {
+    if (this._unlocked) return;
+    this.ensure();
+    if (this.ctx) {
+      try {
+        const b = this.ctx.createBuffer(1, 1, 22050);
+        const s = this.ctx.createBufferSource();
+        s.buffer = b; s.connect(this.ctx.destination); s.start(0);
+      } catch (e) {}
+    }
+    if ('speechSynthesis' in window) {
+      try {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    this._unlocked = true;
+  },
+
+  beep(type) {
+    const ctx = this.ensure(); if (!ctx) return;
+    const patterns = {
+      petrol:        [{f:700,d:0.15}],
+      checkpoint:    [{f:600,d:0.12},{f:600,d:0.12,gap:0.08}],
+      speed_camera:  [{f:1000,d:0.08},{f:1000,d:0.08,gap:0.05},{f:1000,d:0.08,gap:0.05}],
+      mobile_camera: [{f:800,d:0.1},{f:1000,d:0.1,gap:0.05}],
+      speed_change:  [{f:500,d:0.1},{f:700,d:0.1,gap:0.05}],
+      gate:          [{f:900,d:0.25}],
+      other:         [{f:600,d:0.1}],
+    };
+    const pat = patterns[type] || patterns.other;
+    let t = ctx.currentTime;
+    pat.forEach(b => {
+      t += (b.gap || 0);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = b.f;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.25, t + 0.01);
+      gain.gain.linearRampToValueAtTime(0, t + b.d);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + b.d + 0.02);
+      t += b.d;
+    });
+  },
+
+  pickVoice() {
+    const pref = State.settings.voiceGender || 'female';
+    if (pref === 'none') return null;
+    if (this._voiceCacheFor === pref && this._voiceCache) return this._voiceCache;
+    if (!('speechSynthesis' in window)) return null;
+    const voices = speechSynthesis.getVoices();
+    if (!voices || !voices.length) return null;
+    const femaleNames = ['Samantha', 'Karen', 'Moira', 'Tessa', 'Veena', 'Fiona', 'Victoria'];
+    const maleNames   = ['Daniel', 'Alex', 'Aaron', 'Fred', 'Tom', 'Oliver'];
+    const wanted = pref === 'male' ? maleNames : femaleNames;
+    const enVoices = voices.filter(v => /en[-_]/i.test(v.lang) || v.lang === 'en');
+    for (const name of wanted) {
+      const v = enVoices.find(x => x.name.includes(name));
+      if (v) { this._voiceCache = v; this._voiceCacheFor = pref; return v; }
+    }
+    if (enVoices[0]) { this._voiceCache = enVoices[0]; this._voiceCacheFor = pref; return enVoices[0]; }
+    this._voiceCache = voices[0]; this._voiceCacheFor = pref; return voices[0];
+  },
+
+  say(text) {
+    if (!('speechSynthesis' in window)) return;
+    if (State.settings.voiceGender === 'none') return;
     try {
-      const b = audioCtx.createBuffer(1, 1, 22050);
-      const s = audioCtx.createBufferSource();
-      s.buffer = b; s.connect(audioCtx.destination); s.start(0);
-    } catch(e) {}
-  }
-  // Prime speechSynthesis
-  if ('speechSynthesis' in window) {
-    try {
-      const u = new SpeechSynthesisUtterance('');
-      u.volume = 0;
+      const u = new SpeechSynthesisUtterance(text);
+      const v = this.pickVoice();
+      if (v) { u.voice = v; u.lang = v.lang; }
+      speechSynthesis.cancel();
       speechSynthesis.speak(u);
-    } catch(e) {}
-  }
-  audioUnlocked = true;
+    } catch (e) {}
+  },
+
+  /** Fire alert for a point crossing a specific marker (meters). */
+  alert(point, meters) {
+    const s = State.settings.sound;
+    if (s === 'off') return;
+    const distText = meters >= 1000 ? (meters/1000) + ' kilometers' : meters + ' meters';
+    let text = (point.name || Utils.typeLabel(point.type)) + ' in ' + distText;
+    if (State.settings.announceSide && point.side) {
+      text += point.side === 'left' ? ', left' : ', right';
+    }
+    if (s === 'voice' || s === 'both') this.say(text);
+    if (s === 'beep' || s === 'both') this.beep(point.type);
+  },
+};
+
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => {
+    Audio._voiceCache = null;
+    Audio._voiceCacheFor = null;
+  };
 }
+
+// Unlock audio on first gesture
 ['touchstart', 'touchend', 'mousedown', 'click'].forEach(ev =>
-  document.addEventListener(ev, unlockAudio, { once: true, passive: true })
+  document.addEventListener(ev, () => Audio.unlock(), { once: true, passive: true })
 );
 
-function playBeep(freq, dur) {
-  ensureAudio();
-  if (!audioCtx) return;
-  try {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.frequency.value = freq || 800;
-    o.connect(g); g.connect(audioCtx.destination);
-    g.gain.setValueAtTime(0, audioCtx.currentTime);
-    g.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
-    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + (dur || 0.2));
-    o.start();
-    o.stop(audioCtx.currentTime + (dur || 0.2));
-  } catch(e) {}
-}
-
-let _voiceCache = null;
-let _voiceCacheFor = null;
-function pickVoice() {
-  const pref = settings.voiceGender || 'female';
-  if (pref === 'none') return null;
-  if (_voiceCacheFor === pref && _voiceCache) return _voiceCache;
-  if (!('speechSynthesis' in window)) return null;
-  const voices = speechSynthesis.getVoices();
-  if (!voices || !voices.length) return null;
-  const femaleNames = ['Samantha', 'Karen', 'Moira', 'Tessa', 'Veena', 'Fiona', 'Victoria'];
-  const maleNames = ['Daniel', 'Alex', 'Aaron', 'Fred', 'Tom', 'Oliver'];
-  const wanted = pref === 'male' ? maleNames : femaleNames;
-  const enVoices = voices.filter(v => /en[-_]/i.test(v.lang) || v.lang === 'en');
-  for (const name of wanted) {
-    const v = enVoices.find(x => x.name.includes(name));
-    if (v) { _voiceCache = v; _voiceCacheFor = pref; return v; }
-  }
-  if (enVoices[0]) { _voiceCache = enVoices[0]; _voiceCacheFor = pref; return enVoices[0]; }
-  _voiceCache = voices[0]; _voiceCacheFor = pref; return voices[0];
-}
-function speak(text) {
-  if (!('speechSynthesis' in window)) return;
-  if (settings.voiceGender === 'none') return;
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    const v = pickVoice();
-    if (v) { u.voice = v; u.lang = v.lang; }
-    u.rate = 1.0;
-    speechSynthesis.speak(u);
-  } catch(e) {}
-}
-if ('speechSynthesis' in window) {
-  speechSynthesis.onvoiceschanged = () => { _voiceCache = null; _voiceCacheFor = null; };
-}
-
-// Fire alert (beep + voice depending on settings)
-function alert(point, meters) {
-  const distTxt = meters >= 1000 ? (meters/1000) + ' kilometer' : meters + ' meters';
-  const typeTxt = pointLabel(point.type);
-  if (settings.sound === 'beep' || settings.sound === 'both') {
-    playBeep(900, 0.15);
-    setTimeout(() => playBeep(700, 0.15), 200);
-  }
-  if (settings.sound === 'voice' || settings.sound === 'both') {
-    speak(typeTxt + ' in ' + distTxt);
-  }
-}
-
-// =====================================================
-// Point types
-// =====================================================
-const POINT_TYPES = {
-  speed_cam:  { icon: '📷', label: 'Speed camera' },
-  mobile_cam: { icon: '📸', label: 'Mobile camera' },
-  checkpoint: { icon: '🛂', label: 'Checkpoint' },
-  speed_zone: { icon: '🚧', label: 'Speed zone' },
-  petrol:     { icon: '⛽', label: 'Petrol' },
-  gate:       { icon: '🚪', label: 'Gate' },
-  other:      { icon: '📌', label: 'Point' },
-};
-function pointIcon(p) { return (POINT_TYPES[p.type] || POINT_TYPES.other).icon; }
-function pointLabel(t) { return (POINT_TYPES[t] || POINT_TYPES.other).label; }
-
-// =====================================================
-// Map
-// =====================================================
-function initMap() {
-  if (map) return;
-  // v21.3: guard against Leaflet not loaded (CDN failure)
-  if (typeof L === 'undefined') {
-    console.warn('Leaflet not loaded — map disabled');
-    const wrap = document.getElementById('map');
-    if (wrap) {
-      wrap.style.background = '#2a2520';
-      wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#a8a29e;font-family:monospace;font-size:11px;padding:20px;text-align:center;">' +
-        '<div style="font-size:32px;margin-bottom:8px;">🗺</div>' +
-        '<div>Map library failed to load.</div>' +
-        '<div style="margin-top:6px;opacity:0.6;">Check internet and reload.</div>' +
-        '<button onclick="location.reload()" style="margin-top:12px;padding:8px 14px;background:#d97706;color:#000;border:none;border-radius:6px;font-family:monospace;font-weight:700;">Reload</button>' +
-        '</div>';
-    }
-    return;
-  }
-  try {
-    map = L.map('map', {
-      center: [21.4858, 39.1925], // Jeddah default
-      zoom: 13,
-      zoomControl: true,
-      attributionControl: false,
-    });
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: 'Esri',
-    }).addTo(map);
-    // User-interaction stops auto-follow
-    map.on('dragstart', () => { followUser = false; });
-    map.on('zoomstart', (e) => {
-      if (e.target._zoomingProgrammatically) return;
-    });
-    refreshMapMarkers();
-    setTimeout(() => map.invalidateSize(true), 300);
-  } catch (err) {
-    console.error('Map init failed:', err);
-    showToast('Map failed: ' + (err.message || err));
-  }
-}
-
-function refreshMapMarkers() {
-  if (!map || typeof L === 'undefined') return;
-  // Clear old markers
-  pointMarkers.forEach(m => m.remove());
-  pointMarkers = [];
-  // Add current destination's points
-  const dest = activeDest();
-  if (!dest) return;
-  const pts = data.points.filter(p => p.destinationId === dest.id);
-  pts.forEach(p => {
-    const icon = L.divIcon({
-      className: 'custom-pt-icon',
-      html: '<div style="background:#fff;border:2px solid #d97706;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">' + pointIcon(p) + '</div>',
-      iconSize: [28, 28], iconAnchor: [14, 14],
-    });
-    const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
-    // v21.4: rich popup with edit and delete
-    const labelEscaped = escapeHtml(p.name || pointLabel(p.type));
-    const pidEscaped = escapeHtml(p.id);
-    m.bindPopup(
-      '<div style="font-family:monospace;font-size:12px;min-width:160px;">' +
-        '<div style="font-weight:700;margin-bottom:6px;">' + pointIcon(p) + ' ' + labelEscaped + '</div>' +
-        '<div style="display:flex;gap:4px;">' +
-          '<button onclick="openEditPoint(\'' + pidEscaped + '\')" style="flex:1;padding:6px 8px;background:#d97706;color:#000;border:none;border-radius:6px;font-family:monospace;font-weight:700;font-size:11px;cursor:pointer;">✎ Edit</button>' +
-          '<button onclick="deletePoint(\'' + pidEscaped + '\')" style="flex:1;padding:6px 8px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-family:monospace;font-weight:700;font-size:11px;cursor:pointer;">🗑 Delete</button>' +
-        '</div>' +
-      '</div>'
+/* ============================================================
+   4. GPS
+   ============================================================ */
+const GPS = {
+  async start() {
+    if (!navigator.geolocation) { Utils.toast('GPS not supported', 'bad'); return; }
+    Audio.unlock();
+    this.stop();
+    State.mode = 'gps';
+    UI.setStatusMode('LIVE', 'live');
+    await this.requestWakeLock();
+    State.watchId = navigator.geolocation.watchPosition(
+      pos => this.onTick(pos),
+      err => { Utils.toast('GPS: ' + err.message, 'bad'); this.stop(); },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
     );
-    pointMarkers.push(m);
-  });
-  // Destination marker (flag)
-  const destIcon = L.divIcon({
-    className: 'dest-icon',
-    html: '<div style="background:#dc2626;color:#fff;border:2px solid #fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.4);">🚩</div>',
-    iconSize: [30, 30], iconAnchor: [15, 15],
-  });
-  const dm = L.marker([dest.lat, dest.lng], { icon: destIcon }).addTo(map);
-  dm.bindPopup(escapeHtml(dest.name));
-  pointMarkers.push(dm);
-}
+    UI.setBtnGoActive(true);
+  },
 
-function updateUserMarker() {
-  if (!map || !currentPos || typeof L === 'undefined') return;
-  if (!userMarker) {
-    const userIcon = L.divIcon({
-      className: 'user-icon',
-      html: '<div style="background:#2563eb;border:3px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 0 0 4px rgba(37,99,235,0.3);"></div>',
-      iconSize: [18, 18], iconAnchor: [9, 9],
+  demo() {
+    Audio.unlock();
+    this.stop();
+    State.mode = 'demo';
+    UI.setStatusMode('DEMO', 'demo');
+    UI.setBtnGoActive(true);
+    const dest = State.activeDest();
+    let start, end;
+    if (dest && State.pos) {
+      start = { lat: State.pos.lat, lng: State.pos.lng };
+      end   = { lat: dest.lat, lng: dest.lng };
+    } else if (dest) {
+      start = { lat: dest.lat, lng: dest.lng - 0.5 };
+      end   = { lat: dest.lat, lng: dest.lng };
+    } else {
+      start = { lat: 21.5433, lng: 39.1728 };
+      end   = { lat: 24.4539, lng: 39.5680 };
+    }
+    const steps = 80;
+    let i = 0;
+    State.demoTimer = setInterval(() => {
+      if (i++ > steps) { this.stop(); Utils.toast('Demo complete', 'good'); return; }
+      const t = i / steps;
+      const fakePos = {
+        timestamp: Date.now(),
+        coords: {
+          latitude: start.lat + (end.lat - start.lat) * t,
+          longitude: start.lng + (end.lng - start.lng) * t,
+          accuracy: 8,
+          speed: 30,
+          heading: Utils.bearing(start, end),
+        },
+      };
+      this.onTick(fakePos);
+    }, 350);
+  },
+
+  stop() {
+    if (State.watchId != null) { navigator.geolocation.clearWatch(State.watchId); State.watchId = null; }
+    if (State.demoTimer != null) { clearInterval(State.demoTimer); State.demoTimer = null; }
+    if (State.wakeLock) { try { State.wakeLock.release(); } catch (e) {} State.wakeLock = null; }
+    State.mode = 'idle';
+    UI.setStatusMode('Idle', '');
+    UI.setBtnGoActive(false);
+  },
+
+  async requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try { State.wakeLock = await navigator.wakeLock.request('screen'); }
+    catch (e) {}
+  },
+
+  /** 4-sample rolling average for speed smoothing */
+  smoothSpeed(rawMps) {
+    if (rawMps == null || isNaN(rawMps) || rawMps < 0) return State.speedMps;
+    State.speedBuffer.push(rawMps);
+    if (State.speedBuffer.length > 4) State.speedBuffer.shift();
+    return State.speedBuffer.reduce((a, b) => a + b, 0) / State.speedBuffer.length;
+  },
+
+  onTick(pos) {
+    // v22: GPS accuracy filter — ignore garbage
+    if (pos.coords.accuracy != null && pos.coords.accuracy > 100) {
+      // Still update accuracy display but skip the position update
+      State.accuracy = pos.coords.accuracy;
+      UI.renderStatusLine();
+      return;
+    }
+
+    const prevPos = State.pos;
+    const prevTs = State.prevTs;
+    State.prevPos = prevPos;
+    State.pos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    State.prevTs = pos.timestamp || Date.now();
+    State.accuracy = pos.coords.accuracy;
+
+    // Speed: prefer GPS, fall back to time-delta calc
+    let rawSpeed = pos.coords.speed;
+    if (rawSpeed == null || isNaN(rawSpeed) || rawSpeed < 0) {
+      if (prevPos && prevTs) {
+        // v22: proper time-delta math
+        const dtSec = (State.prevTs - prevTs) / 1000;
+        if (dtSec > 0 && dtSec < 30) {
+          const meters = Utils.distKm(prevPos, State.pos) * 1000;
+          // Reject single-tick jumps > 1km
+          if (meters < 1000) {
+            rawSpeed = meters / dtSec;
+          }
+        }
+      }
+    }
+    State.speedMps = this.smoothSpeed(rawSpeed);
+
+    // v22: sanity cap
+    if (State.speedMps * 3.6 > 350) State.speedMps = 0;
+
+    if (pos.coords.heading != null && !isNaN(pos.coords.heading) && State.speedMps > 2) {
+      State.heading = pos.coords.heading;
+    }
+
+    if (State.activeTrip) {
+      const kmh = State.speedMps * 3.6;
+      if (kmh > State.activeTrip.maxSpeed) State.activeTrip.maxSpeed = kmh;
+      if (prevPos && State.speedMps > 1) {
+        const segKm = Utils.distKm(prevPos, State.pos);
+        if (segKm < 1) State.activeTrip.distanceKm += segKm;
+      }
+    }
+
+    Alerts.tick();
+    UI.render();
+    Map.update();
+  },
+};
+
+/* ============================================================
+   5. ALERTS — threshold crossing
+   ============================================================ */
+const Alerts = {
+  /** Currently effective speed limit (km/h). Manual override wins. */
+  currentLimit() {
+    if (State.manualLimit != null) return State.manualLimit;
+    const dest = State.activeDest();
+    if (!dest || !State.pos) return null;
+    const myDist = Utils.distKm(State.pos, dest);
+    const behind = State.activePoints()
+      .filter(p => p.type === 'speed_change' && typeof p.limit === 'number' && p.status !== 'no')
+      .map(p => ({ p, dToDest: Utils.distKm(p, dest) }))
+      .filter(x => x.dToDest > myDist - 0.05)
+      .sort((a, b) => a.dToDest - b.dToDest);
+    return behind.length ? behind[0].p.limit : null;
+  },
+
+  /** Points relevant for the "Next ahead" display + alert checking */
+  ahead() {
+    if (!State.pos) return [];
+    const dest = State.activeDest();
+    if (!dest) {
+      return State.activePoints()
+        .filter(p => p.status !== 'no' && !State.passedPoints.has(p.id))
+        .map(p => ({ ...p, dist: Utils.distKm(State.pos, p) }))
+        .sort((a, b) => a.dist - b.dist);
+    }
+    const myDist = Utils.distKm(State.pos, dest);
+    return State.activePoints()
+      .filter(p => p.status !== 'no' && !State.passedPoints.has(p.id))
+      .map(p => ({ ...p, dist: Utils.distKm(State.pos, p), distToDest: Utils.distKm(p, dest) }))
+      .filter(p => p.distToDest < myDist + 0.1)
+      .sort((a, b) => a.dist - b.dist);
+  },
+
+  /** v22: Threshold-crossing alert logic.
+   *  For each point within 5km, check if we've crossed any of the
+   *  configured alert markers (e.g., 2000m, 1000m, 500m) since last tick. */
+  tick() {
+    if (!State.pos) return;
+    const dest = State.activeDest();
+    const myDistToDest = dest ? Utils.distKm(State.pos, dest) : null;
+
+    State.activePoints().forEach(p => {
+      if (p.status === 'no') return;
+      if (State.passedPoints.has(p.id)) return;
+
+      const distKm = Utils.distKm(State.pos, p);
+      if (distKm > 5) {
+        // Too far — clear stale state
+        State.lastDistByPoint.delete(p.id);
+        return;
+      }
+      const meters = distKm * 1000;
+      const prevMeters = State.lastDistByPoint.get(p.id);
+
+      // Heading-aware: only alert points roughly ahead
+      let ahead = true;
+      if (State.prevPos && State.speedMps > 1) {
+        const heading = Utils.bearing(State.prevPos, State.pos);
+        const toPt = Utils.bearing(State.pos, p);
+        const diff = Math.abs(((toPt - heading + 540) % 360) - 180);
+        if (diff > 90) ahead = false;
+      }
+      // Also use route-position info if destination known
+      if (dest && myDistToDest != null) {
+        const pDistToDest = Utils.distKm(p, dest);
+        if (pDistToDest > myDistToDest + 0.15) ahead = false;
+      }
+
+      if (!ahead) {
+        // Point is behind/beside — mark as passed if moving away
+        if (prevMeters != null && meters > prevMeters && meters > 80) {
+          State.passedPoints.add(p.id);
+          State.alertedMarkers.delete(p.id);
+          State.lastDistByPoint.delete(p.id);
+        } else {
+          State.lastDistByPoint.set(p.id, meters);
+        }
+        return;
+      }
+
+      // Threshold crossing: was above marker, now at-or-below
+      const fired = State.alertedMarkers.get(p.id) || new Set();
+      const markers = State.settings.alertMarkersM || [2000, 1000, 500];
+      for (const m of markers) {
+        if (fired.has(m)) continue;
+        if (prevMeters == null) {
+          // First sight — only fire if we're already inside the marker
+          if (meters <= m && meters > m - 300) {
+            Audio.alert(p, m);
+            fired.add(m);
+            if (navigator.vibrate) navigator.vibrate(60);
+          }
+        } else if (prevMeters > m && meters <= m) {
+          // Crossed the threshold
+          Audio.alert(p, m);
+          fired.add(m);
+          if (navigator.vibrate) navigator.vibrate(60);
+        }
+      }
+      State.alertedMarkers.set(p.id, fired);
+      State.lastDistByPoint.set(p.id, meters);
     });
-    userMarker = L.marker([currentPos.lat, currentPos.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
-  } else {
-    userMarker.setLatLng([currentPos.lat, currentPos.lng]);
-  }
-  if (followUser) {
-    map._zoomingProgrammatically = true;
-    map.setView([currentPos.lat, currentPos.lng], map.getZoom() || 15, { animate: true });
-    setTimeout(() => { map._zoomingProgrammatically = false; }, 300);
-  }
-}
 
-// =====================================================
-// Destinations
-// =====================================================
-function activeDest() {
-  return data.destinations.find(d => d.id === data.activeDestinationId);
-}
+    this.checkSpeed();
+  },
 
-function addDestination(name, lat, lng) {
-  const id = 'dest_' + Date.now();
-  const dest = { id, name, lat, lng };
-  data.destinations.push(dest);
-  data.activeDestinationId = id;
-  saveData();
-  return dest;
-}
+  checkSpeed() {
+    const limit = this.currentLimit();
+    if (limit == null) { State.speedAlertWasOver = false; return; }
+    const kmh = State.speedMps * 3.6;
+    const isOver = kmh > limit + State.settings.overBy;
+    if (!isOver) { State.speedAlertWasOver = false; return; }
 
-function setActiveDest(id) {
-  data.activeDestinationId = id;
-  // Reset alert state when switching
-  alertedMarkers.clear();
-  passedPoints.clear();
-  saveData();
-  refreshMapMarkers();
-  refreshUI();
-  // Recenter map on destination
-  if (map) {
-    const d = activeDest();
-    if (d) map.setView([d.lat, d.lng], 13);
-  }
-}
+    const mode = State.settings.speedAlertMode;
+    if (mode === 'off') { State.speedAlertWasOver = true; return; }
 
-// =====================================================
-// GPS
-// =====================================================
-function startGPS() {
-  if (!('geolocation' in navigator)) {
-    showToast('No GPS support on this device');
-    return;
-  }
-  if (!activeDest()) {
-    showToast('Pick a destination first');
-    openModal('dest-modal');
-    return;
-  }
-  unlockAudio();
-  mode = 'gps';
-  watchId = navigator.geolocation.watchPosition(onGPS, onGPSError, {
-    enableHighAccuracy: true,
-    maximumAge: 1000,
-    timeout: 30000,
-  });
-  refreshUI();
-  showToast('GPS started');
-}
-function stopGPS() {
-  if (watchId != null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-  mode = 'idle';
-  currentSpeed = 0;
-  refreshUI();
-  showToast('GPS stopped');
-}
-function onGPS(pos) {
-  prevPos = currentPos;
-  const prevTs = lastGPSTimestamp;
-  currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-  lastGPSTimestamp = pos.timestamp || Date.now();
-  if (pos.coords.speed != null && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
-    currentSpeed = pos.coords.speed; // m/s from GPS
-  } else if (prevPos && prevTs) {
-    // v21.1: fallback uses distance over time delta, not just distance * 1000
-    const dtSec = (lastGPSTimestamp - prevTs) / 1000;
-    if (dtSec > 0 && dtSec < 30) {
-      const meters = distanceKm(prevPos, currentPos) * 1000;
-      // Reject single-tick jumps > 500m (GPS glitches)
-      if (meters < 500) {
-        currentSpeed = meters / dtSec; // m/s
+    const newZone = State.lastSpeedAlertZone !== limit;
+    const wasOver = State.speedAlertWasOver;
+    if (newZone || !wasOver) {
+      State.lastSpeedAlertZone = limit;
+      State.speedAlertWasOver = true;
+      const sign = document.getElementById('sign');
+      sign.classList.remove('flash');
+      void sign.offsetWidth;
+      sign.classList.add('flash');
+      if (mode === 'beep' || mode === 'both') Audio.beep('speed_change');
+      if (mode === 'voice' || mode === 'both') Audio.say(`Speed limit ${limit}`);
+      if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+    }
+    State.speedAlertWasOver = true;
+  },
+};
+
+/* ============================================================
+   6. MAP
+   ============================================================ */
+const Map = {
+  m: null,
+  markers: null,
+  currentMarker: null,
+  destMarker: null,
+  longPressTimer: null,
+  _initTries: 0,
+
+  init() {
+    if (this.m) return;
+    if (typeof L === 'undefined') {
+      this._initTries++;
+      if (this._initTries > 30) {
+        const mapEl = document.getElementById('map');
+        if (mapEl) {
+          mapEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--ink-3);font-size:11px;padding:20px;text-align:center;"><div style="font-size:32px;margin-bottom:8px;">🗺</div><div>Map library failed to load.</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 14px;background:var(--amber);color:#000;border:none;border-radius:6px;font-weight:700;">Reload</button></div>';
+        }
+        return;
       }
+      return setTimeout(() => this.init(), 200);
     }
-  }
-  // Sanity: cap speed to 350 km/h
-  if (currentSpeed * 3.6 > 350) currentSpeed = 0;
-  updateUserMarker();
-  refreshUI();
-  checkAlerts();
-}
-function onGPSError(err) {
-  console.warn('GPS error', err);
-  showToast('GPS error: ' + (err.message || 'unknown'));
-}
+    try {
+      const dest = State.activeDest();
+      const center = dest ? [dest.lat, dest.lng]
+                  : State.pos ? [State.pos.lat, State.pos.lng]
+                  : [21.5433, 39.1728];
+      this.m = L.map('map', {
+        zoomControl: true,
+        attributionControl: true,
+        tap: true,
+      });
+      this.m.setView(center, 13);
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+        { attribution: 'Tiles © Esri', maxZoom: 19, crossOrigin: true }
+      ).addTo(this.m);
+      this.markers = L.layerGroup().addTo(this.m);
+      this.m.on('dragstart', () => {
+        if (State.followMap) { State.followMap = false; UI.updateFollowPill(); }
+      });
+      this.m.on('contextmenu', e => this.askSetDest(e.latlng));
+      this.m.on('mousedown', e => {
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = setTimeout(() => this.askSetDest(e.latlng), 700);
+      });
+      this.m.on('mouseup mousemove dragstart', () => clearTimeout(this.longPressTimer));
+      this.updatePoints();
+      setTimeout(() => this.m.invalidateSize(true), 200);
+    } catch (e) {
+      console.error('Map init error', e);
+      Utils.toast('Map error: ' + e.message, 'bad');
+    }
+  },
 
-// =====================================================
-// Alerts: find nearest point ahead of us
-// =====================================================
-function nearestPointAhead() {
-  if (!currentPos) return null;
-  const dest = activeDest();
-  if (!dest) return null;
-  const pts = data.points.filter(p => p.destinationId === dest.id);
-  if (!pts.length) return null;
-  const heading = prevPos ? bearing(prevPos, currentPos) : null;
-  let best = null;
-  let bestDist = Infinity;
-  pts.forEach(p => {
-    if (passedPoints.has(p.id)) return;
-    const d = distanceKm(currentPos, p);
-    // If we have a heading, prefer points within ±90° of forward
-    if (heading != null) {
-      const toPt = bearing(currentPos, p);
-      let diff = Math.abs(((toPt - heading + 540) % 360) - 180);
-      if (diff > 90) return; // behind us
-    }
-    if (d < bestDist) {
-      bestDist = d;
-      best = { point: p, distKm: d };
-    }
-  });
-  return best;
-}
+  updatePoints() {
+    if (!this.m || !this.markers) return;
+    this.markers.clearLayers();
+    if (this.destMarker) { this.m.removeLayer(this.destMarker); this.destMarker = null; }
 
-function checkAlerts() {
-  if (mode !== 'gps') return;
-  const dest = activeDest();
-  if (!dest) return;
-  // v21.1: check ALL points within 5km (not just nearest), so we don't miss
-  // any when GPS jumps. Each point tracks its own previous distance.
-  const pts = data.points.filter(p => p.destinationId === dest.id);
-  pts.forEach(p => {
-    if (passedPoints.has(p.id)) return;
-    const distKm = distanceKm(currentPos, p);
-    if (distKm > 5) {
-      // Too far; clear stale state for this point
-      lastDistByPoint.delete(p.id);
+    const dest = State.activeDest();
+    if (dest) {
+      this.destMarker = L.marker([dest.lat, dest.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="ra-dest">📍</div>`,
+          iconSize: [36, 36], iconAnchor: [18, 18],
+        }),
+      }).bindPopup(`<div class="pop-name">🚩 ${Utils.escapeHtml(dest.name)}</div><div class="pop-meta">Destination</div>`).addTo(this.m);
+    }
+
+    const myDist = (State.pos && dest) ? Utils.distKm(State.pos, dest) : null;
+    State.activePoints().forEach(p => {
+      const passed = (myDist != null && dest)
+        ? Utils.distKm(p, dest) > myDist
+        : false;
+      const cls = ['ra-marker', 't-' + p.type];
+      if (passed) cls.push('passed');
+      if (p.status === 'no') cls.push('disabled');
+      const sideHtml = p.side ? `<span class="side">${p.side === 'left' ? 'L' : 'R'}</span>` : '';
+      const marker = L.marker([p.lat, p.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="${cls.join(' ')}">${Utils.emoji(p.type, p.subtype)}${sideHtml}</div>`,
+          iconSize: [36, 36], iconAnchor: [18, 18],
+        }),
+      });
+      const dist = State.pos ? Utils.distKm(State.pos, p) : null;
+      marker.bindPopup(`
+        <div class="pop-name">${Utils.emoji(p.type, p.subtype)} ${Utils.escapeHtml(p.name)}</div>
+        <div class="pop-meta">${Utils.escapeHtml(Utils.typeLabel(p.type))}${p.side ? ' · ' + p.side : ''}${dist != null ? ' · ' + Utils.fmtDist(dist) : ''}</div>
+        <button data-edit="${Utils.escapeHtml(p.id)}">Edit</button>
+        <button data-del="${Utils.escapeHtml(p.id)}" style="background:var(--red);color:#fff;">Delete</button>
+      `, { maxWidth: 240 });
+      marker.on('popupopen', () => {
+        setTimeout(() => {
+          document.querySelectorAll('[data-edit]').forEach(b => {
+            b.onclick = () => { Map.m.closePopup(); UI.openPointEditor(b.getAttribute('data-edit')); };
+          });
+          document.querySelectorAll('[data-del]').forEach(b => {
+            b.onclick = () => {
+              const id = b.getAttribute('data-del');
+              if (!confirm('Delete this point?')) return;
+              State.data.points = State.data.points.filter(p => p.id !== id);
+              State.alertedMarkers.delete(id);
+              State.lastDistByPoint.delete(id);
+              State.passedPoints.delete(id);
+              State.saveData();
+              Map.m.closePopup();
+              Utils.toast('Deleted');
+            };
+          });
+        }, 50);
+      });
+      this.markers.addLayer(marker);
+    });
+  },
+
+  update() {
+    if (!this.m || !State.pos) return;
+    if (this.currentMarker) this.m.removeLayer(this.currentMarker);
+    this.currentMarker = L.marker([State.pos.lat, State.pos.lng], {
+      icon: L.divIcon({ className: '', html: '<div class="ra-current"></div>', iconSize: [22,22], iconAnchor: [11,11] }),
+      zIndexOffset: 1000,
+    }).addTo(this.m);
+    if (State.followMap) {
+      this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
+    }
+    this.updatePoints();
+  },
+
+  fitAll() {
+    if (!this.m) return;
+    State.followMap = false; UI.updateFollowPill();
+    const bounds = L.latLngBounds([]);
+    if (State.pos) bounds.extend([State.pos.lat, State.pos.lng]);
+    const dest = State.activeDest();
+    if (dest) bounds.extend([dest.lat, dest.lng]);
+    State.activePoints().forEach(p => bounds.extend([p.lat, p.lng]));
+    if (bounds.isValid()) this.m.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    else if (dest) this.m.setView([dest.lat, dest.lng], 13);
+  },
+
+  recenter() {
+    if (!this.m) return;
+    if (!State.pos) { Utils.toast('No GPS yet'); this.fitAll(); return; }
+    State.followMap = true; UI.updateFollowPill();
+    this.m.setView([State.pos.lat, State.pos.lng], Math.max(this.m.getZoom(), 13), { animate: true });
+  },
+
+  askSetDest(latlng) {
+    State.editingDestId = null;
+    UI.openDestEditor(null, { lat: +latlng.lat.toFixed(5), lng: +latlng.lng.toFixed(5) });
+  },
+};
+
+/* ============================================================
+   7. UI
+   ============================================================ */
+const UI = {
+  render() {
+    this.renderRouteBar();
+    this.renderStats();
+    this.renderStatusLine();
+    this.renderDisabledCount();
+  },
+
+  renderRouteBar() {
+    const d = State.activeDest();
+    document.getElementById('route-name').textContent = d ? d.name : 'Pick a destination';
+  },
+
+  renderStats() {
+    const limit = Alerts.currentLimit();
+    document.getElementById('sign-value').textContent = limit != null ? limit : '—';
+    const kmh = Math.round(State.speedMps * 3.6);
+    const speedo = document.getElementById('speedo-val');
+    speedo.textContent = kmh;
+    const isOver = limit != null && kmh > limit + State.settings.overBy;
+    speedo.classList.toggle('over', isOver);
+
+    const aheadList = Alerts.ahead();
+    const body = document.getElementById('next-body');
+    if (aheadList.length === 0) {
+      body.innerHTML = `<div class="next-empty">— nothing ahead —</div>`;
+    } else {
+      const n = aheadList[0];
+      const sideTag = n.side ? ` · ${n.side[0].toUpperCase()}` : '';
+      const urgent = n.dist <= 0.5 ? 'urgent' : '';
+      body.innerHTML = `
+        <div class="next-name">${Utils.emoji(n.type, n.subtype)} ${Utils.escapeHtml(n.name)}</div>
+        <div class="next-meta">${Utils.escapeHtml(Utils.typeLabel(n.type))}${sideTag}</div>
+        <div class="next-dist ${urgent}">${n.dist < 1 ? Math.round(n.dist * 1000) : n.dist.toFixed(1)}<span class="unit">${n.dist < 1 ? 'm' : 'km'}</span></div>
+      `;
+    }
+  },
+
+  renderStatusLine() {
+    document.getElementById('status-gps').textContent =
+      State.accuracy != null ? `±${Math.round(State.accuracy)}m` : '—';
+    document.getElementById('status-pts').textContent =
+      `${State.activePoints().filter(p => p.status !== 'no').length} pts`;
+  },
+
+  renderDisabledCount() {
+    const c = State.data.points.filter(p => p.status === 'no').length;
+    const el = document.getElementById('disabled-count');
+    if (el) el.textContent = c;
+  },
+
+  setStatusMode(label, cls) {
+    const el = document.getElementById('status-mode');
+    el.textContent = label;
+    el.className = cls || '';
+  },
+
+  setBtnGoActive(active) {
+    const btn = document.getElementById('btn-go');
+    btn.classList.toggle('active', active);
+    btn.textContent = active ? '■ Stop' : '▶ Start GPS';
+  },
+
+  updateMapPoints() { Map.updatePoints(); },
+
+  updateFollowPill() {
+    const pill = document.getElementById('follow-pill');
+    pill.classList.toggle('off', !State.followMap);
+    document.getElementById('follow-label').textContent = 'Follow: ' + (State.followMap ? 'ON' : 'OFF');
+  },
+
+  openModal(id) { document.getElementById(id).classList.add('open'); },
+  closeAllModals() {
+    document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+    State.pendingCapture = null;
+  },
+
+  openCaptureMenu() {
+    if (!State.pos) { Utils.toast('Need GPS fix first', 'bad'); return; }
+    Audio.unlock();
+    this.openModal('m-capture');
+  },
+
+  beginCapture(type) {
+    if (!State.pos) return;
+    State.pendingCapture = {
+      id: Utils.uid(),
+      type,
+      name: Utils.typeLabel(type),
+      lat: +State.pos.lat.toFixed(5),
+      lng: +State.pos.lng.toFixed(5),
+      status: 'active',
+      confidence: 1,
+      destId: State.data.activeDestId,
+      createdAt: new Date().toISOString(),
+    };
+    this.closeAllModals();
+    if (type === 'speed_camera' || type === 'mobile_camera') this.openModal('m-side');
+    else if (type === 'speed_change') this.openLimitPicker('speedchange');
+    else if (type === 'other') this.openModal('m-other');
+    else this.finalizeCapture();
+  },
+
+  openLimitPicker(mode) {
+    State.limitPickerMode = mode || 'manual';
+    document.getElementById('limit-title').textContent =
+      mode === 'speedchange' ? 'New speed limit (km/h)' : 'Set current speed limit';
+    document.getElementById('limit-clear').style.display =
+      mode === 'manual' ? 'block' : 'none';
+    const grid = document.getElementById('limit-grid');
+    grid.innerHTML = [40,60,80,100,120,140].map(L =>
+      `<button class="limit-pick" data-limit="${L}">${L}</button>`
+    ).join('');
+    grid.querySelectorAll('[data-limit]').forEach(b =>
+      b.onclick = () => {
+        const val = +b.dataset.limit;
+        if (State.limitPickerMode === 'manual') {
+          State.manualLimit = val;
+          UI.closeAllModals();
+          UI.render();
+          Utils.toast('Limit set to ' + val, 'good');
+        } else if (State.pendingCapture) {
+          State.pendingCapture.limit = val;
+          State.pendingCapture.name = `Speed → ${val}`;
+          UI.closeAllModals();
+          UI.finalizeCapture();
+        }
+      }
+    );
+    document.getElementById('limit-custom').value = '';
+    this.openModal('m-limit');
+  },
+
+  finalizeCapture() {
+    const c = State.pendingCapture;
+    if (!c) return;
+    const nearby = State.data.points.find(p =>
+      p.type === c.type && p.destId === c.destId && Utils.distKm(p, c) * 1000 < 100
+    );
+    if (nearby) {
+      const n = (nearby.confidence || 0) + 1;
+      nearby.lat = +((nearby.lat * (n - 1) + c.lat) / n).toFixed(5);
+      nearby.lng = +((nearby.lng * (n - 1) + c.lng) / n).toFixed(5);
+      nearby.confidence = n;
+      nearby.status = 'active';
+      if (c.side) nearby.side = c.side;
+      if (c.limit) { nearby.limit = c.limit; nearby.name = c.name; }
+      Utils.toast(`${Utils.typeLabel(c.type)} merged (×${n})`, 'good');
+    } else {
+      State.data.points.push(c);
+      Utils.toast(`${Utils.typeLabel(c.type)} saved`, 'good');
+    }
+    State.pendingCapture = null;
+    State.saveData();
+    if (navigator.vibrate) navigator.vibrate(40);
+    if (State.settings.sound !== 'off') Audio.beep(c.type);
+  },
+
+  openPointEditor(id) {
+    const p = State.data.points.find(x => x.id === id);
+    if (!p) return;
+    State.editingPointId = id;
+    document.getElementById('e-name').value = p.name;
+    document.getElementById('e-type').value = p.type;
+    document.getElementById('e-limit').value = p.limit || '';
+    document.getElementById('e-lat').value = p.lat;
+    document.getElementById('e-lng').value = p.lng;
+    document.querySelectorAll('#e-side-opts button').forEach(b =>
+      b.classList.toggle('active', b.dataset.side === (p.side || '')));
+    document.querySelectorAll('#e-status-opts button').forEach(b =>
+      b.classList.toggle('active', b.dataset.status === (p.status || 'active')));
+    this.togglePEFields();
+    this.openModal('m-edit');
+  },
+
+  togglePEFields() {
+    const t = document.getElementById('e-type').value;
+    document.getElementById('e-limit-row').style.display = t === 'speed_change' ? 'flex' : 'none';
+    document.getElementById('e-side-row').style.display  = (t === 'speed_camera' || t === 'mobile_camera') ? 'flex' : 'none';
+  },
+
+  savePoint() {
+    const p = State.data.points.find(x => x.id === State.editingPointId);
+    if (!p) { this.closeAllModals(); return; }
+    p.name = document.getElementById('e-name').value.trim() || p.name;
+    p.type = document.getElementById('e-type').value;
+    p.lat = +document.getElementById('e-lat').value || p.lat;
+    p.lng = +document.getElementById('e-lng').value || p.lng;
+    const lim = document.getElementById('e-limit').value;
+    if (lim && p.type === 'speed_change') p.limit = +lim; else delete p.limit;
+    const sideBtn = document.querySelector('#e-side-opts button.active');
+    if (sideBtn) { if (sideBtn.dataset.side) p.side = sideBtn.dataset.side; else delete p.side; }
+    const statBtn = document.querySelector('#e-status-opts button.active');
+    if (statBtn) p.status = statBtn.dataset.status;
+    State.saveData();
+    Utils.toast('Saved', 'good');
+    this.closeAllModals();
+  },
+
+  deletePoint() {
+    if (!confirm('Delete this point?')) return;
+    State.data.points = State.data.points.filter(p => p.id !== State.editingPointId);
+    State.alertedMarkers.delete(State.editingPointId);
+    State.lastDistByPoint.delete(State.editingPointId);
+    State.passedPoints.delete(State.editingPointId);
+    State.saveData();
+    this.closeAllModals();
+    Utils.toast('Deleted');
+  },
+
+  renderRoutesList() {
+    const list = document.getElementById('routes-list');
+    if (!State.data.destinations.length) {
+      list.innerHTML = '<div class="empty">No destinations. Tap + to add.</div>';
       return;
     }
-    const meters = distKm * 1000;
-    const prevMeters = lastDistByPoint.get(p.id);
-    // Heading check: only alert points roughly ahead of us
-    let ahead = true;
-    if (prevPos) {
-      const heading = bearing(prevPos, currentPos);
-      const toPt = bearing(currentPos, p);
-      const diff = Math.abs(((toPt - heading + 540) % 360) - 180);
-      if (diff > 90) ahead = false;
-    }
-    if (!ahead) {
-      // We've passed this point or it's beside/behind us
-      if (prevMeters != null && meters > prevMeters && meters > 80) {
-        // Moving away from a behind-point that's now > 80m → mark as passed
-        passedPoints.add(p.id);
-        alertedMarkers.delete(p.id);
-        lastDistByPoint.delete(p.id);
-      } else {
-        lastDistByPoint.set(p.id, meters);
-      }
-      return;
-    }
-    // Fire markers that we just crossed (was > marker, now <= marker)
-    const fired = alertedMarkers.get(p.id) || new Set();
-    for (const m of settings.alertMarkersM) {
-      if (fired.has(m)) continue;
-      if (prevMeters == null) {
-        // First time we're seeing this point — only fire if very close
-        if (meters <= m && meters > m - 200) {
-          alert(p, m);
-          fired.add(m);
-        }
-      } else {
-        // Threshold crossing: was above, now at or below
-        if (prevMeters > m && meters <= m) {
-          alert(p, m);
-          fired.add(m);
-        }
-      }
-    }
-    alertedMarkers.set(p.id, fired);
-    lastDistByPoint.set(p.id, meters);
-  });
-}
-
-// =====================================================
-// UI updates
-// =====================================================
-function refreshUI() {
-  // Destination button text
-  const dest = activeDest();
-  const destBtn = document.getElementById('dest-btn');
-  if (dest) {
-    const km = currentPos ? distanceKm(currentPos, dest).toFixed(1) + ' km' : '';
-    destBtn.textContent = '→ ' + dest.name + (km ? ' · ' + km : '');
-  } else {
-    destBtn.textContent = '→ Pick destination';
-  }
-  // Speed
-  const speedKmh = Math.round(currentSpeed * 3.6);
-  const speedNum = document.getElementById('speed-num');
-  speedNum.textContent = speedKmh;
-  const lim = currentLimit();
-  speedNum.classList.toggle('over', lim != null && speedKmh > lim + settings.speedAlertOver);
-  // Limit
-  document.getElementById('limit-num').textContent = lim != null ? lim : '—';
-  // Next ahead
-  const next = nearestPointAhead();
-  const nextEl = document.getElementById('next-content');
-  if (next && mode === 'gps') {
-    const meters = Math.round(next.distKm * 1000);
-    const distTxt = meters < 1000 ? meters + 'm' : next.distKm.toFixed(1) + 'km';
-    const isUrgent = meters <= 500;
-    nextEl.innerHTML = `
-      <div class="next-row">
-        <span class="next-icon">${pointIcon(next.point)}</span>
-        <div class="next-mid">
-          <div class="next-name">${escapeHtml(pointLabel(next.point.type))}</div>
-          <div class="next-sub">heading toward</div>
+    list.innerHTML = State.data.destinations.map(d => {
+      const isActive = d.id === State.data.activeDestId;
+      const ptCount = State.data.points.filter(p => p.destId === d.id).length;
+      return `
+        <div class="list-row">
+          <div class="em">📍</div>
+          <div class="info">
+            <div class="name">${Utils.escapeHtml(d.name)}</div>
+            <div class="meta">${d.lat.toFixed(4)}, ${d.lng.toFixed(4)} · ${ptCount} pts</div>
+          </div>
+          <button class="row-btn ${isActive ? 'active keep' : ''}" data-activate="${Utils.escapeHtml(d.id)}" title="Set active">✓</button>
+          <button class="row-btn" data-edit-dest="${Utils.escapeHtml(d.id)}" title="Edit">✎</button>
         </div>
-        <div class="next-dist ${isUrgent ? 'urgent' : ''}">${distTxt}</div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-activate]').forEach(b =>
+      b.onclick = () => {
+        State.data.activeDestId = b.dataset.activate;
+        // Reset alert state when switching
+        State.alertedMarkers.clear();
+        State.lastDistByPoint.clear();
+        State.passedPoints.clear();
+        State.saveData();
+        this.renderRoutesList();
+        Map.updatePoints();
+        Utils.toast('Destination set', 'good');
+      }
+    );
+    list.querySelectorAll('[data-edit-dest]').forEach(b =>
+      b.onclick = () => this.openDestEditor(b.dataset.editDest)
+    );
+  },
+
+  openDestEditor(id, prefilledCoords) {
+    State.editingDestId = id;
+    const d = id ? State.data.destinations.find(x => x.id === id) : null;
+    document.getElementById('re-title').textContent = d ? 'Edit destination' : 'Add destination';
+    document.getElementById('re-name').value = d ? d.name : '';
+    document.getElementById('re-lat').value = d ? d.lat : (prefilledCoords ? prefilledCoords.lat : '');
+    document.getElementById('re-lng').value = d ? d.lng : (prefilledCoords ? prefilledCoords.lng : '');
+    document.getElementById('re-delete').style.display = d ? 'block' : 'none';
+
+    const dis = document.getElementById('re-coords-display');
+    if (prefilledCoords) {
+      dis.style.display = 'flex';
+      dis.textContent = `Tapped: ${prefilledCoords.lat}, ${prefilledCoords.lng}`;
+      this.setRouteTab('latlng');
+    } else if (d) {
+      dis.style.display = 'flex';
+      dis.textContent = `Current: ${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}`;
+      this.setRouteTab('latlng');
+    } else {
+      dis.style.display = 'none';
+      this.setRouteTab('here');
+    }
+    document.getElementById('m-routes').classList.remove('open');
+    this.openModal('m-route-edit');
+  },
+
+  setRouteTab(name) {
+    document.querySelectorAll('[data-retab]').forEach(b =>
+      b.classList.toggle('active', b.dataset.retab === name));
+    document.querySelectorAll('[data-pane]').forEach(p =>
+      p.style.display = p.dataset.pane === name ? 'block' : 'none');
+  },
+
+  saveDest() {
+    const name = document.getElementById('re-name').value.trim();
+    if (!name) { Utils.toast('Enter a name', 'bad'); return; }
+    let lat = +document.getElementById('re-lat').value;
+    let lng = +document.getElementById('re-lng').value;
+    const activeTab = document.querySelector('[data-retab].active');
+    if (activeTab && activeTab.dataset.retab === 'here') {
+      if (!State.pos) { Utils.toast('No GPS — start GPS first or use another tab', 'bad'); return; }
+      lat = +State.pos.lat.toFixed(5);
+      lng = +State.pos.lng.toFixed(5);
+    }
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) { Utils.toast('Invalid coordinates', 'bad'); return; }
+
+    if (State.editingDestId) {
+      const d = State.data.destinations.find(x => x.id === State.editingDestId);
+      if (d) { d.name = name; d.lat = lat; d.lng = lng; }
+    } else {
+      const newId = Utils.uid();
+      State.data.destinations.push({ id: newId, name, lat, lng });
+      if (!State.data.activeDestId) State.data.activeDestId = newId;
+    }
+    State.saveData();
+    this.closeAllModals();
+    Map.updatePoints();
+    Utils.toast('Destination saved', 'good');
+  },
+
+  deleteDest() {
+    if (!State.editingDestId) return;
+    if (!confirm('Delete this destination?')) return;
+    State.data.destinations = State.data.destinations.filter(d => d.id !== State.editingDestId);
+    if (State.data.activeDestId === State.editingDestId) {
+      State.data.activeDestId = State.data.destinations[0]?.id || null;
+    }
+    State.saveData();
+    this.closeAllModals();
+    Map.updatePoints();
+    Utils.toast('Destination deleted');
+  },
+
+  renderAuditList() {
+    const list = document.getElementById('audit-list');
+    const pts = State.activePoints();
+    document.getElementById('audit-count').textContent = pts.length;
+    if (!pts.length) {
+      list.innerHTML = '<div class="empty">No points to audit.</div>';
+      return;
+    }
+    const sorted = pts.slice().sort((a, b) =>
+      (b.createdAt || '').localeCompare(a.createdAt || '')
+    );
+    list.innerHTML = sorted.map(p => `
+      <div class="list-row ${p.status === 'no' ? 'disabled' : ''}">
+        <div class="em">${Utils.emoji(p.type, p.subtype)}</div>
+        <div class="info">
+          <div class="name">${Utils.escapeHtml(p.name)}</div>
+          <div class="meta">${Utils.escapeHtml(Utils.typeLabel(p.type))}${p.side ? ' · ' + p.side : ''}${p.limit ? ' · ' + p.limit + ' km/h' : ''}</div>
+        </div>
+        <button class="row-btn keep ${p.status === 'active' ? 'active' : ''}" data-keep="${Utils.escapeHtml(p.id)}">✓</button>
+        <button class="row-btn del ${p.status === 'no' ? 'active' : ''}" data-rem="${Utils.escapeHtml(p.id)}">✕</button>
       </div>
-    `;
-  } else {
-    nextEl.innerHTML = '<div class="next-empty">— nothing ahead —</div>';
-  }
-  // Start button
-  const startBtn = document.getElementById('start-btn');
-  if (mode === 'gps') {
-    startBtn.classList.add('running');
-    startBtn.textContent = '■ Stop';
-  } else {
-    startBtn.classList.remove('running');
-    startBtn.textContent = '▶ Start GPS';
-  }
-}
+    `).join('');
+    list.querySelectorAll('[data-keep]').forEach(b =>
+      b.onclick = () => {
+        const p = State.data.points.find(x => x.id === b.dataset.keep);
+        if (!p) return;
+        p.status = 'active';
+        p.confidence = (p.confidence || 0) + 1;
+        State.saveData();
+        this.renderAuditList();
+      }
+    );
+    list.querySelectorAll('[data-rem]').forEach(b =>
+      b.onclick = () => {
+        if (!confirm('Delete this point?')) return;
+        State.data.points = State.data.points.filter(p => p.id !== b.dataset.rem);
+        State.saveData();
+        this.renderAuditList();
+      }
+    );
+  },
 
-function currentLimit() {
-  return settings.manualLimit; // simplest: only manual for now
-}
+  renderDisabledList() {
+    const list = document.getElementById('disabled-list');
+    const pts = State.data.points.filter(p => p.status === 'no');
+    if (!pts.length) {
+      list.innerHTML = '<div class="empty">No disabled points.</div>';
+      return;
+    }
+    list.innerHTML = pts.map(p => `
+      <div class="list-row disabled">
+        <div class="em">${Utils.emoji(p.type, p.subtype)}</div>
+        <div class="info">
+          <div class="name">${Utils.escapeHtml(p.name)}</div>
+          <div class="meta">${Utils.escapeHtml(Utils.typeLabel(p.type))} · ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div>
+        </div>
+        <button class="row-btn keep" data-reactivate="${Utils.escapeHtml(p.id)}">↺</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-reactivate]').forEach(b =>
+      b.onclick = () => {
+        const p = State.data.points.find(x => x.id === b.dataset.reactivate);
+        if (p) { p.status = 'active'; State.saveData(); this.renderDisabledList(); Utils.toast('Reactivated', 'good'); }
+      }
+    );
+  },
 
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[c]));
-}
+  renderTripsList() {
+    const list = document.getElementById('trips-list');
+    if (!State.trips.length) {
+      list.innerHTML = '<div class="empty">No trips yet.</div>';
+      return;
+    }
+    list.innerHTML = State.trips.map((t, i) => {
+      const start = new Date(t.startedAt);
+      const end = t.endedAt ? new Date(t.endedAt) : null;
+      const min = end ? Math.round((end - start) / 60000) : 0;
+      return `
+        <div class="list-row">
+          <div class="em">🚗</div>
+          <div class="info">
+            <div class="name">${start.toLocaleString()}</div>
+            <div class="meta">${(t.distanceKm || 0).toFixed(1)} km · ${min} min · max ${Math.round(t.maxSpeed || 0)} km/h</div>
+          </div>
+          <button class="row-btn del" data-trip-del="${i}">✕</button>
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-trip-del]').forEach(b =>
+      b.onclick = () => {
+        if (!confirm('Delete trip?')) return;
+        State.trips.splice(+b.dataset.tripDel, 1);
+        State.saveTrips();
+        this.renderTripsList();
+      }
+    );
+  },
 
-// =====================================================
-// Toast
-// =====================================================
-let toastTimer = null;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
-}
+  toggleTrip() {
+    if (State.activeTrip) {
+      State.activeTrip.endedAt = new Date().toISOString();
+      State.trips.unshift(State.activeTrip);
+      State.saveTrips();
+      Utils.toast(`Trip saved · ${State.activeTrip.distanceKm.toFixed(1)} km`, 'good');
+      State.activeTrip = null;
+    } else {
+      State.activeTrip = {
+        id: Utils.uid(),
+        startedAt: new Date().toISOString(),
+        destId: State.data.activeDestId,
+        distanceKm: 0,
+        maxSpeed: 0,
+      };
+      Utils.toast('Trip started', 'good');
+    }
+    this.updateTripButton();
+  },
 
-// =====================================================
-// Modals
-// =====================================================
-function openModal(id) {
-  document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
-  document.getElementById(id).classList.add('open');
-  if (id === 'dest-modal') renderDestList();
-  if (id === 'points-modal') renderPointsList();
-  if (id === 'settings-modal') refreshSettingsUI();
-}
+  updateTripButton() {
+    const btn = document.getElementById('trip-toggle');
+    if (!btn) return;
+    if (State.activeTrip) { btn.textContent = '■ End trip'; btn.style.background = 'var(--red)'; btn.style.color = '#fff'; btn.style.borderColor = 'var(--red)'; }
+    else { btn.textContent = '▶ Start trip'; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; }
+  },
 
-// v21.4: open the edit modal for a specific point
-function openEditPoint(pointId) {
-  const p = data.points.find(x => x.id === pointId);
-  if (!p) { showToast('Point not found'); return; }
-  editingPointId = pointId;
-  editingPointType = p.type;
-  document.getElementById('ep-name').value = p.name || '';
-  // Highlight current type
-  document.querySelectorAll('[data-ep-type]').forEach(b =>
-    b.classList.toggle('active', b.getAttribute('data-ep-type') === p.type)
+  syncSettings() {
+    document.querySelectorAll('[data-theme]').forEach(b =>
+      b.classList.toggle('active', b.dataset.theme === State.settings.theme));
+    document.querySelectorAll('[data-sound]').forEach(b =>
+      b.classList.toggle('active', b.dataset.sound === State.settings.sound));
+    document.querySelectorAll('[data-voice]').forEach(b =>
+      b.classList.toggle('active', b.dataset.voice === State.settings.voiceGender));
+    document.getElementById('t-side').classList.toggle('on', State.settings.announceSide);
+    document.getElementById('t-autobackup').classList.toggle('on', State.settings.autoBackup);
+    document.getElementById('i-markers').value = State.settings.alertMarkersM.join(', ');
+    document.getElementById('i-over').value = State.settings.overBy;
+    document.querySelectorAll('[data-speed]').forEach(b =>
+      b.classList.toggle('active', b.dataset.speed === State.settings.speedAlertMode));
+    document.getElementById('i-gh-token').value = State.gh.token || '';
+    document.getElementById('i-gh-repo').value = State.gh.repo || '';
+    document.getElementById('i-gh-path').value = State.gh.path || '';
+    this.updateBackupStatus();
+    this.updateTripButton();
+  },
+
+  applyTheme() {
+    let t = State.settings.theme;
+    if (t === 'auto') {
+      const h = new Date().getHours();
+      t = (h >= 6 && h < 18) ? 'light' : 'dark';
+    }
+    document.body.setAttribute('data-theme', t);
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0c0a09' : '#f5f1e8');
+  },
+
+  updateBackupStatus() {
+    const el = document.getElementById('backup-status');
+    if (!el) return;
+    if (!State.gh.token || !State.gh.repo) {
+      el.textContent = 'Set token & repo to enable backup';
+      return;
+    }
+    if (!State.lastBackup) {
+      el.textContent = State.settings.autoBackup ? 'Auto-backup on · no backup yet' : 'No backup yet';
+      return;
+    }
+    const ageMin = Math.floor((Date.now() - State.lastBackup) / 60000);
+    el.textContent = ageMin < 1 ? 'Last backup: just now'
+                    : ageMin < 60 ? `Last backup: ${ageMin} min ago`
+                    : `Last backup: ${Math.floor(ageMin / 60)} hr ago`;
+  },
+};
+
+/* ============================================================
+   8. BACKUP
+   ============================================================ */
+const Backup = {
+  hash() {
+    const s = JSON.stringify({ d: State.data, t: State.trips, st: State.settings });
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return h;
+  },
+  async push(opts = {}) {
+    if (!State.gh.token || !State.gh.repo || !State.gh.path) {
+      if (!opts.silent) Utils.toast('Set token/repo/path first', 'bad');
+      return false;
+    }
+    try {
+      const apiBase = `https://api.github.com/repos/${State.gh.repo}/contents/${State.gh.path}`;
+      const headers = {
+        'Authorization': 'token ' + State.gh.token,
+        'Accept': 'application/vnd.github+json',
+      };
+      let sha = null;
+      try {
+        const r = await fetch(apiBase, { headers });
+        if (r.ok) sha = (await r.json()).sha;
+      } catch (e) {}
+      const payload = JSON.stringify({
+        version: 22,
+        exportedAt: new Date().toISOString(),
+        data: State.data,
+        settings: State.settings,
+        trips: State.trips,
+      }, null, 2);
+      const b64 = btoa(unescape(encodeURIComponent(payload)));
+      const body = {
+        message: (opts.silent ? 'Auto-backup ' : 'Backup ') + new Date().toISOString(),
+        content: b64,
+      };
+      if (sha) body.sha = sha;
+      const resp = await fetch(apiBase, {
+        method: 'PUT', headers, body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        if (!opts.silent) Utils.toast('Backup failed: ' + (err.message || resp.status), 'bad');
+        return false;
+      }
+      State.lastBackup = Date.now();
+      State.lastBackupHash = this.hash();
+      UI.updateBackupStatus();
+      if (!opts.silent) Utils.toast('Backed up ✓', 'good');
+      return true;
+    } catch (e) {
+      if (!opts.silent) Utils.toast('Backup error', 'bad');
+      return false;
+    }
+  },
+  async tryAuto() {
+    if (!State.settings.autoBackup) return;
+    if (!State.gh.token || !State.gh.repo) return;
+    const h = this.hash();
+    if (h === State.lastBackupHash) return;
+    await this.push({ silent: true });
+  },
+  start() { this.stop(); State.backupTimer = setInterval(() => this.tryAuto(), 5 * 60 * 1000); },
+  stop()  { if (State.backupTimer) { clearInterval(State.backupTimer); State.backupTimer = null; } },
+};
+
+/* ============================================================
+   9. WIRING
+   ============================================================ */
+function wire() {
+  document.getElementById('btn-settings').onclick = () => { UI.syncSettings(); UI.openModal('m-settings'); };
+  document.getElementById('btn-route').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
+  document.getElementById('btn-route-menu').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
+  document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
+  document.getElementById('btn-go').onclick = () => State.mode === 'idle' ? GPS.start() : GPS.stop();
+  document.getElementById('btn-demo').onclick = () => State.mode === 'demo' ? GPS.stop() : GPS.demo();
+  document.getElementById('btn-fit').onclick = () => Map.fitAll();
+  document.getElementById('btn-recenter').onclick = () => Map.recenter();
+  document.getElementById('follow-pill').onclick = () => {
+    State.followMap = !State.followMap;
+    UI.updateFollowPill();
+    if (State.followMap && State.pos) Map.recenter();
+  };
+  document.getElementById('sign').onclick = () => UI.openLimitPicker('manual');
+
+  document.querySelectorAll('[data-cap]').forEach(b =>
+    b.onclick = () => UI.beginCapture(b.dataset.cap)
   );
-  closeModal();
-  document.getElementById('edit-point-modal').classList.add('open');
-}
+  document.querySelectorAll('[data-side]').forEach(b =>
+    b.onclick = () => {
+      if (State.pendingCapture && b.dataset.side !== 'none') {
+        State.pendingCapture.side = b.dataset.side;
+      }
+      UI.closeAllModals();
+      if (State.pendingCapture) UI.finalizeCapture();
+    }
+  );
+  document.getElementById('limit-save').onclick = () => {
+    const v = +document.getElementById('limit-custom').value;
+    if (!v || v < 10 || v > 250) { Utils.toast('Invalid limit', 'bad'); return; }
+    if (State.limitPickerMode === 'manual') {
+      State.manualLimit = v;
+      UI.closeAllModals();
+      UI.render();
+      Utils.toast('Limit set to ' + v, 'good');
+    } else if (State.pendingCapture) {
+      State.pendingCapture.limit = v;
+      State.pendingCapture.name = `Speed → ${v}`;
+      UI.closeAllModals();
+      UI.finalizeCapture();
+    }
+  };
+  document.getElementById('limit-clear').onclick = () => {
+    State.manualLimit = null;
+    UI.closeAllModals();
+    UI.render();
+    Utils.toast('Manual limit cleared');
+  };
+  document.getElementById('other-save').onclick = () => {
+    const v = document.getElementById('other-name').value.trim();
+    if (!v) { Utils.toast('Enter a name', 'bad'); return; }
+    State.pendingCapture.name = v;
+    UI.closeAllModals();
+    UI.finalizeCapture();
+  };
 
-// v21.4: delete a point with confirmation
-function deletePoint(pointId) {
-  const p = data.points.find(x => x.id === pointId);
-  if (!p) return;
-  const label = p.name || pointLabel(p.type);
-  if (!confirm('Delete "' + label + '"?')) return;
-  data.points = data.points.filter(x => x.id !== pointId);
-  // Also clean up alert state
-  alertedMarkers.delete(pointId);
-  passedPoints.delete(pointId);
-  lastDistByPoint.delete(pointId);
-  saveData();
-  refreshMapMarkers();
-  refreshUI();
-  showToast('Deleted');
-}
-// Expose for inline onclick from marker popup
-window.deletePoint = deletePoint;
-window.openEditPoint = openEditPoint;
-function closeModal(id) {
-  if (id) document.getElementById(id).classList.remove('open');
-  else document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
-}
-document.querySelectorAll('.modal').forEach(modal => {
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal();
-  });
-});
+  document.getElementById('e-type').onchange = () => UI.togglePEFields();
+  document.querySelectorAll('#e-side-opts button').forEach(b =>
+    b.onclick = () => document.querySelectorAll('#e-side-opts button').forEach(x => x.classList.toggle('active', x === b))
+  );
+  document.querySelectorAll('#e-status-opts button').forEach(b =>
+    b.onclick = () => document.querySelectorAll('#e-status-opts button').forEach(x => x.classList.toggle('active', x === b))
+  );
+  document.getElementById('e-save').onclick = () => UI.savePoint();
+  document.getElementById('e-delete').onclick = () => UI.deletePoint();
+  document.getElementById('e-gmap').onclick = () => {
+    const lat = document.getElementById('e-lat').value;
+    const lng = document.getElementById('e-lng').value;
+    if (lat && lng) window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+  };
 
-// Destination list
-function renderDestList() {
-  const list = document.getElementById('dest-list');
-  if (!data.destinations.length) {
-    list.innerHTML = '<div style="color:var(--ink-faint);font-style:italic;padding:10px;text-align:center;font-family:var(--mono);font-size:11px;">No destinations yet — add one</div>';
-    return;
-  }
-  list.innerHTML = '';
-  data.destinations.forEach(d => {
-    const isActive = d.id === data.activeDestinationId;
-    const count = data.points.filter(p => p.destinationId === d.id).length;
-    const row = document.createElement('button');
-    row.className = 'modal-row' + (isActive ? ' active' : '');
-    row.innerHTML = `
-      <span class="label">${escapeHtml(d.name)}</span>
-      <span class="meta">${count} points</span>
-    `;
-    row.addEventListener('click', () => {
-      setActiveDest(d.id);
-      closeModal('dest-modal');
-    });
-    list.appendChild(row);
-  });
-}
+  document.getElementById('route-add').onclick = () => UI.openDestEditor(null);
+  document.querySelectorAll('[data-retab]').forEach(b =>
+    b.onclick = () => UI.setRouteTab(b.dataset.retab)
+  );
+  document.getElementById('re-here-grab').onclick = () => {
+    if (!State.pos) { Utils.toast('Start GPS first', 'bad'); return; }
+    document.getElementById('re-lat').value = +State.pos.lat.toFixed(5);
+    document.getElementById('re-lng').value = +State.pos.lng.toFixed(5);
+    UI.setRouteTab('latlng');
+    Utils.toast('Coords filled', 'good');
+  };
+  document.getElementById('re-save').onclick = () => UI.saveDest();
+  document.getElementById('re-delete').onclick = () => UI.deleteDest();
 
-// Saved points list
-function renderPointsList() {
-  const dest = activeDest();
-  const list = document.getElementById('points-list');
-  document.getElementById('points-title').textContent = dest ? 'Points for: ' + dest.name : 'Saved points';
-  if (!dest) {
-    list.innerHTML = '<div style="color:var(--ink-faint);padding:10px;text-align:center;font-family:var(--mono);font-size:11px;">Pick a destination first</div>';
-    return;
-  }
-  const pts = data.points.filter(p => p.destinationId === dest.id);
-  list.innerHTML = '';
-  // v21.4: Delete all button at top
-  if (pts.length) {
-    const topRow = document.createElement('div');
-    topRow.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center;';
-    topRow.innerHTML = '<div style="flex:1;font-family:var(--mono);font-size:11px;color:var(--ink-soft);">' + pts.length + ' point' + (pts.length === 1 ? '' : 's') + '</div>';
-    const delAll = document.createElement('button');
-    delAll.className = 'ctrl-btn';
-    delAll.style.cssText = 'padding:8px 12px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);';
-    delAll.textContent = '🗑 Delete all';
-    delAll.addEventListener('click', () => {
-      if (!confirm('Delete ALL ' + pts.length + ' points for "' + dest.name + '"? This cannot be undone.')) return;
-      data.points = data.points.filter(p => p.destinationId !== dest.id);
-      alertedMarkers.clear();
-      passedPoints.clear();
-      lastDistByPoint.clear();
-      saveData();
-      refreshMapMarkers();
-      refreshUI();
-      renderPointsList();
-      showToast('All points deleted');
-    });
-    topRow.appendChild(delAll);
-    list.appendChild(topRow);
-  }
-  if (!pts.length) {
-    list.innerHTML = '<div style="color:var(--ink-faint);padding:10px;text-align:center;font-family:var(--mono);font-size:11px;">No points yet</div>';
-    return;
-  }
-  // Render each point
-  pts.forEach(p => {
-    const row = document.createElement('div');
-    row.className = 'modal-row';
-    const distTxt = currentPos ? ' · ' + distanceKm(currentPos, p).toFixed(2) + 'km' : '';
-    const displayName = p.name || pointLabel(p.type);
-    row.innerHTML = `
-      <span class="ic" style="font-size:18px;">${pointIcon(p)}</span>
-      <span class="label">${escapeHtml(displayName)}<br><span style="font-size:9px;color:var(--ink-soft);">${pointLabel(p.type)} · ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}${distTxt}</span></span>
-      <button class="ctrl-btn" data-edit="${escapeHtml(p.id)}" style="padding:6px 10px;font-size:10px;flex:0 0 auto;background:var(--amber);color:#000;border-color:var(--amber);">✎</button>
-      <button class="ctrl-btn" data-del="${escapeHtml(p.id)}" style="padding:6px 10px;font-size:10px;flex:0 0 auto;">✕</button>
-    `;
-    row.querySelector('[data-edit]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      openEditPoint(p.id);
-    });
-    row.querySelector('[data-del]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      deletePoint(p.id);
-      renderPointsList();
-    });
-    list.appendChild(row);
-  });
-}
-
-// Settings UI sync
-function refreshSettingsUI() {
+  document.querySelectorAll('[data-theme]').forEach(b =>
+    b.onclick = () => { State.settings.theme = b.dataset.theme; State.saveSettings(); UI.applyTheme(); UI.syncSettings(); }
+  );
   document.querySelectorAll('[data-sound]').forEach(b =>
-    b.classList.toggle('active', b.getAttribute('data-sound') === settings.sound)
+    b.onclick = () => {
+      State.settings.sound = b.dataset.sound; State.saveSettings(); UI.syncSettings();
+      Audio.unlock();
+      if (b.dataset.sound !== 'off') Audio.beep('petrol');
+    }
   );
   document.querySelectorAll('[data-voice]').forEach(b =>
-    b.classList.toggle('active', b.getAttribute('data-voice') === settings.voiceGender)
+    b.onclick = () => {
+      State.settings.voiceGender = b.dataset.voice;
+      Audio._voiceCache = null; Audio._voiceCacheFor = null;
+      State.saveSettings();
+      UI.syncSettings();
+      Audio.unlock();
+      if (b.dataset.voice !== 'none') Audio.say('Voice set');
+    }
   );
-  document.getElementById('opt-markers').value = settings.alertMarkersM.join(', ');
-  document.getElementById('opt-over').value = settings.speedAlertOver;
+  document.querySelectorAll('[data-speed]').forEach(b =>
+    b.onclick = () => { State.settings.speedAlertMode = b.dataset.speed; State.saveSettings(); UI.syncSettings(); }
+  );
+  document.getElementById('t-side').onclick = () => { State.settings.announceSide = !State.settings.announceSide; State.saveSettings(); UI.syncSettings(); };
+  document.getElementById('t-autobackup').onclick = () => {
+    State.settings.autoBackup = !State.settings.autoBackup;
+    State.saveSettings(); UI.syncSettings();
+    if (State.settings.autoBackup) Backup.start(); else Backup.stop();
+  };
+  document.getElementById('i-markers').onchange = e => {
+    const parts = (e.target.value || '').split(/[,\s]+/).map(x => parseInt(x, 10)).filter(x => x > 0).sort((a,b) => b-a);
+    if (parts.length) {
+      State.settings.alertMarkersM = parts;
+      State.saveSettings();
+      Utils.toast('Alert at: ' + parts.join('m, ') + 'm', 'good');
+    }
+  };
+  document.getElementById('i-over').onchange = e => {
+    const v = +e.target.value;
+    if (v >= 0 && v <= 50) { State.settings.overBy = v; State.saveSettings(); }
+  };
+  document.getElementById('i-gh-token').onchange = e => { State.gh.token = e.target.value.trim(); State.saveGh(); UI.updateBackupStatus(); };
+  document.getElementById('i-gh-repo').onchange = e => { State.gh.repo = e.target.value.trim(); State.saveGh(); UI.updateBackupStatus(); };
+  document.getElementById('i-gh-path').onchange = e => { State.gh.path = e.target.value.trim() || 'road-alert.json'; State.saveGh(); };
+  document.getElementById('btn-backup-now').onclick = () => Backup.push();
+  document.getElementById('trip-toggle').onclick = () => UI.toggleTrip();
+  document.getElementById('trip-list').onclick = () => { UI.renderTripsList(); UI.openModal('m-trips'); };
+
+  document.getElementById('btn-audit').onclick = () => { UI.renderAuditList(); UI.openModal('m-audit'); };
+  document.getElementById('btn-disabled').onclick = () => { UI.renderDisabledList(); UI.openModal('m-disabled'); };
+  document.getElementById('btn-export').onclick = () => exportJson();
+  document.getElementById('btn-import').onclick = () => document.getElementById('import-file').click();
+  document.getElementById('import-file').onchange = e => importJson(e);
+  document.getElementById('btn-edit-json').onclick = () => {
+    document.getElementById('json-text').value = JSON.stringify(State.data, null, 2);
+    UI.openModal('m-json');
+  };
+  document.getElementById('btn-json-save').onclick = () => {
+    try {
+      const parsed = JSON.parse(document.getElementById('json-text').value);
+      if (!Array.isArray(parsed.points) || !Array.isArray(parsed.destinations)) throw new Error('Need points[] and destinations[]');
+      State.data = parsed;
+      State.saveData();
+      UI.closeAllModals();
+      Utils.toast('Saved', 'good');
+    } catch (e) { Utils.toast(e.message, 'bad'); }
+  };
+  document.getElementById('btn-json-copy').onclick = async () => {
+    const ta = document.getElementById('json-text');
+    try { await navigator.clipboard.writeText(ta.value); Utils.toast('Copied'); }
+    catch (e) { ta.select(); document.execCommand('copy'); Utils.toast('Copied'); }
+  };
+  document.getElementById('btn-export-trips').onclick = () => {
+    downloadFile(`road-alert-trips-${Date.now()}.json`, JSON.stringify(State.trips, null, 2));
+  };
+  document.getElementById('btn-clear-trips').onclick = () => {
+    if (!confirm('Clear all trips?')) return;
+    State.trips = [];
+    State.saveTrips();
+    UI.renderTripsList();
+  };
+  document.getElementById('btn-test-sound').onclick = () => {
+    Audio.unlock();
+    if (State.settings.sound === 'beep' || State.settings.sound === 'both') Audio.beep('speed_camera');
+    if (State.settings.sound === 'voice' || State.settings.sound === 'both') {
+      setTimeout(() => Audio.say('Speed camera in 500 meters'), 400);
+    }
+  };
+
+  document.querySelectorAll('[data-close]').forEach(b =>
+    b.onclick = () => UI.closeAllModals()
+  );
+  document.querySelectorAll('.modal').forEach(m =>
+    m.addEventListener('click', e => { if (e.target === m) UI.closeAllModals(); })
+  );
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && (State.mode === 'gps' || State.mode === 'demo')) {
+      GPS.requestWakeLock();
+    }
+  });
 }
 
-// =====================================================
-// Wire up controls
-// =====================================================
-document.getElementById('menu-btn').addEventListener('click', () => openModal('menu-modal'));
-document.getElementById('dest-btn').addEventListener('click', () => openModal('dest-modal'));
-document.getElementById('limit-btn').addEventListener('click', () => openModal('limit-modal'));
-document.getElementById('settings-btn').addEventListener('click', () => openModal('settings-modal'));
-document.getElementById('start-btn').addEventListener('click', () => {
-  if (mode === 'idle') startGPS(); else stopGPS();
-});
-document.getElementById('capture-btn').addEventListener('click', () => {
-  if (!currentPos) { showToast('Need GPS fix first — start GPS'); return; }
-  if (!activeDest()) { showToast('Pick a destination first'); openModal('dest-modal'); return; }
-  openModal('capture-modal');
-});
-document.getElementById('recenter-btn').addEventListener('click', () => {
-  followUser = true;
-  if (map && currentPos) {
-    map.setView([currentPos.lat, currentPos.lng], 15);
-  } else if (map && activeDest()) {
-    const d = activeDest();
-    map.setView([d.lat, d.lng], 13);
-  }
-});
-
-// Menu modal actions
-document.getElementById('m-dest').addEventListener('click', () => { closeModal('menu-modal'); openModal('dest-modal'); });
-document.getElementById('m-points').addEventListener('click', () => { closeModal('menu-modal'); openModal('points-modal'); });
-document.getElementById('m-close').addEventListener('click', () => closeModal('menu-modal'));
-document.getElementById('m-export').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify({
-    destinations: data.destinations,
-    points: data.points,
-    settings,
-    exportedAt: new Date().toISOString(),
-  }, null, 2)], { type: 'application/json' });
+/* ============================================================
+   10. IMPORT / EXPORT
+   ============================================================ */
+function downloadFile(name, content) {
+  const blob = new Blob([content], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'road-alert-backup-' + Date.now() + '.json';
+  a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
-  closeModal('menu-modal');
-  showToast('Backup downloaded');
-});
-// v21.1: import
-document.getElementById('m-import').addEventListener('click', () => {
-  document.getElementById('m-import-file').click();
-});
-document.getElementById('m-import-file').addEventListener('change', (e) => {
-  const file = e.target.files && e.target.files[0];
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportJson() {
+  downloadFile(`road-alert-${Date.now()}.json`,
+    JSON.stringify({ data: State.data, settings: State.settings, trips: State.trips }, null, 2));
+  Utils.toast('Exported', 'good');
+}
+
+function importJson(e) {
+  const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (ev) => {
+  reader.onload = () => {
     try {
-      const obj = JSON.parse(ev.target.result);
-      if (!obj || typeof obj !== 'object') throw new Error('not a json object');
-      const destsIn = Array.isArray(obj.destinations) ? obj.destinations : [];
-      const ptsIn = Array.isArray(obj.points) ? obj.points : [];
-      // Merge by id (don't duplicate existing)
-      const existingDestIds = new Set(data.destinations.map(d => d.id));
-      const existingPtIds = new Set(data.points.map(p => p.id));
-      let addedD = 0, addedP = 0;
-      destsIn.forEach(d => {
-        if (d && d.id && !existingDestIds.has(d.id) && typeof d.lat === 'number' && typeof d.lng === 'number') {
-          data.destinations.push({ id: d.id, name: String(d.name || 'Unnamed'), lat: d.lat, lng: d.lng });
-          addedD++;
-        }
-      });
-      ptsIn.forEach(p => {
-        if (p && p.id && !existingPtIds.has(p.id) && typeof p.lat === 'number' && typeof p.lng === 'number') {
-          const newPt = {
-            id: p.id,
-            destinationId: String(p.destinationId || ''),
-            type: String(p.type || 'other'),
-            lat: p.lat, lng: p.lng,
-            capturedAt: Number(p.capturedAt) || Date.now(),
-          };
-          if (typeof p.name === 'string' && p.name) newPt.name = p.name;
-          data.points.push(newPt);
-          addedP++;
-        }
-      });
-      saveData();
-      refreshMapMarkers();
-      refreshUI();
-      closeModal('menu-modal');
-      showToast(`Imported: ${addedD} dests, ${addedP} points`);
-    } catch (err) {
-      showToast('Bad backup file');
-      console.warn('import failed', err);
-    }
-    e.target.value = ''; // reset so same file can be re-picked
+      const parsed = JSON.parse(reader.result);
+      if (parsed.data && Array.isArray(parsed.data.points)) {
+        // Merge by id to avoid duplicates
+        const existingDestIds = new Set(State.data.destinations.map(d => d.id));
+        const existingPtIds = new Set(State.data.points.map(p => p.id));
+        let dAdded = 0, pAdded = 0;
+        (parsed.data.destinations || []).forEach(d => {
+          if (d.id && !existingDestIds.has(d.id)) { State.data.destinations.push(d); dAdded++; }
+        });
+        (parsed.data.points || []).forEach(p => {
+          if (!p.id) p.id = Utils.uid();
+          if (!existingPtIds.has(p.id)) { State.data.points.push(p); pAdded++; }
+        });
+        if (parsed.settings) State.settings = { ...State.settings, ...parsed.settings };
+        if (Array.isArray(parsed.trips)) State.trips = parsed.trips;
+        State.saveData();
+        State.saveSettings();
+        State.saveTrips();
+        Utils.toast(`Imported: ${dAdded} dests, ${pAdded} pts`, 'good');
+      } else if (Array.isArray(parsed.points)) {
+        State.data = parsed;
+        State.saveData();
+        Utils.toast('Imported', 'good');
+      } else throw new Error('Unrecognized file format');
+      UI.render();
+      UI.applyTheme();
+      Map.updatePoints();
+    } catch (err) { Utils.toast(err.message, 'bad'); }
   };
   reader.readAsText(file);
-});
+  e.target.value = '';
+}
 
-// Destination modal: add current location
-document.getElementById('dest-add-here').addEventListener('click', () => {
-  const name = (document.getElementById('dest-name-input').value || '').trim();
-  if (!name) { showToast('Type a name first'); return; }
-  // Get current position even if GPS not started
-  if (currentPos) {
-    addDestination(name, currentPos.lat, currentPos.lng);
-    document.getElementById('dest-name-input').value = '';
-    closeModal('dest-modal');
-    refreshMapMarkers();
-    refreshUI();
-    showToast('Added: ' + name);
-  } else {
-    showToast('Getting location...');
-    navigator.geolocation.getCurrentPosition(pos => {
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      addDestination(name, lat, lng);
-      document.getElementById('dest-name-input').value = '';
-      closeModal('dest-modal');
-      refreshMapMarkers();
-      refreshUI();
-      showToast('Added: ' + name);
-    }, err => showToast('Location failed: ' + err.message), { enableHighAccuracy: true });
-  }
-});
-
-// Capture buttons
-document.querySelectorAll('[data-cap]').forEach(b => {
-  b.addEventListener('click', () => {
-    const type = b.getAttribute('data-cap');
-    closeModal('capture-modal');
-    if (type === 'cancel') return;
-    if (!currentPos) { showToast('No GPS fix'); return; }
-    const dest = activeDest();
-    if (!dest) { showToast('No destination'); return; }
-    const point = {
-      id: 'pt_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-      destinationId: dest.id,
-      type,
-      lat: currentPos.lat,
-      lng: currentPos.lng,
-      capturedAt: Date.now(),
-    };
-    data.points.push(point);
-    saveData();
-    refreshMapMarkers();
-    showToast('Saved: ' + pointLabel(type));
-  });
-});
-
-// Limit picker
-document.querySelectorAll('[data-lim]').forEach(b => {
-  b.addEventListener('click', () => {
-    const v = b.getAttribute('data-lim');
-    closeModal('limit-modal');
-    if (v === '-') return;
-    if (v === '') { settings.manualLimit = null; saveSettings(); showToast('Limit cleared'); }
-    else { settings.manualLimit = parseInt(v, 10); saveSettings(); showToast('Limit: ' + v + ' km/h'); }
-    refreshUI();
-  });
-});
-
-// v21.4: Edit-point modal wiring
-document.querySelectorAll('[data-ep-type]').forEach(b => {
-  b.addEventListener('click', () => {
-    editingPointType = b.getAttribute('data-ep-type');
-    document.querySelectorAll('[data-ep-type]').forEach(x =>
-      x.classList.toggle('active', x.getAttribute('data-ep-type') === editingPointType)
-    );
-  });
-});
-document.getElementById('ep-cancel').addEventListener('click', () => {
-  closeModal('edit-point-modal');
-  editingPointId = null;
-});
-document.getElementById('ep-delete').addEventListener('click', () => {
-  if (!editingPointId) return;
-  const id = editingPointId;
-  closeModal('edit-point-modal');
-  editingPointId = null;
-  deletePoint(id);
-  // If points modal is reachable, refresh it
-  if (document.getElementById('points-modal').classList.contains('open')) {
-    renderPointsList();
-  }
-});
-document.getElementById('ep-save').addEventListener('click', () => {
-  if (!editingPointId) return;
-  const p = data.points.find(x => x.id === editingPointId);
-  if (!p) { closeModal('edit-point-modal'); return; }
-  const newName = document.getElementById('ep-name').value.trim();
-  p.name = newName || undefined;
-  if (editingPointType) p.type = editingPointType;
-  saveData();
-  refreshMapMarkers();
-  refreshUI();
-  closeModal('edit-point-modal');
-  editingPointId = null;
-  if (document.getElementById('points-modal').classList.contains('open')) {
-    renderPointsList();
-  }
-  showToast('Saved');
-});
-
-// Settings wiring
-document.querySelectorAll('[data-sound]').forEach(b =>
-  b.addEventListener('click', () => {
-    settings.sound = b.getAttribute('data-sound');
-    saveSettings();
-    refreshSettingsUI();
-    unlockAudio();
-    if (settings.sound !== 'off') playBeep(800, 0.15);
-  })
-);
-document.querySelectorAll('[data-voice]').forEach(b =>
-  b.addEventListener('click', () => {
-    settings.voiceGender = b.getAttribute('data-voice');
-    _voiceCache = null; _voiceCacheFor = null;
-    saveSettings();
-    refreshSettingsUI();
-    unlockAudio();
-    if (settings.voiceGender !== 'none') speak('Voice set');
-  })
-);
-document.getElementById('opt-markers').addEventListener('change', (e) => {
-  const parts = (e.target.value || '').split(/[,\s]+/).map(x => parseInt(x, 10)).filter(x => x > 0).sort((a,b) => b-a);
-  if (parts.length) {
-    settings.alertMarkersM = parts;
-    saveSettings();
-    showToast('Markers: ' + parts.join('m, ') + 'm');
-  }
-});
-document.getElementById('opt-over').addEventListener('change', (e) => {
-  const v = parseInt(e.target.value, 10);
-  if (!isNaN(v) && v >= 0 && v <= 50) {
-    settings.speedAlertOver = v;
-    saveSettings();
-  }
-});
-document.getElementById('opt-test-sound').addEventListener('click', () => {
-  unlockAudio();
-  if (settings.sound === 'beep' || settings.sound === 'both') {
-    playBeep(900, 0.15);
-    setTimeout(() => playBeep(700, 0.15), 200);
-  }
-  if (settings.sound === 'voice' || settings.sound === 'both') {
-    setTimeout(() => speak('Speed camera in 500 meters'), 400);
-  }
-});
-
-// =====================================================
-// Init
-// =====================================================
-function init() {
+/* ============================================================
+   11. BOOT
+   ============================================================ */
+function boot() {
   try {
-    loadData();
-    loadSettings();
-    initMap();
-    refreshUI();
-    // v21.1: do NOT request GPS silently on page load.
-    // GPS permission is only asked when the user taps Start GPS,
-    // or "Use current location" inside the Destinations modal.
-    // Refresh UI on a slow tick so dest distance updates
-    setInterval(refreshUI, 1000);
-    // v21.1: driving safety reminder, once per device
-    try {
-      if (!localStorage.getItem('roadAlert.safetyShown')) {
-        setTimeout(() => {
-          showToast('Set up while parked. Drive safely.');
-          localStorage.setItem('roadAlert.safetyShown', '1');
-        }, 1500);
-      }
-    } catch(e) {}
-  } catch (err) {
-    console.error('init failed:', err);
-    showToast('Init error: ' + (err.message || err));
+    UI.applyTheme();
+    wire();
+    UI.render();
+    UI.updateFollowPill();
+    Map.init();
+    if (State.settings.autoBackup) Backup.start();
+    setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
+    // v22: driving safety reminder, once per device
+    if (!localStorage.getItem(Storage.KEYS.safetyShown)) {
+      setTimeout(() => {
+        Utils.toast('Set up while parked. Drive safely.', 'good');
+        try { localStorage.setItem(Storage.KEYS.safetyShown, '1'); } catch (e) {}
+      }, 1500);
+    }
+  } catch (e) {
+    console.error('Boot error', e);
+    Utils.toast('Boot error: ' + e.message, 'bad');
   }
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initWhenReady);
+  document.addEventListener('DOMContentLoaded', boot);
 } else {
-  initWhenReady();
-}
-
-// v21.3: wait briefly for Leaflet to load (it's loaded async with fallback)
-function initWhenReady(){
-  var tries = 0;
-  function check(){
-    if (typeof L !== 'undefined') {
-      init();
-      return;
-    }
-    tries++;
-    if (tries > 30) { // ~6s
-      console.warn('Leaflet never loaded; initializing without map');
-      init();
-      return;
-    }
-    setTimeout(check, 200);
-  }
-  check();
+  boot();
 }
 </script>
 
