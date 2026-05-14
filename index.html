@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -574,7 +573,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 /* ACTIONS */
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: 1fr 1.4fr auto;
   gap: 6px;
 }
 .btn {
@@ -974,7 +973,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
   .next-dist { font-size: 18px; }
 }
 </style>
-
 </head>
 <body data-theme="light">
 
@@ -997,7 +995,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- ROUTE BAR -->
-
   <div class="route-bar">
     <button class="route-current" id="btn-route">
       <span class="arrow">→</span>
@@ -1007,7 +1004,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- v22.12: Diagnostic strip — shows alert pipeline state at a glance -->
-
   <div class="diag-strip" id="diag-strip">
     <span id="diag-gps">GPS —</span>
     <span id="diag-pts">— pts</span>
@@ -1017,7 +1013,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- STATS -->
-
   <div class="stats">
     <div class="stat-card">
       <div class="stat-label">Speed</div>
@@ -1041,7 +1036,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- MAP -->
-
   <div class="map-wrap">
     <div id="map"></div>
     <button class="follow-pill" id="follow-pill">
@@ -1080,14 +1074,13 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- ACTIONS -->
-
   <div class="actions">
     <button class="btn btn-capture" id="btn-capture">📷 Capture</button>
     <button class="btn btn-go" id="btn-go">▶ Start GPS</button>
+    <button class="btn btn-square" id="btn-demo" title="Demo">▷</button>
   </div>
 
   <!-- STATUS LINE -->
-
   <div class="status-line">
     <span><strong id="status-mode">Idle</strong></span>
     <span><strong id="status-gps">—</strong></span>
@@ -1098,7 +1091,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 <!-- ============== MODALS ============== -->
 
 <!-- v22.20: Sim start/end config -->
-
 <div class="modal" id="m-sim-config">
   <div class="modal-card">
     <div class="modal-head">
@@ -1110,53 +1102,49 @@ body[data-nav="on"] .ra-current::after { display: block; }
       fixed route. The simulator will emit fake GPS positions just like a real drive.
     </div>
 
-```
-<div class="section-title">From (start)</div>
-<div class="row" style="display:block;">
-  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-    <button class="btn" data-from="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
-    <button class="btn" data-from="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
-  </div>
-  <select id="sim-from-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
-    <option value="">— or pick captured point —</option>
-  </select>
-  <div style="display:flex;gap:6px;">
-    <input type="number" id="sim-from-lat" step="0.0001" placeholder="lat"
-           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-    <input type="number" id="sim-from-lng" step="0.0001" placeholder="lng"
-           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-  </div>
-</div>
+    <div class="section-title">From (start)</div>
+    <div class="row" style="display:block;">
+      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+        <button class="btn" data-from="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
+        <button class="btn" data-from="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
+      </div>
+      <select id="sim-from-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
+        <option value="">— or pick captured point —</option>
+      </select>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="sim-from-lat" step="0.0001" placeholder="lat"
+               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+        <input type="number" id="sim-from-lng" step="0.0001" placeholder="lng"
+               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+      </div>
+    </div>
 
-<div class="section-title">To (end)</div>
-<div class="row" style="display:block;">
-  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-    <button class="btn" data-to="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
-    <button class="btn" data-to="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
-  </div>
-  <select id="sim-to-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
-    <option value="">— or pick captured point —</option>
-  </select>
-  <div style="display:flex;gap:6px;">
-    <input type="number" id="sim-to-lat" step="0.0001" placeholder="lat"
-           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-    <input type="number" id="sim-to-lng" step="0.0001" placeholder="lng"
-           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-  </div>
-</div>
+    <div class="section-title">To (end)</div>
+    <div class="row" style="display:block;">
+      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+        <button class="btn" data-to="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
+        <button class="btn" data-to="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
+      </div>
+      <select id="sim-to-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
+        <option value="">— or pick captured point —</option>
+      </select>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="sim-to-lat" step="0.0001" placeholder="lat"
+               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+        <input type="number" id="sim-to-lng" step="0.0001" placeholder="lng"
+               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+      </div>
+    </div>
 
-<div style="font-size:10px;color:var(--ink-3);text-align:center;margin:6px 0;">
-  <span id="sim-config-dist">Distance: —</span>
-</div>
+    <div style="font-size:10px;color:var(--ink-3);text-align:center;margin:6px 0;">
+      <span id="sim-config-dist">Distance: —</span>
+    </div>
 
-<button class="btn btn-go" id="sim-config-start" style="font-size:14px;font-weight:800;">▶ Start demo</button>
-```
-
+    <button class="btn btn-go" id="sim-config-start" style="font-size:14px;font-weight:800;">▶ Start demo</button>
   </div>
 </div>
 
 <!-- v22.19: Scenario tester -->
-
 <div class="modal" id="m-scenarios">
   <div class="modal-card">
     <div class="modal-head">
@@ -1177,7 +1165,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- v22.8: Sound Check diagnostic -->
-
 <div class="modal" id="m-sound-check">
   <div class="modal-card">
     <div class="modal-head">
@@ -1186,37 +1173,33 @@ body[data-nav="on"] .ra-current::after { display: block; }
     </div>
     <div id="sound-check-results" style="font-family:var(--mono,monospace);font-size:11px;line-height:1.6;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;"></div>
 
-```
-<div class="section-title">Tests</div>
-<button class="btn" id="sc-tone">▶ Play tone (current style)</button>
-<button class="btn" id="sc-tone-cam">▶ Play speed-cam pattern</button>
-<button class="btn" id="sc-voice">▶ Speak "Speed camera in 500 meters"</button>
-<button class="btn" id="sc-alert">▶ Full alert (tone + voice)</button>
-<button class="btn" id="sc-repeat">▶ Test repeat (3× with gap)</button>
-<button class="btn" id="sc-near" style="background:var(--amber);color:#0c0a09;">⚡ Force-alert nearest ahead</button>
+    <div class="section-title">Tests</div>
+    <button class="btn" id="sc-tone">▶ Play tone (current style)</button>
+    <button class="btn" id="sc-tone-cam">▶ Play speed-cam pattern</button>
+    <button class="btn" id="sc-voice">▶ Speak "Speed camera in 500 meters"</button>
+    <button class="btn" id="sc-alert">▶ Full alert (tone + voice)</button>
+    <button class="btn" id="sc-repeat">▶ Test repeat (3× with gap)</button>
+    <button class="btn" id="sc-near" style="background:var(--amber);color:#0c0a09;">⚡ Force-alert nearest ahead</button>
 
-<div class="section-title">Troubleshooting</div>
-<div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
-  <strong>If you hear nothing on iOS:</strong><br>
-  • Check the silent-mode switch on the side of the phone — flip it OFF (no orange).<br>
-  • Tones use Web Audio which is muted by the silent switch. Voice is NOT muted.<br>
-  • Turn up the volume buttons (Ringer volume, not Media).<br>
-  <br>
-  <strong>If voice doesn't work:</strong><br>
-  • iOS may need a few seconds to load voices on first launch.<br>
-  • Wait, then re-open Sound check.<br>
-  • Some voices need download in Settings → Accessibility → Spoken Content.<br>
-  <br>
-  <strong>If tested in an in-app browser (TikTok/Facebook):</strong><br>
-  • Open the page in real Safari or Chrome instead.
-</div>
-```
-
+    <div class="section-title">Troubleshooting</div>
+    <div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
+      <strong>If you hear nothing on iOS:</strong><br>
+      • Check the silent-mode switch on the side of the phone — flip it OFF (no orange).<br>
+      • Tones use Web Audio which is muted by the silent switch. Voice is NOT muted.<br>
+      • Turn up the volume buttons (Ringer volume, not Media).<br>
+      <br>
+      <strong>If voice doesn't work:</strong><br>
+      • iOS may need a few seconds to load voices on first launch.<br>
+      • Wait, then re-open Sound check.<br>
+      • Some voices need download in Settings → Accessibility → Spoken Content.<br>
+      <br>
+      <strong>If tested in an in-app browser (TikTok/Facebook):</strong><br>
+      • Open the page in real Safari or Chrome instead.
+    </div>
   </div>
 </div>
 
 <!-- v22.7: Start GPS confirm destination -->
-
 <div class="modal" id="m-confirm-start">
   <div class="modal-card">
     <div class="modal-head">
@@ -1237,7 +1220,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Capture -->
-
 <div class="modal" id="m-capture">
   <div class="modal-card">
     <div class="modal-head">
@@ -1259,7 +1241,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Side picker -->
-
 <div class="modal" id="m-side">
   <div class="modal-card">
     <div class="modal-head">
@@ -1275,7 +1256,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Speed limit picker -->
-
 <div class="modal" id="m-limit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1292,7 +1272,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Custom name -->
-
 <div class="modal" id="m-other">
   <div class="modal-card">
     <div class="modal-head">
@@ -1307,7 +1286,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Point editor -->
-
 <div class="modal" id="m-edit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1358,7 +1336,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Destinations list -->
-
 <div class="modal" id="m-routes">
   <div class="modal-card">
     <div class="modal-head">
@@ -1371,7 +1348,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Destination editor -->
-
 <div class="modal" id="m-route-edit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1404,7 +1380,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Settings -->
-
 <div class="modal" id="m-settings">
   <div class="modal-card">
     <div class="modal-head">
@@ -1412,123 +1387,118 @@ body[data-nav="on"] .ra-current::after { display: block; }
       <button class="modal-close" data-close>×</button>
     </div>
 
-```
-<div class="section-title">Display</div>
-<div class="row">
-  <span class="label">Theme</span>
-  <div class="opts" id="theme-opts">
-    <button data-theme="auto">Auto</button>
-    <button data-theme="light">Day</button>
-    <button data-theme="dark">Night</button>
-  </div>
-</div>
+    <div class="section-title">Display</div>
+    <div class="row">
+      <span class="label">Theme</span>
+      <div class="opts" id="theme-opts">
+        <button data-theme="auto">Auto</button>
+        <button data-theme="light">Day</button>
+        <button data-theme="dark">Night</button>
+      </div>
+    </div>
 
-<div class="section-title">Alerts</div>
-<div class="row">
-  <span class="label">Sound</span>
-  <div class="opts" id="sound-opts">
-    <button data-sound="voice">🗣 Voice</button>
-    <button data-sound="beep">🔔 Tone</button>
-  </div>
-</div>
-<div class="row">
-  <span class="label">Voice type</span>
-  <div class="opts" id="voice-opts">
-    <button data-voice="female">♀ Female</button>
-    <button data-voice="male">♂ Male</button>
-    <button data-voice="none">None</button>
-  </div>
-</div>
-<div class="row"><span class="label">Announce side in voice</span><span class="toggle" id="t-side"></span></div>
-<div class="row" style="display:block;">
-  <span class="label" style="display:block;margin-bottom:6px;">Alert distances (meters)</span>
-  <div id="markers-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:30px;"></div>
-  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-    <input type="number" id="i-marker-add" min="50" max="10000" step="50" placeholder="add distance"
-           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:120px;font:inherit;">
-    <button class="btn" id="btn-marker-add" style="padding:6px 14px;">+ Add</button>
-  </div>
-  <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
-    <button class="btn" data-marker-preset="default" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Default (2k/1k/500)</button>
-    <button class="btn" data-marker-preset="city" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">City (1k/500/200)</button>
-    <button class="btn" data-marker-preset="highway" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Highway (3k/2k/1k/500)</button>
-  </div>
-  <div style="font-size:10px;color:var(--ink-3);margin-top:6px;">Tap a chip to remove · alerts fire when you cross each distance</div>
-</div>
-<div class="row">
-  <span class="label">Flash border at (m)</span>
-  <input type="number" id="i-flash" min="50" max="3000" step="50">
-</div>
-<div class="row">
-  <span class="label">Repeat alert × times</span>
-  <input type="number" id="i-repeat" min="1" max="5" step="1">
-</div>
-<div class="row">
-  <span class="label">Repeat gap (sec)</span>
-  <input type="number" id="i-repeatgap" min="0.5" max="10" step="0.5">
-</div>
-<div class="row" style="display:block;">
-  <span class="label" style="display:block;margin-bottom:6px;">Tone style — tap to preview</span>
-  <div class="cap-grid" id="tone-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;">
-    <button class="cap-btn" data-tone="classic" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🔔</span>Classic</button>
-    <button class="cap-btn" data-tone="chime"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🎐</span>Chime</button>
-    <button class="cap-btn" data-tone="alert"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">⚠</span>Alert</button>
-    <button class="cap-btn" data-tone="bell"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🛎</span>Bell</button>
-    <button class="cap-btn" data-tone="soft"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💤</span>Soft</button>
-    <button class="cap-btn" data-tone="radar"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">📡</span>Radar</button>
-    <button class="cap-btn" data-tone="digital" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🤖</span>Digital</button>
-    <button class="cap-btn" data-tone="pulse"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💓</span>Pulse</button>
-  </div>
-</div>
+    <div class="section-title">Alerts</div>
+    <div class="row">
+      <span class="label">Sound</span>
+      <div class="opts" id="sound-opts">
+        <button data-sound="voice">🗣 Voice</button>
+        <button data-sound="beep">🔔 Tone</button>
+      </div>
+    </div>
+    <div class="row">
+      <span class="label">Voice type</span>
+      <div class="opts" id="voice-opts">
+        <button data-voice="female">♀ Female</button>
+        <button data-voice="male">♂ Male</button>
+        <button data-voice="none">None</button>
+      </div>
+    </div>
+    <div class="row"><span class="label">Announce side in voice</span><span class="toggle" id="t-side"></span></div>
+    <div class="row" style="display:block;">
+      <span class="label" style="display:block;margin-bottom:6px;">Alert distances (meters)</span>
+      <div id="markers-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:30px;"></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <input type="number" id="i-marker-add" min="50" max="10000" step="50" placeholder="add distance"
+               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:120px;font:inherit;">
+        <button class="btn" id="btn-marker-add" style="padding:6px 14px;">+ Add</button>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn" data-marker-preset="default" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Default (2k/1k/500)</button>
+        <button class="btn" data-marker-preset="city" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">City (1k/500/200)</button>
+        <button class="btn" data-marker-preset="highway" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Highway (3k/2k/1k/500)</button>
+      </div>
+      <div style="font-size:10px;color:var(--ink-3);margin-top:6px;">Tap a chip to remove · alerts fire when you cross each distance</div>
+    </div>
+    <div class="row">
+      <span class="label">Flash border at (m)</span>
+      <input type="number" id="i-flash" min="50" max="3000" step="50">
+    </div>
+    <div class="row">
+      <span class="label">Repeat alert × times</span>
+      <input type="number" id="i-repeat" min="1" max="5" step="1">
+    </div>
+    <div class="row">
+      <span class="label">Repeat gap (sec)</span>
+      <input type="number" id="i-repeatgap" min="0.5" max="10" step="0.5">
+    </div>
+    <div class="row" style="display:block;">
+      <span class="label" style="display:block;margin-bottom:6px;">Tone style — tap to preview</span>
+      <div class="cap-grid" id="tone-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;">
+        <button class="cap-btn" data-tone="classic" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🔔</span>Classic</button>
+        <button class="cap-btn" data-tone="chime"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🎐</span>Chime</button>
+        <button class="cap-btn" data-tone="alert"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">⚠</span>Alert</button>
+        <button class="cap-btn" data-tone="bell"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🛎</span>Bell</button>
+        <button class="cap-btn" data-tone="soft"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💤</span>Soft</button>
+        <button class="cap-btn" data-tone="radar"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">📡</span>Radar</button>
+        <button class="cap-btn" data-tone="digital" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🤖</span>Digital</button>
+        <button class="cap-btn" data-tone="pulse"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💓</span>Pulse</button>
+      </div>
+    </div>
 
-<div class="section-title">Speed limit alerts</div>
-<div class="row">
-  <span class="label">Mode</span>
-  <div class="opts" id="speed-opts">
-    <button data-speed="off">Off</button>
-    <button data-speed="beep">Beep</button>
-    <button data-speed="voice">Voice</button>
-    <button data-speed="both">Both</button>
-  </div>
-</div>
-<div class="row"><span class="label">Trigger when over by (km/h)</span><input type="number" id="i-over" min="0" max="50"></div>
+    <div class="section-title">Speed limit alerts</div>
+    <div class="row">
+      <span class="label">Mode</span>
+      <div class="opts" id="speed-opts">
+        <button data-speed="off">Off</button>
+        <button data-speed="beep">Beep</button>
+        <button data-speed="voice">Voice</button>
+        <button data-speed="both">Both</button>
+      </div>
+    </div>
+    <div class="row"><span class="label">Trigger when over by (km/h)</span><input type="number" id="i-over" min="0" max="50"></div>
 
-<div class="section-title">Trips</div>
-<div style="display:flex;gap:6px;">
-  <button class="btn" id="trip-toggle">▶ Start trip</button>
-  <button class="btn" id="trip-list">View trips</button>
-</div>
+    <div class="section-title">Trips</div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="trip-toggle">▶ Start trip</button>
+      <button class="btn" id="trip-list">View trips</button>
+    </div>
 
-<div class="section-title">GitHub backup</div>
-<div style="font-size:10px;color:var(--ink-3);padding:4px 6px;line-height:1.4;">
-  ⚠ Token stored in browser localStorage. Use a fine-grained token with access to <strong>one repo only</strong>. Anyone with this device can read it.
-</div>
-<div class="row"><span class="label">Token</span><input type="password" id="i-gh-token" placeholder="ghp_..."></div>
-<div class="row"><span class="label">Repo</span><input type="text" id="i-gh-repo" placeholder="user/repo"></div>
-<div class="row"><span class="label">File path</span><input type="text" id="i-gh-path" placeholder="road-alert.json"></div>
-<div class="row"><span class="label">Auto-backup every 5 min</span><span class="toggle" id="t-autobackup"></span></div>
-<div id="backup-status" style="font-size:10px;color:var(--ink-3);text-align:center;padding:4px;">No backup yet</div>
-<button class="btn btn-go" id="btn-backup-now">☁ Backup now</button>
+    <div class="section-title">GitHub backup</div>
+    <div style="font-size:10px;color:var(--ink-3);padding:4px 6px;line-height:1.4;">
+      ⚠ Token stored in browser localStorage. Use a fine-grained token with access to <strong>one repo only</strong>. Anyone with this device can read it.
+    </div>
+    <div class="row"><span class="label">Token</span><input type="password" id="i-gh-token" placeholder="ghp_..."></div>
+    <div class="row"><span class="label">Repo</span><input type="text" id="i-gh-repo" placeholder="user/repo"></div>
+    <div class="row"><span class="label">File path</span><input type="text" id="i-gh-path" placeholder="road-alert.json"></div>
+    <div class="row"><span class="label">Auto-backup every 5 min</span><span class="toggle" id="t-autobackup"></span></div>
+    <div id="backup-status" style="font-size:10px;color:var(--ink-3);text-align:center;padding:4px;">No backup yet</div>
+    <button class="btn btn-go" id="btn-backup-now">☁ Backup now</button>
 
-<div class="section-title">Data</div>
-<div style="display:flex;gap:6px;flex-wrap:wrap;">
-  <button class="btn" id="btn-audit">Audit points</button>
-  <button class="btn" id="btn-disabled">Disabled (<span id="disabled-count">0</span>)</button>
-  <button class="btn" id="btn-export">Export</button>
-  <button class="btn" id="btn-import">Import</button>
-  <button class="btn" id="btn-edit-json">Edit JSON</button>
-</div>
-<input type="file" id="import-file" accept="application/json" style="display:none">
-<button class="btn" id="btn-demo">▷ Simulation demo</button>
-<button class="btn" id="btn-test-sound">🔊 Sound check</button>
-<button class="btn" id="btn-scenarios">🧪 Test scenarios</button>
-```
-
+    <div class="section-title">Data</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn" id="btn-audit">Audit points</button>
+      <button class="btn" id="btn-disabled">Disabled (<span id="disabled-count">0</span>)</button>
+      <button class="btn" id="btn-export">Export</button>
+      <button class="btn" id="btn-import">Import</button>
+      <button class="btn" id="btn-edit-json">Edit JSON</button>
+    </div>
+    <input type="file" id="import-file" accept="application/json" style="display:none">
+    <button class="btn" id="btn-test-sound">🔊 Sound check</button>
+    <button class="btn" id="btn-scenarios">🧪 Test scenarios</button>
   </div>
 </div>
 
 <!-- Audit -->
-
 <div class="modal" id="m-audit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1540,7 +1510,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Disabled -->
-
 <div class="modal" id="m-disabled">
   <div class="modal-card">
     <div class="modal-head">
@@ -1552,7 +1521,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Trips -->
-
 <div class="modal" id="m-trips">
   <div class="modal-card">
     <div class="modal-head">
@@ -1568,7 +1536,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- JSON editor -->
-
 <div class="modal" id="m-json">
   <div class="modal-card">
     <div class="modal-head">
@@ -1587,7 +1554,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 <div class="toast" id="toast"></div>
 
 <!-- Leaflet with CDN fallback -->
-
 <script>
 (function loadLeaflet() {
   function tryLoad(url, onfail) {
@@ -4165,10 +4131,7 @@ function wire() {
     UI.openModal('m-routes');
   };
   document.getElementById('confirm-start').onclick = () => UI.doStart();
-  document.getElementById('btn-demo').onclick = () => {
-    UI.closeAllModals();
-    State.mode === 'demo' ? GPS.stop() : GPS.demo();
-  };
+  document.getElementById('btn-demo').onclick = () => State.mode === 'demo' ? GPS.stop() : GPS.demo();
 
   // v22.19: Sim control panel
   document.getElementById('sim-pause').addEventListener('click', () => Sim.togglePause());
