@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.3</title>
+<title>Road Alert v22.4</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -118,6 +118,11 @@ body {
   font-weight: 600;
 }
 .topbar-spacer { flex: 1; }
+.topbar-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
 .icon-btn {
   appearance: none;
   border: 1px solid var(--line);
@@ -806,10 +811,16 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.3</span>
+      <span class="version">v22.4</span>
     </div>
     <span class="topbar-spacer"></span>
-    <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btn-sound" title="Sound mode">🔊</button>
+      <button class="icon-btn" id="btn-theme" title="Theme">☀</button>
+      <button class="icon-btn" id="btn-fit-top" title="Fit all">⛶</button>
+      <button class="icon-btn" id="btn-recenter-top" title="Recenter">📍</button>
+      <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
+    </div>
   </div>
 
   <!-- ROUTE BAR -->
@@ -2104,6 +2115,26 @@ const UI = {
 
   updateMapPoints() { MapView.updatePoints(); },
 
+  /** v22.4: refresh the top-bar sound icon based on current setting */
+  updateSoundIcon() {
+    const el = document.getElementById('btn-sound');
+    if (!el) return;
+    const s = State.settings.sound;
+    el.textContent = s === 'off' ? '🔇'
+                    : s === 'voice' ? '🗣'
+                    : s === 'beep' ? '🔔'
+                    : '🔊'; // both
+  },
+
+  /** v22.4: refresh the top-bar theme icon based on current setting */
+  updateThemeIcon() {
+    const el = document.getElementById('btn-theme');
+    if (!el) return;
+    el.textContent = State.settings.theme === 'dark' ? '🌙'
+                    : State.settings.theme === 'auto' ? '🌓'
+                    : '☀';
+  },
+
   updateFollowPill() {
     const pill = document.getElementById('follow-pill');
     pill.classList.toggle('off', !State.followMap);
@@ -2607,6 +2638,29 @@ const Backup = {
    ============================================================ */
 function wire() {
   document.getElementById('btn-settings').onclick = () => { UI.syncSettings(); UI.openModal('m-settings'); };
+
+  // v22.4: top-bar quick controls
+  document.getElementById('btn-sound').onclick = () => {
+    const cycle = ['voice', 'beep', 'both', 'off'];
+    const i = cycle.indexOf(State.settings.sound);
+    State.settings.sound = cycle[(i + 1) % cycle.length];
+    State.saveSettings();
+    UI.updateSoundIcon();
+    Utils.toast('Sound: ' + State.settings.sound, 'good');
+    Audio.unlock();
+    if (State.settings.sound !== 'off') Audio.beep('petrol');
+  };
+  document.getElementById('btn-theme').onclick = () => {
+    const cycle = ['light', 'dark', 'auto'];
+    const i = cycle.indexOf(State.settings.theme);
+    State.settings.theme = cycle[(i + 1) % cycle.length];
+    State.saveSettings();
+    UI.applyTheme();
+    UI.updateThemeIcon();
+    Utils.toast('Theme: ' + State.settings.theme, 'good');
+  };
+  document.getElementById('btn-fit-top').onclick = () => MapView.fitAll();
+  document.getElementById('btn-recenter-top').onclick = () => MapView.recenter();
   document.getElementById('btn-route').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-route-menu').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
@@ -2692,11 +2746,11 @@ function wire() {
   document.getElementById('re-delete').onclick = () => UI.deleteDest();
 
   document.querySelectorAll('[data-theme]').forEach(b =>
-    b.onclick = () => { State.settings.theme = b.dataset.theme; State.saveSettings(); UI.applyTheme(); UI.syncSettings(); }
+    b.onclick = () => { State.settings.theme = b.dataset.theme; State.saveSettings(); UI.applyTheme(); UI.updateThemeIcon(); UI.syncSettings(); }
   );
   document.querySelectorAll('[data-sound]').forEach(b =>
     b.onclick = () => {
-      State.settings.sound = b.dataset.sound; State.saveSettings(); UI.syncSettings();
+      State.settings.sound = b.dataset.sound; State.saveSettings(); UI.syncSettings(); UI.updateSoundIcon();
       Audio.unlock();
       if (b.dataset.sound !== 'off') Audio.beep('petrol');
     }
@@ -2859,6 +2913,8 @@ function boot() {
     wire();
     UI.render();
     UI.updateFollowPill();
+    UI.updateSoundIcon();
+    UI.updateThemeIcon();
     MapView.init();
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
