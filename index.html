@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.8</title>
+<title>Road Alert v22.10</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -795,12 +795,15 @@ body {
   border: none;
   background: var(--amber);
   color: #0c0a09;
-  padding: 5px 10px;
-  border-radius: 5px;
-  font-weight: 700;
-  font-size: 11px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 13px;
   cursor: pointer;
-  margin-right: 4px;
+  margin-right: 6px;
+  margin-top: 6px;
+  min-height: 38px;
+  min-width: 70px;
 }
 .leaflet-control-zoom a {
   background: var(--surface) !important;
@@ -827,7 +830,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.8</span>
+      <span class="version">v22.10</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -865,8 +868,8 @@ body {
         </div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Next ahead</div>
+    <div class="stat-card" id="next-card" style="cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;">
+      <div class="stat-label">Next ahead <span style="font-size:9px;color:var(--ink-3);font-weight:600;">· tap</span></div>
       <div class="next-body" id="next-body">
         <div class="next-empty">— nothing ahead —</div>
       </div>
@@ -1181,18 +1184,18 @@ body {
   <span class="label">Repeat gap (sec)</span>
   <input type="number" id="i-repeatgap" min="0.5" max="10" step="0.5">
 </div>
-<div class="row">
-  <span class="label">Tone style</span>
-  <select id="i-tone">
-    <option value="classic">🔔 Classic</option>
-    <option value="chime">🎐 Chime</option>
-    <option value="alert">⚠ Alert</option>
-    <option value="bell">🛎 Bell</option>
-    <option value="soft">💤 Soft</option>
-    <option value="radar">📡 Radar</option>
-    <option value="digital">🤖 Digital</option>
-    <option value="pulse">💓 Pulse</option>
-  </select>
+<div class="row" style="display:block;">
+  <span class="label" style="display:block;margin-bottom:6px;">Tone style — tap to preview</span>
+  <div class="cap-grid" id="tone-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;">
+    <button class="cap-btn" data-tone="classic" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🔔</span>Classic</button>
+    <button class="cap-btn" data-tone="chime"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🎐</span>Chime</button>
+    <button class="cap-btn" data-tone="alert"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">⚠</span>Alert</button>
+    <button class="cap-btn" data-tone="bell"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🛎</span>Bell</button>
+    <button class="cap-btn" data-tone="soft"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💤</span>Soft</button>
+    <button class="cap-btn" data-tone="radar"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">📡</span>Radar</button>
+    <button class="cap-btn" data-tone="digital" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🤖</span>Digital</button>
+    <button class="cap-btn" data-tone="pulse"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💓</span>Pulse</button>
+  </div>
 </div>
 
 <div class="section-title">Speed limit alerts</div>
@@ -1363,6 +1366,21 @@ const Utils = {
     if (km == null || isNaN(km)) return '—';
     if (km < 1) return Math.round(km * 1000) + ' m';
     return km.toFixed(1) + ' km';
+  },
+  /** v22.10: human-readable "time ago" from an ISO timestamp. */
+  fmtAgo(iso) {
+    if (!iso) return '';
+    const then = new Date(iso).getTime();
+    if (!then || isNaN(then)) return '';
+    const sec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (sec < 30) return 'just now';
+    if (sec < 60) return sec + ' seconds ago';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return min + (min === 1 ? ' minute ago' : ' minutes ago');
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + (hr === 1 ? ' hour ago' : ' hours ago');
+    const days = Math.floor(hr / 24);
+    return days + (days === 1 ? ' day ago' : ' days ago');
   },
   escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -1541,6 +1559,7 @@ const State = {
   editingPointId: null,
   editingDestId: null,
   limitPickerMode: 'manual', // 'manual' | 'speedchange'
+  lastTripCaptureId: null, // v22.10: id of most recent point captured this trip (for double-tap recall)
 
   saveData()     { Storage.save(Storage.KEYS.data, this.data); UI.updateMapPoints(); UI.render(); },
   saveSettings() { Storage.save(Storage.KEYS.settings, this.settings); },
@@ -1730,6 +1749,7 @@ const GPS = {
     State.speedAlertWasOver = false;
     State.lastSpeedAlertZone = null;
     State.speedBuffer = [];
+    State.lastTripCaptureId = null; // v22.10: reset for new trip
     State.mode = 'gps';
     UI.setStatusMode('LIVE', 'live');
     await this.requestWakeLock();
@@ -1751,6 +1771,7 @@ const GPS = {
     State.speedAlertWasOver = false;
     State.lastSpeedAlertZone = null;
     State.speedBuffer = [];
+    State.lastTripCaptureId = null; // v22.10: reset for demo trip
     State.mode = 'demo';
     UI.setStatusMode('DEMO', 'demo');
     UI.setBtnGoActive(true);
@@ -2086,12 +2107,15 @@ const MapView = {
         }),
       });
       const dist = State.pos ? Utils.distKm(State.pos, p) : null;
+      const agoText = p.createdAt ? Utils.fmtAgo(p.createdAt) : '';
+      const confText = (p.confidence && p.confidence > 1) ? ` · ×${p.confidence}` : '';
       marker.bindPopup(`
         <div class="pop-name">${Utils.emoji(p.type, p.subtype)} ${Utils.escapeHtml(p.name)}</div>
-        <div class="pop-meta">${Utils.escapeHtml(Utils.typeLabel(p.type))}${p.side ? ' · ' + p.side : ''}${dist != null ? ' · ' + Utils.fmtDist(dist) : ''}</div>
-        <button data-edit="${Utils.escapeHtml(p.id)}">Edit</button>
-        <button data-del="${Utils.escapeHtml(p.id)}" style="background:var(--red);color:#fff;">Delete</button>
-      `, { maxWidth: 240 });
+        <div class="pop-meta">${Utils.escapeHtml(Utils.typeLabel(p.type))}${p.side ? ' · ' + p.side : ''}${dist != null ? ' · ' + Utils.fmtDist(dist) : ''}${confText}</div>
+        ${agoText ? `<div class="pop-meta" style="margin-top:2px;">📅 ${Utils.escapeHtml(agoText)}</div>` : ''}
+        <button data-edit="${Utils.escapeHtml(p.id)}">✎ Edit</button>
+        <button data-del="${Utils.escapeHtml(p.id)}" style="background:var(--red);color:#fff;">🗑 Delete</button>
+      `, { maxWidth: 280 });
       marker.on('popupopen', () => {
         setTimeout(() => {
           document.querySelectorAll('[data-edit]').forEach(b => {
@@ -2281,6 +2305,61 @@ const UI = {
     State.pendingCapture = null;
   },
 
+  /** v22.10: build the natural-language description of a point for voice. */
+  _describePoint(point, distKm) {
+    const parts = [];
+    parts.push(point.name || Utils.typeLabel(point.type));
+    if (distKm != null) {
+      parts.push('in ' + Utils.fmtDist(distKm));
+    }
+    if (State.settings.announceSide && point.side) {
+      parts.push(point.side === 'left' ? 'left side' : 'right side');
+    }
+    if (point.createdAt) {
+      const ago = Utils.fmtAgo(point.createdAt);
+      if (ago) parts.push('captured ' + ago);
+    }
+    return parts.join(', ');
+  },
+
+  /** v22.10: single-tap Next-ahead → announce nearest point ahead with full details. */
+  announceNearestAhead() {
+    Audio.unlock();
+    const list = Alerts.ahead();
+    if (!list.length) {
+      Utils.toast('Nothing ahead', 'bad');
+      if (State.settings.voiceGender !== 'none') Audio.say('Nothing ahead');
+      return;
+    }
+    const nearest = list[0];
+    const text = this._describePoint(nearest.point, nearest.dist);
+    Utils.toast('📢 ' + text, 'good');
+    if (State.settings.sound !== 'off') Audio.beep(nearest.point.type);
+    if (State.settings.voiceGender !== 'none') {
+      setTimeout(() => Audio.say(text), 300);
+    }
+  },
+
+  /** v22.10: double-tap Next-ahead → announce last captured point this trip. */
+  announceLastTripCapture() {
+    Audio.unlock();
+    const id = State.lastTripCaptureId;
+    const point = id ? State.data.points.find(x => x.id === id) : null;
+    if (!point) {
+      const msg = id ? 'Last capture was deleted' : 'Nothing captured this trip yet';
+      Utils.toast(msg, 'bad');
+      if (State.settings.voiceGender !== 'none') Audio.say(msg);
+      return;
+    }
+    const dist = State.pos ? Utils.distKm(State.pos, point) : null;
+    const text = 'Last capture: ' + this._describePoint(point, dist);
+    Utils.toast('📢 ' + text, 'good');
+    if (State.settings.sound !== 'off') Audio.beep(point.type);
+    if (State.settings.voiceGender !== 'none') {
+      setTimeout(() => Audio.say(text), 300);
+    }
+  },
+
   /** v22.8: build a diagnostic readout of the audio environment. */
   openSoundCheck() {
     Audio.unlock();
@@ -2370,7 +2449,19 @@ const UI = {
   },
 
   beginCapture(type) {
-    if (!State.pos) return;
+    // v22.9: surface the reason if capture can't proceed
+    if (!State.pos) {
+      Utils.toast('Need GPS fix first — tap Start GPS', 'bad');
+      this.closeAllModals();
+      return;
+    }
+    if (!State.data.activeDestId) {
+      Utils.toast('Pick a destination before capturing', 'bad');
+      this.closeAllModals();
+      this.renderRoutesList();
+      this.openModal('m-routes');
+      return;
+    }
     State.pendingCapture = {
       id: Utils.uid(),
       type,
@@ -2425,6 +2516,8 @@ const UI = {
     const nearby = State.data.points.find(p =>
       p.type === c.type && p.destId === c.destId && Utils.distKm(p, c) * 1000 < 100
     );
+    let announce;
+    let trackedId;
     if (nearby) {
       const n = (nearby.confidence || 0) + 1;
       nearby.lat = +((nearby.lat * (n - 1) + c.lat) / n).toFixed(5);
@@ -2434,14 +2527,28 @@ const UI = {
       if (c.side) nearby.side = c.side;
       if (c.limit) { nearby.limit = c.limit; nearby.name = c.name; }
       Utils.toast(`${Utils.typeLabel(c.type)} merged (×${n})`, 'good');
+      announce = Utils.typeLabel(c.type) + ' updated';
+      trackedId = nearby.id;
     } else {
       State.data.points.push(c);
       Utils.toast(`${Utils.typeLabel(c.type)} saved`, 'good');
+      announce = Utils.typeLabel(c.type) + ' captured';
+      trackedId = c.id;
     }
+    State.lastTripCaptureId = trackedId; // v22.10: track for double-tap recall
     State.pendingCapture = null;
     State.saveData();
+    // v22.9: force immediate map refresh (bypass the 5s throttle)
+    if (MapView.m) {
+      MapView._lastPointRefresh = Date.now();
+      MapView.updatePoints();
+    }
     if (navigator.vibrate) navigator.vibrate(40);
+    // v22.9: tone confirmation + voice announcement
     if (State.settings.sound !== 'off') Audio.beep(c.type);
+    if (State.settings.voiceGender !== 'none') {
+      setTimeout(() => Audio.say(announce), 300);
+    }
   },
 
   openPointEditor(id) {
@@ -2748,7 +2855,9 @@ const UI = {
     document.getElementById('i-flash').value = State.settings.flashStartM;
     document.getElementById('i-repeat').value = State.settings.alertRepeatCount;
     document.getElementById('i-repeatgap').value = State.settings.alertRepeatGapS;
-    document.getElementById('i-tone').value = State.settings.toneStyle;
+    // v22.9: highlight active tone button
+    document.querySelectorAll('[data-tone]').forEach(b =>
+      b.classList.toggle('active', b.dataset.tone === State.settings.toneStyle));
     document.querySelectorAll('[data-speed]').forEach(b =>
       b.classList.toggle('active', b.dataset.speed === State.settings.speedAlertMode));
     document.getElementById('i-gh-token').value = State.gh.token || '';
@@ -2859,6 +2968,29 @@ const Backup = {
    ============================================================ */
 function wire() {
   document.getElementById('btn-settings').onclick = () => { UI.syncSettings(); UI.openModal('m-settings'); };
+
+  // v22.10: Next-ahead card single/double tap
+  // Single tap (after ~280ms with no second tap) → announce nearest ahead
+  // Double tap (two taps within 280ms) → announce last capture this trip
+  (function() {
+    const card = document.getElementById('next-card');
+    if (!card) return;
+    let tapCount = 0;
+    let tapTimer = null;
+    card.addEventListener('click', () => {
+      tapCount++;
+      if (tapCount === 1) {
+        tapTimer = setTimeout(() => {
+          tapCount = 0;
+          UI.announceNearestAhead();
+        }, 280);
+      } else {
+        clearTimeout(tapTimer);
+        tapCount = 0;
+        UI.announceLastTripCapture();
+      }
+    });
+  })();
 
   // v22.4: top-bar quick controls
   document.getElementById('btn-sound').onclick = () => {
@@ -3031,13 +3163,21 @@ function wire() {
     const v = +e.target.value;
     if (v >= 0.5 && v <= 10) { State.settings.alertRepeatGapS = v; State.saveSettings(); Utils.toast('Gap ' + v + 's', 'good'); }
   };
-  document.getElementById('i-tone').onchange = e => {
-    State.settings.toneStyle = e.target.value;
-    State.saveSettings();
-    Audio.unlock();
-    Audio.beep('petrol'); // preview
-    Utils.toast('Tone: ' + e.target.value, 'good');
-  };
+  // v22.9: tone style picker — tappable buttons that preview on tap
+  document.querySelectorAll('[data-tone]').forEach(b => {
+    b.onclick = () => {
+      const newTone = b.dataset.tone;
+      State.settings.toneStyle = newTone;
+      State.saveSettings();
+      // Update active highlight
+      document.querySelectorAll('[data-tone]').forEach(x =>
+        x.classList.toggle('active', x.dataset.tone === newTone));
+      // Preview the tone right now
+      Audio.unlock();
+      Audio.beep('speed_camera'); // use a multi-beep pattern so it's audible
+      Utils.toast('Tone: ' + newTone, 'good');
+    };
+  });
   document.getElementById('i-gh-token').onchange = e => { State.gh.token = e.target.value.trim(); State.saveGh(); UI.updateBackupStatus(); };
   document.getElementById('i-gh-repo').onchange = e => { State.gh.repo = e.target.value.trim(); State.saveGh(); UI.updateBackupStatus(); };
   document.getElementById('i-gh-path').onchange = e => { State.gh.path = e.target.value.trim() || 'road-alert.json'; State.saveGh(); };
