@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.11</title>
+<title>Road Alert v22.12</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -144,6 +144,25 @@ body {
   grid-template-columns: 1fr auto;
   gap: 6px;
 }
+/* v22.12: tiny live diagnostic strip — easy to glance at while driving */
+.diag-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 4px 6px;
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  color: var(--ink-2);
+  line-height: 1.4;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 4px;
+}
+.diag-strip > span { white-space: nowrap; }
+.diag-strip .good { color: var(--green); font-weight: 700; }
+.diag-strip .bad  { color: var(--red); font-weight: 700; }
+.diag-strip .warn { color: var(--amber-2); font-weight: 700; }
 .route-current {
   appearance: none;
   background: var(--surface);
@@ -830,7 +849,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.11</span>
+      <span class="version">v22.12</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -850,6 +869,16 @@ body {
       <span id="route-name">Pick a destination</span>
     </button>
     <button class="route-menu" id="btn-route-menu" title="Switch route">⋯</button>
+  </div>
+
+  <!-- v22.12: Diagnostic strip — shows alert pipeline state at a glance -->
+
+  <div class="diag-strip" id="diag-strip">
+    <span id="diag-gps">GPS —</span>
+    <span id="diag-pts">— pts</span>
+    <span id="diag-ahead">— ahead</span>
+    <span id="diag-near">—</span>
+    <span id="diag-fired">0 fired</span>
   </div>
 
   <!-- STATS -->
@@ -926,6 +955,7 @@ body {
 <button class="btn" id="sc-voice">▶ Speak "Speed camera in 500 meters"</button>
 <button class="btn" id="sc-alert">▶ Full alert (tone + voice)</button>
 <button class="btn" id="sc-repeat">▶ Test repeat (3× with gap)</button>
+<button class="btn" id="sc-near" style="background:var(--amber);color:#0c0a09;">⚡ Force-alert nearest ahead</button>
 
 <div class="section-title">Troubleshooting</div>
 <div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
@@ -1560,6 +1590,7 @@ const State = {
   editingDestId: null,
   limitPickerMode: 'manual', // 'manual' | 'speedchange'
   lastTripCaptureId: null, // v22.10: id of most recent point captured this trip (for double-tap recall)
+  alertsFiredThisTrip: 0, // v22.12: count alerts fired since trip start, shown in diag strip
 
   saveData()     { Storage.save(Storage.KEYS.data, this.data); UI.updateMapPoints(); UI.render(); },
   saveSettings() { Storage.save(Storage.KEYS.settings, this.settings); },
@@ -1701,6 +1732,10 @@ const Audio = {
   alert(point, meters) {
     const s = State.settings.sound;
     if (s === 'off') return;
+    // v22.12: count for diagnostic strip
+    State.alertsFiredThisTrip = (State.alertsFiredThisTrip || 0) + 1;
+    State.lastAlertAt = Date.now();
+    State.lastAlertText = (point.name || Utils.typeLabel(point.type)) + ' @ ' + (meters >= 1000 ? (meters/1000) + 'km' : meters + 'm');
     const distText = meters >= 1000 ? (meters/1000) + ' kilometers' : meters + ' meters';
     let text = (point.name || Utils.typeLabel(point.type)) + ' in ' + distText;
     if (State.settings.announceSide && point.side) {
@@ -1750,6 +1785,7 @@ const GPS = {
     State.lastSpeedAlertZone = null;
     State.speedBuffer = [];
     State.lastTripCaptureId = null; // v22.10: reset for new trip
+    State.alertsFiredThisTrip = 0; // v22.12: reset alert counter for new trip
     State.mode = 'gps';
     UI.setStatusMode('LIVE', 'live');
     await this.requestWakeLock();
@@ -1772,6 +1808,7 @@ const GPS = {
     State.lastSpeedAlertZone = null;
     State.speedBuffer = [];
     State.lastTripCaptureId = null; // v22.10: reset for demo trip
+    State.alertsFiredThisTrip = 0; // v22.12: reset alert counter for demo
     State.mode = 'demo';
     UI.setStatusMode('DEMO', 'demo');
     UI.setBtnGoActive(true);
@@ -1834,7 +1871,11 @@ const GPS = {
     // Show a "LOW GPS" warning in the status line but still use the position;
     // skipping entirely can freeze the map in poor-signal areas (tunnel, urban canyon).
     State.accuracy = pos.coords.accuracy;
-    const lowAcc = pos.coords.accuracy != null && pos.coords.accuracy > 100;
+    // v22.12 FIX: raise threshold from 100m → 200m. Phones in cars often
+    // report ±50-150m on the highway; the old 100m cut-off was silently
+    // dropping ALL alerts in noisy conditions. 200m is still tight enough
+    // to ignore obvious garbage readings.
+    const lowAcc = pos.coords.accuracy != null && pos.coords.accuracy > 200;
     State.lowAccuracy = lowAcc;
 
     const prevPos = State.pos;
@@ -1873,9 +1914,11 @@ const GPS = {
       }
     }
 
-    // Only run alerts when accuracy is decent — alerting on noisy positions
-    // would create false threshold-crossing events
-    if (!lowAcc) Alerts.tick();
+    // v22.12 FIX: only skip alerts on TRULY garbage GPS readings (>500m).
+    // Old logic: skipped alerts whenever accuracy was lowAcc (>100m), which
+    // meant in noisy areas the user never heard any alerts at all.
+    const veryLowAcc = pos.coords.accuracy != null && pos.coords.accuracy > 500;
+    if (!veryLowAcc) Alerts.tick();
     UI.render();
     MapView.update();
   },
@@ -1938,18 +1981,25 @@ const Alerts = {
       const meters = distKm * 1000;
       const prevMeters = State.lastDistByPoint.get(p.id);
 
-      // Heading-aware: only alert points roughly ahead
-      let ahead = true;
-      if (State.prevPos && State.speedMps > 1) {
+      // v22.12 FIX: prefer the geometric route-based check (much more reliable
+      // than instantaneous GPS heading, which is noisy at low speeds, on curves,
+      // and during stop-and-go traffic). Only fall back to heading-based check
+      // when no active destination is set.
+      let ahead;
+      if (dest && myDistToDest != null) {
+        // Route-based: point is ahead if it's closer to destination than we are.
+        // 0.15km tolerance for GPS jitter near a point we're crossing.
+        const pDistToDest = Utils.distKm(p, dest);
+        ahead = pDistToDest < myDistToDest + 0.15;
+      } else if (State.prevPos && State.speedMps > 1) {
+        // Heading-based fallback (no destination known)
         const heading = Utils.bearing(State.prevPos, State.pos);
         const toPt = Utils.bearing(State.pos, p);
         const diff = Math.abs(((toPt - heading + 540) % 360) - 180);
-        if (diff > 90) ahead = false;
-      }
-      // Also use route-position info if destination known
-      if (dest && myDistToDest != null) {
-        const pDistToDest = Utils.distKm(p, dest);
-        if (pDistToDest > myDistToDest + 0.15) ahead = false;
+        ahead = diff <= 90;
+      } else {
+        // No way to know direction — assume ahead (safer to over-alert than to miss)
+        ahead = true;
       }
 
       if (!ahead) {
@@ -1967,20 +2017,31 @@ const Alerts = {
       // Threshold crossing: was above marker, now at-or-below
       const fired = State.alertedMarkers.get(p.id) || new Set();
       const markers = State.settings.alertMarkersM || [2000, 1000, 500];
-      for (const m of markers) {
-        if (fired.has(m)) continue;
-        if (prevMeters == null) {
-          // First sight — only fire if we're already inside the marker
-          if (meters <= m && meters > m - 300) {
+      if (prevMeters == null) {
+        // v22.12 FIX: First sight — fire the smallest marker we're already inside.
+        // Then mark all larger markers as fired so we don't spam later.
+        // The old logic required meters to be within 300m of the marker,
+        // which silently missed points appearing at e.g. 1500m, 600m, 100m.
+        const sorted = [...markers].sort((a, b) => a - b);
+        let fireM = null;
+        for (const m of sorted) {
+          if (meters <= m) { fireM = m; break; }
+        }
+        if (fireM != null) {
+          Audio.alert(p, fireM);
+          // Mark this marker AND every larger one as already fired
+          for (const m of markers) if (m >= fireM) fired.add(m);
+          if (navigator.vibrate) navigator.vibrate(60);
+        }
+      } else {
+        // Normal threshold-crossing detection
+        for (const m of markers) {
+          if (fired.has(m)) continue;
+          if (prevMeters > m && meters <= m) {
             Audio.alert(p, m);
             fired.add(m);
             if (navigator.vibrate) navigator.vibrate(60);
           }
-        } else if (prevMeters > m && meters <= m) {
-          // Crossed the threshold
-          Audio.alert(p, m);
-          fired.add(m);
-          if (navigator.vibrate) navigator.vibrate(60);
         }
       }
       State.alertedMarkers.set(p.id, fired);
@@ -2198,6 +2259,60 @@ const UI = {
     this.renderStats();
     this.renderStatusLine();
     this.renderDisabledCount();
+    this.renderDiagStrip(); // v22.12
+  },
+
+  /** v22.12: live diagnostic strip — see the alert pipeline at a glance.
+   *  GPS accuracy · pts loaded for active dest · pts ahead · nearest · alerts fired */
+  renderDiagStrip() {
+    const strip = document.getElementById('diag-strip');
+    if (!strip) return;
+    // GPS
+    const gpsEl = document.getElementById('diag-gps');
+    if (State.accuracy == null) {
+      gpsEl.textContent = 'GPS off';
+      gpsEl.className = 'bad';
+    } else if (State.accuracy > 500) {
+      gpsEl.textContent = `GPS ±${Math.round(State.accuracy)}m`;
+      gpsEl.className = 'bad';
+    } else if (State.accuracy > 200) {
+      gpsEl.textContent = `GPS ±${Math.round(State.accuracy)}m`;
+      gpsEl.className = 'warn';
+    } else {
+      gpsEl.textContent = `GPS ±${Math.round(State.accuracy)}m`;
+      gpsEl.className = 'good';
+    }
+    // Points for active dest
+    const ptsEl = document.getElementById('diag-pts');
+    const dest = State.activeDest();
+    if (!dest) {
+      ptsEl.textContent = 'NO DEST';
+      ptsEl.className = 'bad';
+    } else {
+      const n = State.activePoints().filter(p => p.status !== 'no').length;
+      ptsEl.textContent = `${n} pts`;
+      ptsEl.className = n > 0 ? '' : 'warn';
+    }
+    // Ahead count + nearest
+    const aheadEl = document.getElementById('diag-ahead');
+    const nearEl = document.getElementById('diag-near');
+    const ahead = Alerts.ahead();
+    aheadEl.textContent = `${ahead.length} ahead`;
+    aheadEl.className = ahead.length > 0 ? 'good' : '';
+    if (ahead.length > 0) {
+      const n = ahead[0];
+      nearEl.textContent = `→ ${Utils.fmtDist(n.dist)}`;
+      nearEl.className = n.dist * 1000 <= 500 ? 'bad'
+                       : n.dist * 1000 <= 1500 ? 'warn'
+                       : 'good';
+    } else {
+      nearEl.textContent = '—';
+      nearEl.className = '';
+    }
+    // Fired count this trip
+    const firedEl = document.getElementById('diag-fired');
+    firedEl.textContent = `${State.alertsFiredThisTrip || 0} fired`;
+    firedEl.className = (State.alertsFiredThisTrip || 0) > 0 ? 'good' : '';
   },
 
   renderRouteBar() {
@@ -3259,6 +3374,20 @@ function wire() {
       State.settings.alertRepeatCount = original.count;
       State.settings.alertRepeatGapS = original.gap;
     }, 5500);
+  };
+  // v22.12: force-alert the nearest point ahead — useful while driving to
+  // verify the alert pipeline is actually firing for real data.
+  document.getElementById('sc-near').onclick = () => {
+    Audio.unlock();
+    const ahead = Alerts.ahead();
+    if (!ahead.length) {
+      Utils.toast('No point ahead to alert for', 'bad');
+      return;
+    }
+    const n = ahead[0];
+    const meters = Math.round(n.dist * 1000);
+    Utils.toast(`Forcing alert: ${n.name} @ ${meters}m`, 'good');
+    Audio.alert(n, meters);
   };
 
   document.querySelectorAll('[data-close]').forEach(b =>
