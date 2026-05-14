@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.2</title>
+<title>Road Alert v22.3</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -806,7 +806,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.2</span>
+      <span class="version">v22.3</span>
     </div>
     <span class="topbar-spacer"></span>
     <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
@@ -1323,10 +1323,39 @@ const Storage = {
       autoBackup: false,
     };
   },
-  /** One-time migration from older storage keys */
+  /** One-time migration: orphan points get auto-assigned to their nearest
+   *  destination. Runs once per device on the first v22.3+ launch. */
   migrate() {
     // Check if we already have v22 data
-    if (localStorage.getItem(this.KEYS.data)) return;
+    if (localStorage.getItem(this.KEYS.data)) {
+      // v22.3: orphan recovery — runs once
+      if (!localStorage.getItem('roadAlert.v22.3.orphansMigrated')) {
+        try {
+          const d = this.load(this.KEYS.data);
+          if (d && Array.isArray(d.points) && Array.isArray(d.destinations) && d.destinations.length) {
+            let assigned = 0;
+            d.points.forEach(p => {
+              if (p.destId) return; // Already assigned
+              // Find nearest destination
+              let best = null, bestDist = Infinity;
+              d.destinations.forEach(dest => {
+                const dx = (p.lat - dest.lat) * 111;
+                const dy = (p.lng - dest.lng) * 111 * Math.cos(p.lat * Math.PI / 180);
+                const km = Math.sqrt(dx * dx + dy * dy);
+                if (km < bestDist) { bestDist = km; best = dest; }
+              });
+              if (best) { p.destId = best.id; assigned++; }
+            });
+            if (assigned > 0) {
+              this.save(this.KEYS.data, d);
+              console.log('v22.3: assigned', assigned, 'orphan points to nearest destinations');
+            }
+          }
+          localStorage.setItem('roadAlert.v22.3.orphansMigrated', '1');
+        } catch (e) { console.warn('orphan migration', e); }
+      }
+      return;
+    }
     // Try v17 first, then v8
     const legacyData = this.load(this.KEYS.legacyData) || this.load(this.KEYS.legacyDataV8);
     if (legacyData) {
@@ -1336,7 +1365,6 @@ const Storage = {
       if (legacyData.activeDestId || legacyData.activeDestinationId) {
         newData.activeDestId = legacyData.activeDestId || legacyData.activeDestinationId;
       }
-      // Ensure every point has an id
       newData.points.forEach(p => {
         if (!p.id) p.id = Utils.uid();
         if (!p.status) p.status = 'active';
@@ -1409,8 +1437,17 @@ const State = {
     return this.data.destinations.find(d => d.id === this.data.activeDestId) || null;
   },
   activePoints() {
+    // v22.3: STRICT filter — only points belonging to the currently active
+    // destination. No more "orphan" points (without destId) leaking into
+    // the map view. Orphans can be assigned via Audit or Edit point.
     const id = this.data.activeDestId;
-    return this.data.points.filter(p => !p.destId || p.destId === id);
+    if (!id) return []; // No active destination → show nothing on the map
+    return this.data.points.filter(p => p.destId === id);
+  },
+
+  /** All points without a destination assignment (for orphan management). */
+  orphanPoints() {
+    return this.data.points.filter(p => !p.destId);
   },
 };
 
@@ -2017,7 +2054,11 @@ const UI = {
     const aheadList = Alerts.ahead();
     const body = document.getElementById('next-body');
     if (aheadList.length === 0) {
-      body.innerHTML = `<div class="next-empty">— nothing ahead —</div>`;
+      const dest = State.activeDest();
+      const hint = !dest
+        ? '<div class="next-empty">— pick a destination —</div>'
+        : '<div class="next-empty">— nothing ahead —</div>';
+      body.innerHTML = hint;
     } else {
       const n = aheadList[0];
       const sideTag = n.side ? ` · ${n.side[0].toUpperCase()}` : '';
