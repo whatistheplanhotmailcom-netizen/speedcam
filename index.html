@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Road Alert v21.3</title>
+<title>Road Alert v21.4</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';">
 <style>
   :root {
@@ -360,6 +360,7 @@ color: var(–ink);
 display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .cap-btn:active { background: var(–bg-card); }
+.cap-btn.active { background: var(–amber); color: #0c0a09; border-color: var(–amber); }
 .cap-btn .ic { font-size: 26px; }
 
 /* Leaflet map background dark */
@@ -374,7 +375,7 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
     <div class="brand">
       <span class="brand-dot"></span>
       <span>Road Alert</span>
-      <span class="v">v21.3</span>
+      <span class="v">v21.4</span>
     </div>
     <button class="dest" id="dest-btn">→ Pick destination</button>
     <button class="menu-btn" id="menu-btn" title="Menu">⋯</button>
@@ -485,6 +486,36 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
       <button class="cap-btn" data-cap="gate"><span class="ic">🚪</span><span>Gate</span></button>
       <button class="cap-btn" data-cap="other"><span class="ic">📌</span><span>Other</span></button>
       <button class="cap-btn" data-cap="cancel" style="background:transparent;"><span class="ic">✕</span><span>Cancel</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit point modal (v21.4) -->
+
+<div class="modal" id="edit-point-modal">
+  <div class="modal-card">
+    <div class="modal-grip"></div>
+    <div class="modal-title">Edit point</div>
+    <div class="set-row">
+      <label>Custom name (optional)</label>
+      <input class="set-input" id="ep-name" placeholder="e.g. Speed cam by gas station">
+    </div>
+    <div class="set-row">
+      <label>Type</label>
+      <div class="cap-grid" style="margin-top:6px;">
+        <button class="cap-btn" data-ep-type="speed_cam"><span class="ic">📷</span><span>Speed cam</span></button>
+        <button class="cap-btn" data-ep-type="mobile_cam"><span class="ic">📸</span><span>Mobile cam</span></button>
+        <button class="cap-btn" data-ep-type="checkpoint"><span class="ic">🛂</span><span>Checkpoint</span></button>
+        <button class="cap-btn" data-ep-type="speed_zone"><span class="ic">🚧</span><span>Speed zone</span></button>
+        <button class="cap-btn" data-ep-type="petrol"><span class="ic">⛽</span><span>Petrol</span></button>
+        <button class="cap-btn" data-ep-type="gate"><span class="ic">🚪</span><span>Gate</span></button>
+        <button class="cap-btn" data-ep-type="other"><span class="ic">📌</span><span>Other</span></button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:14px;">
+      <button class="ctrl-btn" id="ep-cancel" style="flex:1;">Cancel</button>
+      <button class="ctrl-btn capture" id="ep-delete" style="flex:1;">🗑 Delete</button>
+      <button class="ctrl-btn start" id="ep-save" style="flex:1.2;">✓ Save</button>
     </div>
   </div>
 </div>
@@ -615,6 +646,8 @@ let followUser = true;
 const alertedMarkers = new Map(); // pointKey -> Set of meters
 const passedPoints = new Set(); // pointKeys already passed
 const lastDistByPoint = new Map(); // v21.1: track last distance per point for threshold crossing
+let editingPointId = null; // v21.4: which point is being edited
+let editingPointType = null; // v21.4: tentative type during edit
 
 // =====================================================
 // Storage
@@ -852,7 +885,18 @@ function refreshMapMarkers() {
       iconSize: [28, 28], iconAnchor: [14, 14],
     });
     const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
-    m.bindPopup(escapeHtml(pointLabel(p.type)));
+    // v21.4: rich popup with edit and delete
+    const labelEscaped = escapeHtml(p.name || pointLabel(p.type));
+    const pidEscaped = escapeHtml(p.id);
+    m.bindPopup(
+      '<div style="font-family:monospace;font-size:12px;min-width:160px;">' +
+        '<div style="font-weight:700;margin-bottom:6px;">' + pointIcon(p) + ' ' + labelEscaped + '</div>' +
+        '<div style="display:flex;gap:4px;">' +
+          '<button onclick="openEditPoint(\'' + pidEscaped + '\')" style="flex:1;padding:6px 8px;background:#d97706;color:#000;border:none;border-radius:6px;font-family:monospace;font-weight:700;font-size:11px;cursor:pointer;">✎ Edit</button>' +
+          '<button onclick="deletePoint(\'' + pidEscaped + '\')" style="flex:1;padding:6px 8px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-family:monospace;font-weight:700;font-size:11px;cursor:pointer;">🗑 Delete</button>' +
+        '</div>' +
+      '</div>'
+    );
     pointMarkers.push(m);
   });
   // Destination marker (flag)
@@ -1151,6 +1195,41 @@ function openModal(id) {
   if (id === 'points-modal') renderPointsList();
   if (id === 'settings-modal') refreshSettingsUI();
 }
+
+// v21.4: open the edit modal for a specific point
+function openEditPoint(pointId) {
+  const p = data.points.find(x => x.id === pointId);
+  if (!p) { showToast('Point not found'); return; }
+  editingPointId = pointId;
+  editingPointType = p.type;
+  document.getElementById('ep-name').value = p.name || '';
+  // Highlight current type
+  document.querySelectorAll('[data-ep-type]').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-ep-type') === p.type)
+  );
+  closeModal();
+  document.getElementById('edit-point-modal').classList.add('open');
+}
+
+// v21.4: delete a point with confirmation
+function deletePoint(pointId) {
+  const p = data.points.find(x => x.id === pointId);
+  if (!p) return;
+  const label = p.name || pointLabel(p.type);
+  if (!confirm('Delete "' + label + '"?')) return;
+  data.points = data.points.filter(x => x.id !== pointId);
+  // Also clean up alert state
+  alertedMarkers.delete(pointId);
+  passedPoints.delete(pointId);
+  lastDistByPoint.delete(pointId);
+  saveData();
+  refreshMapMarkers();
+  refreshUI();
+  showToast('Deleted');
+}
+// Expose for inline onclick from marker popup
+window.deletePoint = deletePoint;
+window.openEditPoint = openEditPoint;
 function closeModal(id) {
   if (id) document.getElementById(id).classList.remove('open');
   else document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
@@ -1196,28 +1275,55 @@ function renderPointsList() {
     return;
   }
   const pts = data.points.filter(p => p.destinationId === dest.id);
+  list.innerHTML = '';
+  // v21.4: Delete all button at top
+  if (pts.length) {
+    const topRow = document.createElement('div');
+    topRow.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center;';
+    topRow.innerHTML = '<div style="flex:1;font-family:var(--mono);font-size:11px;color:var(--ink-soft);">' + pts.length + ' point' + (pts.length === 1 ? '' : 's') + '</div>';
+    const delAll = document.createElement('button');
+    delAll.className = 'ctrl-btn';
+    delAll.style.cssText = 'padding:8px 12px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);';
+    delAll.textContent = '🗑 Delete all';
+    delAll.addEventListener('click', () => {
+      if (!confirm('Delete ALL ' + pts.length + ' points for "' + dest.name + '"? This cannot be undone.')) return;
+      data.points = data.points.filter(p => p.destinationId !== dest.id);
+      alertedMarkers.clear();
+      passedPoints.clear();
+      lastDistByPoint.clear();
+      saveData();
+      refreshMapMarkers();
+      refreshUI();
+      renderPointsList();
+      showToast('All points deleted');
+    });
+    topRow.appendChild(delAll);
+    list.appendChild(topRow);
+  }
   if (!pts.length) {
     list.innerHTML = '<div style="color:var(--ink-faint);padding:10px;text-align:center;font-family:var(--mono);font-size:11px;">No points yet</div>';
     return;
   }
-  list.innerHTML = '';
+  // Render each point
   pts.forEach(p => {
     const row = document.createElement('div');
     row.className = 'modal-row';
     const distTxt = currentPos ? ' · ' + distanceKm(currentPos, p).toFixed(2) + 'km' : '';
+    const displayName = p.name || pointLabel(p.type);
     row.innerHTML = `
       <span class="ic" style="font-size:18px;">${pointIcon(p)}</span>
-      <span class="label">${escapeHtml(pointLabel(p.type))}<br><span style="font-size:9px;color:var(--ink-soft);">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}${distTxt}</span></span>
-      <button class="ctrl-btn" data-pid="${p.id}" style="padding:6px 10px;font-size:10px;flex:0 0 auto;">✕</button>
+      <span class="label">${escapeHtml(displayName)}<br><span style="font-size:9px;color:var(--ink-soft);">${pointLabel(p.type)} · ${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}${distTxt}</span></span>
+      <button class="ctrl-btn" data-edit="${escapeHtml(p.id)}" style="padding:6px 10px;font-size:10px;flex:0 0 auto;background:var(--amber);color:#000;border-color:var(--amber);">✎</button>
+      <button class="ctrl-btn" data-del="${escapeHtml(p.id)}" style="padding:6px 10px;font-size:10px;flex:0 0 auto;">✕</button>
     `;
-    row.querySelector('button').addEventListener('click', (e) => {
+    row.querySelector('[data-edit]').addEventListener('click', (e) => {
       e.stopPropagation();
-      if (confirm('Delete this point?')) {
-        data.points = data.points.filter(x => x.id !== p.id);
-        saveData();
-        refreshMapMarkers();
-        renderPointsList();
-      }
+      openEditPoint(p.id);
+    });
+    row.querySelector('[data-del]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deletePoint(p.id);
+      renderPointsList();
     });
     list.appendChild(row);
   });
@@ -1304,13 +1410,15 @@ document.getElementById('m-import-file').addEventListener('change', (e) => {
       });
       ptsIn.forEach(p => {
         if (p && p.id && !existingPtIds.has(p.id) && typeof p.lat === 'number' && typeof p.lng === 'number') {
-          data.points.push({
+          const newPt = {
             id: p.id,
             destinationId: String(p.destinationId || ''),
             type: String(p.type || 'other'),
             lat: p.lat, lng: p.lng,
             capturedAt: Number(p.capturedAt) || Date.now(),
-          });
+          };
+          if (typeof p.name === 'string' && p.name) newPt.name = p.name;
+          data.points.push(newPt);
           addedP++;
         }
       });
@@ -1388,6 +1496,48 @@ document.querySelectorAll('[data-lim]').forEach(b => {
     else { settings.manualLimit = parseInt(v, 10); saveSettings(); showToast('Limit: ' + v + ' km/h'); }
     refreshUI();
   });
+});
+
+// v21.4: Edit-point modal wiring
+document.querySelectorAll('[data-ep-type]').forEach(b => {
+  b.addEventListener('click', () => {
+    editingPointType = b.getAttribute('data-ep-type');
+    document.querySelectorAll('[data-ep-type]').forEach(x =>
+      x.classList.toggle('active', x.getAttribute('data-ep-type') === editingPointType)
+    );
+  });
+});
+document.getElementById('ep-cancel').addEventListener('click', () => {
+  closeModal('edit-point-modal');
+  editingPointId = null;
+});
+document.getElementById('ep-delete').addEventListener('click', () => {
+  if (!editingPointId) return;
+  const id = editingPointId;
+  closeModal('edit-point-modal');
+  editingPointId = null;
+  deletePoint(id);
+  // If points modal is reachable, refresh it
+  if (document.getElementById('points-modal').classList.contains('open')) {
+    renderPointsList();
+  }
+});
+document.getElementById('ep-save').addEventListener('click', () => {
+  if (!editingPointId) return;
+  const p = data.points.find(x => x.id === editingPointId);
+  if (!p) { closeModal('edit-point-modal'); return; }
+  const newName = document.getElementById('ep-name').value.trim();
+  p.name = newName || undefined;
+  if (editingPointType) p.type = editingPointType;
+  saveData();
+  refreshMapMarkers();
+  refreshUI();
+  closeModal('edit-point-modal');
+  editingPointId = null;
+  if (document.getElementById('points-modal').classList.contains('open')) {
+    renderPointsList();
+  }
+  showToast('Saved');
 });
 
 // Settings wiring
