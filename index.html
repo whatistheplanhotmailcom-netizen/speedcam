@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -378,64 +379,6 @@ body {
   gap: 6px;
   z-index: 500;
 }
-/* v22.19: Sim control panel overlay (top of map, shown in demo/replay mode) */
-.sim-panel {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  background: rgba(245, 241, 232, 0.95);
-  border: 2px solid var(--amber);
-  border-radius: 10px;
-  padding: 8px;
-  z-index: 600;
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-[data-theme="dark"] .sim-panel {
-  background: rgba(12, 10, 9, 0.92);
-  color: var(--ink);
-}
-.sim-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 4px;
-  flex-wrap: wrap;
-}
-.sim-btn {
-  appearance: none;
-  background: var(--amber);
-  color: #0c0a09;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  min-height: 36px;
-  flex: 1;
-}
-.sim-btn-sm { font-size: 11px; padding: 6px 8px; min-height: 30px; }
-.sim-btn:active { transform: scale(0.94); opacity: 0.85; }
-.sim-btn.on { background: var(--red); color: #fff; }
-.sim-speed {
-  background: var(--surface);
-  border: 1px solid var(--line-2);
-  color: var(--ink);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-weight: 700;
-  font-size: 13px;
-  font-family: var(--mono, monospace);
-}
-.sim-status {
-  font-family: var(--mono, monospace);
-  font-size: 10px;
-  color: var(--ink-2);
-  padding: 2px 4px;
-  text-align: center;
-}
 .map-btn {
   appearance: none;
   background: var(--surface);
@@ -573,7 +516,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 /* ACTIONS */
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1.4fr auto;
+  grid-template-columns: 1fr 1.4fr;
   gap: 6px;
 }
 .btn {
@@ -611,7 +554,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
 }
 .status-line strong { color: var(--ink-2); margin-right: 3px; }
 .status-line .live { color: var(--green); }
-.status-line .demo { color: var(--cyan); }
 
 /* MODALS - improved backdrop visibility */
 .modal {
@@ -973,6 +915,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
   .next-dist { font-size: 18px; }
 }
 </style>
+
 </head>
 <body data-theme="light">
 
@@ -987,14 +930,13 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-sound" title="Sound mode">🔊</button>
-      <button class="icon-btn" id="btn-theme" title="Theme">☀</button>
-      <button class="icon-btn" id="btn-fit-top" title="Fit all">⛶</button>
-      <button class="icon-btn" id="btn-recenter-top" title="Recenter">📍</button>
+      <button class="icon-btn" id="btn-theme" title="Theme: Day / Night / Device">☀</button>
       <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
     </div>
   </div>
 
   <!-- ROUTE BAR -->
+
   <div class="route-bar">
     <button class="route-current" id="btn-route">
       <span class="arrow">→</span>
@@ -1004,6 +946,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- v22.12: Diagnostic strip — shows alert pipeline state at a glance -->
+
   <div class="diag-strip" id="diag-strip">
     <span id="diag-gps">GPS —</span>
     <span id="diag-pts">— pts</span>
@@ -1013,6 +956,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- STATS -->
+
   <div class="stats">
     <div class="stat-card">
       <div class="stat-label">Speed</div>
@@ -1036,6 +980,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
   </div>
 
   <!-- MAP -->
+
   <div class="map-wrap">
     <div id="map"></div>
     <button class="follow-pill" id="follow-pill">
@@ -1047,40 +992,17 @@ body[data-nav="on"] .ra-current::after { display: block; }
       <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
       <button class="map-btn" id="btn-nav" title="Nav mode (heading up)">🧭</button>
     </div>
-    <!-- v22.19: Sim control panel — visible only in demo/replay mode -->
-    <div class="sim-panel" id="sim-panel" style="display:none;">
-      <div class="sim-row">
-        <button class="sim-btn" id="sim-pause" title="Pause / Play">⏸</button>
-        <select class="sim-speed" id="sim-speed" title="Speed">
-          <option value="0.5">0.5×</option>
-          <option value="1">1× real</option>
-          <option value="2">2×</option>
-          <option value="5" selected>5×</option>
-          <option value="10">10×</option>
-          <option value="20">20×</option>
-        </select>
-        <button class="sim-btn" id="sim-jump" title="Jump 600m before next">⏭</button>
-        <button class="sim-btn" id="sim-reset" title="Reset">↺</button>
-      </div>
-      <div class="sim-row">
-        <button class="sim-btn sim-btn-sm" id="sim-back-100" title="Step back 100m">−100m</button>
-        <button class="sim-btn sim-btn-sm" id="sim-fwd-100" title="Step forward 100m">+100m</button>
-        <button class="sim-btn sim-btn-sm" id="sim-rec" title="Record">⏺ Rec</button>
-        <button class="sim-btn sim-btn-sm" id="sim-replay" title="Replay">▶ Replay</button>
-        <button class="sim-btn sim-btn-sm" id="sim-config" title="Pick start/end">⚙</button>
-      </div>
-      <div class="sim-status" id="sim-status">Demo · 1× · drag the dot to teleport</div>
-    </div>
   </div>
 
   <!-- ACTIONS -->
+
   <div class="actions">
     <button class="btn btn-capture" id="btn-capture">📷 Capture</button>
     <button class="btn btn-go" id="btn-go">▶ Start GPS</button>
-    <button class="btn btn-square" id="btn-demo" title="Demo">▷</button>
   </div>
 
   <!-- STATUS LINE -->
+
   <div class="status-line">
     <span><strong id="status-mode">Idle</strong></span>
     <span><strong id="status-gps">—</strong></span>
@@ -1090,81 +1012,8 @@ body[data-nav="on"] .ra-current::after { display: block; }
 
 <!-- ============== MODALS ============== -->
 
-<!-- v22.20: Sim start/end config -->
-<div class="modal" id="m-sim-config">
-  <div class="modal-card">
-    <div class="modal-head">
-      <div class="modal-title">▷ Demo: pick route</div>
-      <button class="modal-close" data-close>×</button>
-    </div>
-    <div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
-      Pick two saved destinations (or captured points) to drive the demo between them as a
-      fixed route. The simulator will emit fake GPS positions just like a real drive.
-    </div>
-
-    <div class="section-title">From (start)</div>
-    <div class="row" style="display:block;">
-      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-        <button class="btn" data-from="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
-        <button class="btn" data-from="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
-      </div>
-      <select id="sim-from-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
-        <option value="">— or pick captured point —</option>
-      </select>
-      <div style="display:flex;gap:6px;">
-        <input type="number" id="sim-from-lat" step="0.0001" placeholder="lat"
-               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-        <input type="number" id="sim-from-lng" step="0.0001" placeholder="lng"
-               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-      </div>
-    </div>
-
-    <div class="section-title">To (end)</div>
-    <div class="row" style="display:block;">
-      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-        <button class="btn" data-to="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
-        <button class="btn" data-to="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
-      </div>
-      <select id="sim-to-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
-        <option value="">— or pick captured point —</option>
-      </select>
-      <div style="display:flex;gap:6px;">
-        <input type="number" id="sim-to-lat" step="0.0001" placeholder="lat"
-               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-        <input type="number" id="sim-to-lng" step="0.0001" placeholder="lng"
-               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
-      </div>
-    </div>
-
-    <div style="font-size:10px;color:var(--ink-3);text-align:center;margin:6px 0;">
-      <span id="sim-config-dist">Distance: —</span>
-    </div>
-
-    <button class="btn btn-go" id="sim-config-start" style="font-size:14px;font-weight:800;">▶ Start demo</button>
-  </div>
-</div>
-
-<!-- v22.19: Scenario tester -->
-<div class="modal" id="m-scenarios">
-  <div class="modal-card">
-    <div class="modal-head">
-      <div class="modal-title">🧪 Test scenarios</div>
-      <button class="modal-close" data-close>×</button>
-    </div>
-    <div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
-      Each scenario runs a scripted GPS trace against your current points + destination,
-      then checks whether the expected alerts fired. Results below.
-    </div>
-    <div id="scenario-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-    <button class="btn" id="sc-run-all" style="margin-top:8px;background:var(--amber);color:#0c0a09;font-weight:800;">▶ Run all scenarios</button>
-    <div class="section-title">Results</div>
-    <div id="scenario-results" style="font-family:var(--mono,monospace);font-size:11px;line-height:1.5;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;min-height:80px;">
-      <span style="color:var(--ink-3);">No results yet. Tap a scenario to run.</span>
-    </div>
-  </div>
-</div>
-
 <!-- v22.8: Sound Check diagnostic -->
+
 <div class="modal" id="m-sound-check">
   <div class="modal-card">
     <div class="modal-head">
@@ -1173,33 +1022,37 @@ body[data-nav="on"] .ra-current::after { display: block; }
     </div>
     <div id="sound-check-results" style="font-family:var(--mono,monospace);font-size:11px;line-height:1.6;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:8px;"></div>
 
-    <div class="section-title">Tests</div>
-    <button class="btn" id="sc-tone">▶ Play tone (current style)</button>
-    <button class="btn" id="sc-tone-cam">▶ Play speed-cam pattern</button>
-    <button class="btn" id="sc-voice">▶ Speak "Speed camera in 500 meters"</button>
-    <button class="btn" id="sc-alert">▶ Full alert (tone + voice)</button>
-    <button class="btn" id="sc-repeat">▶ Test repeat (3× with gap)</button>
-    <button class="btn" id="sc-near" style="background:var(--amber);color:#0c0a09;">⚡ Force-alert nearest ahead</button>
+```
+<div class="section-title">Tests</div>
+<button class="btn" id="sc-tone">▶ Play tone (current style)</button>
+<button class="btn" id="sc-tone-cam">▶ Play speed-cam pattern</button>
+<button class="btn" id="sc-voice">▶ Speak "Speed camera in 500 meters"</button>
+<button class="btn" id="sc-alert">▶ Full alert (tone + voice)</button>
+<button class="btn" id="sc-repeat">▶ Test repeat (3× with gap)</button>
+<button class="btn" id="sc-near" style="background:var(--amber);color:#0c0a09;">⚡ Force-alert nearest ahead</button>
 
-    <div class="section-title">Troubleshooting</div>
-    <div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
-      <strong>If you hear nothing on iOS:</strong><br>
-      • Check the silent-mode switch on the side of the phone — flip it OFF (no orange).<br>
-      • Tones use Web Audio which is muted by the silent switch. Voice is NOT muted.<br>
-      • Turn up the volume buttons (Ringer volume, not Media).<br>
-      <br>
-      <strong>If voice doesn't work:</strong><br>
-      • iOS may need a few seconds to load voices on first launch.<br>
-      • Wait, then re-open Sound check.<br>
-      • Some voices need download in Settings → Accessibility → Spoken Content.<br>
-      <br>
-      <strong>If tested in an in-app browser (TikTok/Facebook):</strong><br>
-      • Open the page in real Safari or Chrome instead.
-    </div>
+<div class="section-title">Troubleshooting</div>
+<div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
+  <strong>If you hear nothing on iOS:</strong><br>
+  • Check the silent-mode switch on the side of the phone — flip it OFF (no orange).<br>
+  • Tones use Web Audio which is muted by the silent switch. Voice is NOT muted.<br>
+  • Turn up the volume buttons (Ringer volume, not Media).<br>
+  <br>
+  <strong>If voice doesn't work:</strong><br>
+  • iOS may need a few seconds to load voices on first launch.<br>
+  • Wait, then re-open Sound check.<br>
+  • Some voices need download in Settings → Accessibility → Spoken Content.<br>
+  <br>
+  <strong>If tested in an in-app browser (TikTok/Facebook):</strong><br>
+  • Open the page in real Safari or Chrome instead.
+</div>
+```
+
   </div>
 </div>
 
 <!-- v22.7: Start GPS confirm destination -->
+
 <div class="modal" id="m-confirm-start">
   <div class="modal-card">
     <div class="modal-head">
@@ -1220,6 +1073,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Capture -->
+
 <div class="modal" id="m-capture">
   <div class="modal-card">
     <div class="modal-head">
@@ -1241,6 +1095,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Side picker -->
+
 <div class="modal" id="m-side">
   <div class="modal-card">
     <div class="modal-head">
@@ -1256,6 +1111,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Speed limit picker -->
+
 <div class="modal" id="m-limit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1272,6 +1128,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Custom name -->
+
 <div class="modal" id="m-other">
   <div class="modal-card">
     <div class="modal-head">
@@ -1286,6 +1143,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Point editor -->
+
 <div class="modal" id="m-edit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1336,6 +1194,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Destinations list -->
+
 <div class="modal" id="m-routes">
   <div class="modal-card">
     <div class="modal-head">
@@ -1348,6 +1207,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Destination editor -->
+
 <div class="modal" id="m-route-edit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1380,6 +1240,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Settings -->
+
 <div class="modal" id="m-settings">
   <div class="modal-card">
     <div class="modal-head">
@@ -1387,118 +1248,121 @@ body[data-nav="on"] .ra-current::after { display: block; }
       <button class="modal-close" data-close>×</button>
     </div>
 
-    <div class="section-title">Display</div>
-    <div class="row">
-      <span class="label">Theme</span>
-      <div class="opts" id="theme-opts">
-        <button data-theme="auto">Auto</button>
-        <button data-theme="light">Day</button>
-        <button data-theme="dark">Night</button>
-      </div>
-    </div>
+```
+<div class="section-title">Display</div>
+<div class="row">
+  <span class="label">Theme</span>
+  <div class="opts" id="theme-opts">
+    <button data-theme="auto">Auto</button>
+    <button data-theme="light">Day</button>
+    <button data-theme="dark">Night</button>
+  </div>
+</div>
 
-    <div class="section-title">Alerts</div>
-    <div class="row">
-      <span class="label">Sound</span>
-      <div class="opts" id="sound-opts">
-        <button data-sound="voice">🗣 Voice</button>
-        <button data-sound="beep">🔔 Tone</button>
-      </div>
-    </div>
-    <div class="row">
-      <span class="label">Voice type</span>
-      <div class="opts" id="voice-opts">
-        <button data-voice="female">♀ Female</button>
-        <button data-voice="male">♂ Male</button>
-        <button data-voice="none">None</button>
-      </div>
-    </div>
-    <div class="row"><span class="label">Announce side in voice</span><span class="toggle" id="t-side"></span></div>
-    <div class="row" style="display:block;">
-      <span class="label" style="display:block;margin-bottom:6px;">Alert distances (meters)</span>
-      <div id="markers-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:30px;"></div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <input type="number" id="i-marker-add" min="50" max="10000" step="50" placeholder="add distance"
-               style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:120px;font:inherit;">
-        <button class="btn" id="btn-marker-add" style="padding:6px 14px;">+ Add</button>
-      </div>
-      <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
-        <button class="btn" data-marker-preset="default" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Default (2k/1k/500)</button>
-        <button class="btn" data-marker-preset="city" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">City (1k/500/200)</button>
-        <button class="btn" data-marker-preset="highway" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Highway (3k/2k/1k/500)</button>
-      </div>
-      <div style="font-size:10px;color:var(--ink-3);margin-top:6px;">Tap a chip to remove · alerts fire when you cross each distance</div>
-    </div>
-    <div class="row">
-      <span class="label">Flash border at (m)</span>
-      <input type="number" id="i-flash" min="50" max="3000" step="50">
-    </div>
-    <div class="row">
-      <span class="label">Repeat alert × times</span>
-      <input type="number" id="i-repeat" min="1" max="5" step="1">
-    </div>
-    <div class="row">
-      <span class="label">Repeat gap (sec)</span>
-      <input type="number" id="i-repeatgap" min="0.5" max="10" step="0.5">
-    </div>
-    <div class="row" style="display:block;">
-      <span class="label" style="display:block;margin-bottom:6px;">Tone style — tap to preview</span>
-      <div class="cap-grid" id="tone-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;">
-        <button class="cap-btn" data-tone="classic" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🔔</span>Classic</button>
-        <button class="cap-btn" data-tone="chime"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🎐</span>Chime</button>
-        <button class="cap-btn" data-tone="alert"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">⚠</span>Alert</button>
-        <button class="cap-btn" data-tone="bell"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🛎</span>Bell</button>
-        <button class="cap-btn" data-tone="soft"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💤</span>Soft</button>
-        <button class="cap-btn" data-tone="radar"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">📡</span>Radar</button>
-        <button class="cap-btn" data-tone="digital" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🤖</span>Digital</button>
-        <button class="cap-btn" data-tone="pulse"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💓</span>Pulse</button>
-      </div>
-    </div>
+<div class="section-title">Alerts</div>
+<div class="row">
+  <span class="label">Sound</span>
+  <div class="opts" id="sound-opts">
+    <button data-sound="voice">🗣 Voice</button>
+    <button data-sound="beep">🔔 Tone</button>
+  </div>
+</div>
+<div class="row">
+  <span class="label">Voice type</span>
+  <div class="opts" id="voice-opts">
+    <button data-voice="female">♀ Female</button>
+    <button data-voice="male">♂ Male</button>
+    <button data-voice="none">None</button>
+  </div>
+</div>
+<div class="row"><span class="label">Announce side in voice</span><span class="toggle" id="t-side"></span></div>
+<div class="row" style="display:block;">
+  <span class="label" style="display:block;margin-bottom:6px;">Alert distances (meters)</span>
+  <div id="markers-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:30px;"></div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+    <input type="number" id="i-marker-add" min="50" max="10000" step="50" placeholder="add distance"
+           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:120px;font:inherit;">
+    <button class="btn" id="btn-marker-add" style="padding:6px 14px;">+ Add</button>
+  </div>
+  <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
+    <button class="btn" data-marker-preset="default" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Default (2k/1k/500)</button>
+    <button class="btn" data-marker-preset="city" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">City (1k/500/200)</button>
+    <button class="btn" data-marker-preset="highway" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Highway (3k/2k/1k/500)</button>
+  </div>
+  <div style="font-size:10px;color:var(--ink-3);margin-top:6px;">Tap a chip to remove · alerts fire when you cross each distance</div>
+</div>
+<div class="row">
+  <span class="label">Flash border at (m)</span>
+  <input type="number" id="i-flash" min="50" max="3000" step="50">
+</div>
+<div class="row">
+  <span class="label">Repeat alert × times</span>
+  <input type="number" id="i-repeat" min="1" max="5" step="1">
+</div>
+<div class="row">
+  <span class="label">Repeat gap (sec)</span>
+  <input type="number" id="i-repeatgap" min="0.5" max="10" step="0.5">
+</div>
+<div class="row" style="display:block;">
+  <span class="label" style="display:block;margin-bottom:6px;">Tone style — tap to preview</span>
+  <div class="cap-grid" id="tone-grid" style="grid-template-columns:repeat(4,1fr);gap:6px;">
+    <button class="cap-btn" data-tone="classic" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🔔</span>Classic</button>
+    <button class="cap-btn" data-tone="chime"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🎐</span>Chime</button>
+    <button class="cap-btn" data-tone="alert"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">⚠</span>Alert</button>
+    <button class="cap-btn" data-tone="bell"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🛎</span>Bell</button>
+    <button class="cap-btn" data-tone="soft"    style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💤</span>Soft</button>
+    <button class="cap-btn" data-tone="radar"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">📡</span>Radar</button>
+    <button class="cap-btn" data-tone="digital" style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">🤖</span>Digital</button>
+    <button class="cap-btn" data-tone="pulse"   style="min-height:60px;padding:10px 4px;font-size:11px;"><span class="em" style="font-size:20px;">💓</span>Pulse</button>
+  </div>
+</div>
 
-    <div class="section-title">Speed limit alerts</div>
-    <div class="row">
-      <span class="label">Mode</span>
-      <div class="opts" id="speed-opts">
-        <button data-speed="off">Off</button>
-        <button data-speed="beep">Beep</button>
-        <button data-speed="voice">Voice</button>
-        <button data-speed="both">Both</button>
-      </div>
-    </div>
-    <div class="row"><span class="label">Trigger when over by (km/h)</span><input type="number" id="i-over" min="0" max="50"></div>
+<div class="section-title">Speed limit alerts</div>
+<div class="row">
+  <span class="label">Mode</span>
+  <div class="opts" id="speed-opts">
+    <button data-speed="off">Off</button>
+    <button data-speed="beep">Beep</button>
+    <button data-speed="voice">Voice</button>
+    <button data-speed="both">Both</button>
+  </div>
+</div>
+<div class="row"><span class="label">Trigger when over by (km/h)</span><input type="number" id="i-over" min="0" max="50"></div>
 
-    <div class="section-title">Trips</div>
-    <div style="display:flex;gap:6px;">
-      <button class="btn" id="trip-toggle">▶ Start trip</button>
-      <button class="btn" id="trip-list">View trips</button>
-    </div>
+<div class="section-title">Trips</div>
+<div style="display:flex;gap:6px;">
+  <button class="btn" id="trip-toggle">▶ Start trip</button>
+  <button class="btn" id="trip-list">View trips</button>
+</div>
 
-    <div class="section-title">GitHub backup</div>
-    <div style="font-size:10px;color:var(--ink-3);padding:4px 6px;line-height:1.4;">
-      ⚠ Token stored in browser localStorage. Use a fine-grained token with access to <strong>one repo only</strong>. Anyone with this device can read it.
-    </div>
-    <div class="row"><span class="label">Token</span><input type="password" id="i-gh-token" placeholder="ghp_..."></div>
-    <div class="row"><span class="label">Repo</span><input type="text" id="i-gh-repo" placeholder="user/repo"></div>
-    <div class="row"><span class="label">File path</span><input type="text" id="i-gh-path" placeholder="road-alert.json"></div>
-    <div class="row"><span class="label">Auto-backup every 5 min</span><span class="toggle" id="t-autobackup"></span></div>
-    <div id="backup-status" style="font-size:10px;color:var(--ink-3);text-align:center;padding:4px;">No backup yet</div>
-    <button class="btn btn-go" id="btn-backup-now">☁ Backup now</button>
+<div class="section-title">GitHub backup</div>
+<div style="font-size:10px;color:var(--ink-3);padding:4px 6px;line-height:1.4;">
+  ⚠ Token stored in browser localStorage. Use a fine-grained token with access to <strong>one repo only</strong>. Anyone with this device can read it.
+</div>
+<div class="row"><span class="label">Token</span><input type="password" id="i-gh-token" placeholder="ghp_..."></div>
+<div class="row"><span class="label">Repo</span><input type="text" id="i-gh-repo" placeholder="user/repo"></div>
+<div class="row"><span class="label">File path</span><input type="text" id="i-gh-path" placeholder="road-alert.json"></div>
+<div class="row"><span class="label">Auto-backup every 5 min</span><span class="toggle" id="t-autobackup"></span></div>
+<div id="backup-status" style="font-size:10px;color:var(--ink-3);text-align:center;padding:4px;">No backup yet</div>
+<button class="btn btn-go" id="btn-backup-now">☁ Backup now</button>
 
-    <div class="section-title">Data</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="btn" id="btn-audit">Audit points</button>
-      <button class="btn" id="btn-disabled">Disabled (<span id="disabled-count">0</span>)</button>
-      <button class="btn" id="btn-export">Export</button>
-      <button class="btn" id="btn-import">Import</button>
-      <button class="btn" id="btn-edit-json">Edit JSON</button>
-    </div>
-    <input type="file" id="import-file" accept="application/json" style="display:none">
-    <button class="btn" id="btn-test-sound">🔊 Sound check</button>
-    <button class="btn" id="btn-scenarios">🧪 Test scenarios</button>
+<div class="section-title">Data</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;">
+  <button class="btn" id="btn-audit">Audit points</button>
+  <button class="btn" id="btn-disabled">Disabled (<span id="disabled-count">0</span>)</button>
+  <button class="btn" id="btn-export">Export</button>
+  <button class="btn" id="btn-import">Import</button>
+  <button class="btn" id="btn-edit-json">Edit JSON</button>
+</div>
+<input type="file" id="import-file" accept="application/json" style="display:none">
+<button class="btn" id="btn-test-sound">🔊 Sound check</button>
+```
+
   </div>
 </div>
 
 <!-- Audit -->
+
 <div class="modal" id="m-audit">
   <div class="modal-card">
     <div class="modal-head">
@@ -1510,6 +1374,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Disabled -->
+
 <div class="modal" id="m-disabled">
   <div class="modal-card">
     <div class="modal-head">
@@ -1521,6 +1386,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- Trips -->
+
 <div class="modal" id="m-trips">
   <div class="modal-card">
     <div class="modal-head">
@@ -1536,6 +1402,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 </div>
 
 <!-- JSON editor -->
+
 <div class="modal" id="m-json">
   <div class="modal-card">
     <div class="modal-head">
@@ -1554,6 +1421,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 <div class="toast" id="toast"></div>
 
 <!-- Leaflet with CDN fallback -->
+
 <script>
 (function loadLeaflet() {
   function tryLoad(url, onfail) {
@@ -1785,7 +1653,6 @@ const State = {
   // Runtime
   mode: 'idle',
   watchId: null,
-  demoTimer: null,
   pos: null,
   prevPos: null,
   prevTs: null,
@@ -1838,11 +1705,6 @@ const State = {
     const id = this.data.activeDestId;
     if (!id) return []; // No active destination → show nothing on the map
     return this.data.points.filter(p => p.destId === id);
-  },
-
-  /** All points without a destination assignment (for orphan management). */
-  orphanPoints() {
-    return this.data.points.filter(p => !p.destId);
   },
 };
 
@@ -1984,8 +1846,6 @@ const Audio = {
     if (s === 'off') return;
     // v22.12: count for diagnostic strip
     State.alertsFiredThisTrip = (State.alertsFiredThisTrip || 0) + 1;
-    State.lastAlertAt = Date.now();
-    State.lastAlertText = (point.name || Utils.typeLabel(point.type)) + ' @ ' + (meters >= 1000 ? (meters/1000) + 'km' : meters + 'm');
     const distText = meters >= 1000 ? (meters/1000) + ' kilometers' : meters + ' meters';
     let text = (point.name || Utils.typeLabel(point.type)) + ' in ' + distText;
     if (State.settings.announceSide && point.side) {
@@ -2049,33 +1909,8 @@ const GPS = {
     UI.setBtnGoActive(true);
   },
 
-  demo() {
-    Audio.unlock();
-    this.stop();
-    // v22.1: reset runtime state same as GPS.start()
-    State.alertedMarkers.clear();
-    State.lastDistByPoint.clear();
-    State.minDistByPoint.clear(); // v22.15: reset passed-detection tracker
-    State.passedPoints.clear();
-    State.autoAnnouncedAhead.clear(); // v22.16: clear auto-announce history
-    State.speedAlertWasOver = false;
-    State.lastSpeedAlertZone = null;
-    State.speedBuffer = [];
-    State.lastTripCaptureId = null; // v22.10: reset for demo trip
-    State.alertsFiredThisTrip = 0; // v22.12: reset alert counter for demo
-    State.mode = 'demo';
-    UI.setStatusMode('DEMO', 'demo');
-    UI.setBtnGoActive(true);
-    // v22.19: delegate to Sim module — gives us pause/speed/jump/drag-pin controls
-    Sim.start();
-    UI.showSimPanel();
-  },
-
   stop() {
     if (State.watchId != null) { navigator.geolocation.clearWatch(State.watchId); State.watchId = null; }
-    if (State.demoTimer != null) { clearInterval(State.demoTimer); State.demoTimer = null; }
-    Sim.stop(); // v22.19: also halt simulator
-    UI.hideSimPanel(); // v22.19
     if (State.wakeLock) { try { State.wakeLock.release(); } catch (e) {} State.wakeLock = null; }
     State.mode = 'idle';
     UI.setStatusMode('Idle', '');
@@ -2154,231 +1989,6 @@ const GPS = {
   },
 };
 
-/* ============================================================
-   4b. SIM — v22.19 simulator for safe pre-drive testing
-   ============================================================ */
-const Sim = {
-  active: false,
-  paused: false,
-  speedMul: 5,       // v22.20: default 5× so motion is visible on the map at any zoom
-  tickIntervalMs: 350,
-  pos: null,         // {lat, lng}
-  dest: null,        // {lat, lng}
-  baseSpeedMps: 30,  // ~108 km/h baseline
-  timer: null,
-
-  // Recording state
-  recording: false,
-  recordBuffer: [],
-  replayMode: false,
-  replayIdx: 0,
-
-  // Last fake heading (used for "heading" coord)
-  lastHeading: 0,
-
-  /** Start a simulation. Optionally pass {from: {lat, lng}, to: {lat, lng}}
-   *  to use specific endpoints; otherwise defaults to current GPS pos → active dest. */
-  start(opts) {
-    this.stop();
-    this.active = true;
-    this.paused = false;
-    this.replayMode = false;
-    this.recordBuffer = [];
-
-    opts = opts || {};
-    if (opts.from && opts.to) {
-      // v22.20: explicit start/end provided by user via config modal
-      this.pos  = { lat: opts.from.lat, lng: opts.from.lng };
-      this.dest = { lat: opts.to.lat, lng: opts.to.lng };
-    } else {
-      const dest = State.activeDest();
-      if (State.pos && dest) {
-        this.pos  = { lat: State.pos.lat, lng: State.pos.lng };
-        this.dest = { lat: dest.lat, lng: dest.lng };
-      } else if (dest) {
-        // No GPS yet: start 0.5° west of dest
-        this.pos  = { lat: dest.lat, lng: dest.lng - 0.5 };
-        this.dest = { lat: dest.lat, lng: dest.lng };
-      } else {
-        // No dest: default Jeddah → Medina
-        this.pos  = { lat: 21.5433, lng: 39.1728 };
-        this.dest = { lat: 24.4539, lng: 39.5680 };
-      }
-    }
-    this.lastHeading = Utils.bearing(this.pos, this.dest);
-
-    // v22.20: prime the position immediately so the user sees the dot
-    // at the start and the map can fit the route before the first tick.
-    const fake = this._makeFakePos(this.pos.lat, this.pos.lng, this.baseSpeedMps, this.lastHeading);
-    GPS.onTick(fake);
-
-    this._scheduleTicks();
-  },
-
-  /** Start replay of the buffer (if loaded). */
-  startReplay(buffer) {
-    this.stop();
-    if (!buffer || !buffer.length) {
-      Utils.toast('No recording to replay', 'bad');
-      return;
-    }
-    this.active = true;
-    this.paused = false;
-    this.replayMode = true;
-    this.recordBuffer = buffer;
-    this.replayIdx = 0;
-    this._scheduleTicks();
-  },
-
-  _scheduleTicks() {
-    if (this.timer) clearInterval(this.timer);
-    // adjust interval for speed multiplier
-    const interval = Math.max(50, this.tickIntervalMs / this.speedMul);
-    this.timer = setInterval(() => this._tick(), interval);
-  },
-
-  _tick() {
-    if (this.paused || !this.active) return;
-
-    if (this.replayMode) {
-      // Replay: feed next recorded position
-      if (this.replayIdx >= this.recordBuffer.length) {
-        this.stop();
-        Utils.toast('Replay complete', 'good');
-        return;
-      }
-      const rec = this.recordBuffer[this.replayIdx++];
-      this.pos = { lat: rec.lat, lng: rec.lng };
-      const fake = this._makeFakePos(rec.lat, rec.lng, rec.speed || this.baseSpeedMps, rec.heading || this.lastHeading);
-      GPS.onTick(fake);
-      return;
-    }
-
-    // Linear advance toward destination
-    if (!this.dest) { this.stop(); return; }
-    const totalKm = Utils.distKm(this.pos, this.dest);
-    if (totalKm < 0.02) { this.stop(); Utils.toast('Reached destination', 'good'); return; }
-    // Each tick advances baseSpeedMps * tickInterval seconds of travel
-    const stepKm = (this.baseSpeedMps * this.tickIntervalMs / 1000) / 1000;
-    const t = Math.min(1, stepKm / totalKm);
-    this.pos.lat += (this.dest.lat - this.pos.lat) * t;
-    this.pos.lng += (this.dest.lng - this.pos.lng) * t;
-    this.lastHeading = Utils.bearing(this.pos, this.dest);
-
-    const fake = this._makeFakePos(this.pos.lat, this.pos.lng, this.baseSpeedMps, this.lastHeading);
-    if (this.recording) {
-      this.recordBuffer.push({ lat: this.pos.lat, lng: this.pos.lng, speed: this.baseSpeedMps, heading: this.lastHeading, t: Date.now() });
-    }
-    GPS.onTick(fake);
-  },
-
-  _makeFakePos(lat, lng, speedMps, heading) {
-    return {
-      timestamp: Date.now(),
-      coords: { latitude: lat, longitude: lng, accuracy: 8, speed: speedMps, heading: heading },
-    };
-  },
-
-  pause() { this.paused = true; UI.renderSimPanel(); },
-  resume() { this.paused = false; UI.renderSimPanel(); },
-  togglePause() { this.paused ? this.resume() : this.pause(); },
-
-  setSpeed(mul) {
-    this.speedMul = +mul || 1;
-    if (this.active) this._scheduleTicks();
-    UI.renderSimPanel();
-  },
-
-  /** Jump position to ~600m before the nearest unpassed ahead point.
-   *  Lets you instantly test alert sequence for a chosen target. */
-  jumpToNext() {
-    const ahead = Alerts.ahead();
-    if (!ahead.length) { Utils.toast('No point ahead', 'bad'); return; }
-    const target = ahead[0];
-    // Project a position 600m before the target along the bearing FROM target TO dest
-    const dest = State.activeDest();
-    let backBearing;
-    if (dest) {
-      // Walk 600m back along the route (toward where we came from = away from dest)
-      backBearing = Utils.bearing({ lat: target.lat, lng: target.lng }, dest);
-      backBearing = (backBearing + 180) % 360;
-    } else {
-      // Fallback: 600m straight back along last heading
-      backBearing = (this.lastHeading + 180) % 360;
-    }
-    const newPos = this._offsetMeters(target.lat, target.lng, 600, backBearing);
-    this.teleport(newPos.lat, newPos.lng);
-    Utils.toast('Jumped to 600m before ' + (target.name || 'point'), 'good');
-  },
-
-  /** Step the simulated position forward or back by N meters along current heading. */
-  stepBy(meters) {
-    if (!this.pos) return;
-    const bearing = meters >= 0 ? this.lastHeading : (this.lastHeading + 180) % 360;
-    const np = this._offsetMeters(this.pos.lat, this.pos.lng, Math.abs(meters), bearing);
-    this.teleport(np.lat, np.lng);
-    Utils.toast((meters > 0 ? '+' : '') + meters + 'm', 'good');
-  },
-
-  /** Move sim position to arbitrary lat/lng. Used by drag-pin AND step buttons. */
-  teleport(lat, lng) {
-    this.pos = { lat: lat, lng: lng };
-    if (this.dest) this.lastHeading = Utils.bearing(this.pos, this.dest);
-    const fake = this._makeFakePos(lat, lng, this.paused ? 0 : this.baseSpeedMps, this.lastHeading);
-    GPS.onTick(fake);
-  },
-
-  reset() {
-    // Restart from current State.pos / activeDest
-    this.start();
-    Utils.toast('Sim reset', 'good');
-  },
-
-  /** Project (lat, lng) by `meters` along compass bearing (deg). */
-  _offsetMeters(lat, lng, meters, bearingDeg) {
-    const R = 6371000;
-    const br = bearingDeg * Math.PI / 180;
-    const lat1 = lat * Math.PI / 180;
-    const lng1 = lng * Math.PI / 180;
-    const lat2 = Math.asin(Math.sin(lat1) * Math.cos(meters / R) +
-                            Math.cos(lat1) * Math.sin(meters / R) * Math.cos(br));
-    const lng2 = lng1 + Math.atan2(
-      Math.sin(br) * Math.sin(meters / R) * Math.cos(lat1),
-      Math.cos(meters / R) - Math.sin(lat1) * Math.sin(lat2)
-    );
-    return { lat: lat2 * 180 / Math.PI, lng: lng2 * 180 / Math.PI };
-  },
-
-  /** Toggle recording during simulation OR real GPS. */
-  toggleRecording() {
-    this.recording = !this.recording;
-    if (this.recording) {
-      this.recordBuffer = [];
-      Utils.toast('Recording…', 'good');
-    } else {
-      try {
-        localStorage.setItem('roadAlert.sim.recording', JSON.stringify(this.recordBuffer));
-        Utils.toast(`Recorded ${this.recordBuffer.length} points`, 'good');
-      } catch (e) { Utils.toast('Save failed: ' + e.message, 'bad'); }
-    }
-    UI.renderSimPanel();
-  },
-
-  loadRecording() {
-    try {
-      const raw = localStorage.getItem('roadAlert.sim.recording');
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) { return null; }
-  },
-
-  stop() {
-    if (this.timer) { clearInterval(this.timer); this.timer = null; }
-    this.active = false;
-    this.paused = false;
-    this.replayMode = false;
-  },
-};
 
 /* ============================================================
    5. ALERTS — threshold crossing
@@ -2558,8 +2168,6 @@ const Alerts = {
 
     // Count it for the diag strip
     State.alertsFiredThisTrip = (State.alertsFiredThisTrip || 0) + 1;
-    State.lastAlertAt = Date.now();
-    State.lastAlertText = '(auto) ' + (top.name || Utils.typeLabel(top.type));
   },
 
   checkSpeed() {
@@ -2732,13 +2340,6 @@ const MapView = {
         zIndexOffset: 1000,
         draggable: false,
       }).addTo(this.m);
-      // v22.19: when dragged in demo mode → teleport the simulator
-      this.currentMarker.on('dragend', (e) => {
-        if (!Sim.active) return;
-        const ll = e.target.getLatLng();
-        Sim.teleport(ll.lat, ll.lng);
-        Utils.toast('Teleported', 'good');
-      });
     }
     if (State.followMap) {
       this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
@@ -2801,13 +2402,6 @@ const MapView = {
     this._smoothedHeading = 0;
   },
 
-  /** v22.19: enable/disable drag on the user-position marker. Used by Sim. */
-  setUserMarkerDraggable(on) {
-    if (!this.currentMarker) return;
-    if (on) this.currentMarker.dragging && this.currentMarker.dragging.enable();
-    else this.currentMarker.dragging && this.currentMarker.dragging.disable();
-  },
-
   fitAll() {
     if (!this.m) return;
     State.followMap = false; UI.updateFollowPill();
@@ -2843,106 +2437,6 @@ const UI = {
     this.renderStatusLine();
     this.renderDisabledCount();
     this.renderDiagStrip(); // v22.12
-  },
-
-  /** v22.20: open the Demo start/end config modal. Populates inputs with
-   *  defaults (current GPS for start, active dest for end) and lets the user
-   *  override either with captured points OR arbitrary lat/lng.
-   *  v22.21: dropdowns now include both destinations and points, grouped. */
-  openSimConfig() {
-    const fromLat = document.getElementById('sim-from-lat');
-    const fromLng = document.getElementById('sim-from-lng');
-    const toLat = document.getElementById('sim-to-lat');
-    const toLng = document.getElementById('sim-to-lng');
-    // Defaults
-    if (State.pos) {
-      fromLat.value = State.pos.lat.toFixed(5);
-      fromLng.value = State.pos.lng.toFixed(5);
-    }
-    const dest = State.activeDest();
-    if (dest) {
-      toLat.value = dest.lat.toFixed(5);
-      toLng.value = dest.lng.toFixed(5);
-    }
-    // v22.21: build a grouped option list — destinations FIRST, then points.
-    // Value format: "dest:<id>" or "pt:<id>" so we can dispatch on change.
-    const dests = State.data.destinations || [];
-    const pts = State.data.points.filter(p => p.status !== 'no');
-    const destGroup = dests.length ? (
-      `<optgroup label="🚩 Destinations">` +
-      dests.map(d =>
-        `<option value="dest:${Utils.escapeHtml(d.id)}">${Utils.escapeHtml(d.name || 'Unnamed')} (${d.lat.toFixed(3)}, ${d.lng.toFixed(3)})</option>`
-      ).join('') +
-      `</optgroup>`
-    ) : '';
-    const ptGroup = pts.length ? (
-      `<optgroup label="📷 Captured points">` +
-      pts.map(p =>
-        `<option value="pt:${Utils.escapeHtml(p.id)}">${Utils.escapeHtml(p.name || Utils.typeLabel(p.type))} (${p.lat.toFixed(3)}, ${p.lng.toFixed(3)})</option>`
-      ).join('') +
-      `</optgroup>`
-    ) : '';
-    const allOpts = '<option value="">— pick a destination or point —</option>' + destGroup + ptGroup;
-    const fromSel = document.getElementById('sim-from-point');
-    const toSel = document.getElementById('sim-to-point');
-    fromSel.innerHTML = allOpts;
-    toSel.innerHTML = allOpts;
-    fromSel.value = '';
-    toSel.value = '';
-    this.updateSimConfigDist();
-    this.openModal('m-sim-config');
-  },
-
-  /** v22.20: live-update the "distance" line in the sim config modal. */
-  updateSimConfigDist() {
-    const flat = parseFloat(document.getElementById('sim-from-lat').value);
-    const flng = parseFloat(document.getElementById('sim-from-lng').value);
-    const tlat = parseFloat(document.getElementById('sim-to-lat').value);
-    const tlng = parseFloat(document.getElementById('sim-to-lng').value);
-    const out = document.getElementById('sim-config-dist');
-    if (!out) return;
-    if ([flat, flng, tlat, tlng].some(v => isNaN(v))) {
-      out.textContent = 'Distance: — (fill all four fields)';
-      return;
-    }
-    const km = Utils.distKm({ lat: flat, lng: flng }, { lat: tlat, lng: tlng });
-    out.textContent = 'Distance: ' + Utils.fmtDist(km);
-  },
-
-  /** v22.19: show / hide the floating sim control panel (only in demo mode). */
-  showSimPanel() {
-    const panel = document.getElementById('sim-panel');
-    if (panel) panel.style.display = 'block';
-    // Make user marker draggable for teleport
-    MapView.setUserMarkerDraggable(true);
-    this.renderSimPanel();
-  },
-  hideSimPanel() {
-    const panel = document.getElementById('sim-panel');
-    if (panel) panel.style.display = 'none';
-    MapView.setUserMarkerDraggable(false);
-  },
-  renderSimPanel() {
-    if (!Sim.active) return;
-    const pauseBtn = document.getElementById('sim-pause');
-    if (pauseBtn) pauseBtn.textContent = Sim.paused ? '▶' : '⏸';
-    const speedSel = document.getElementById('sim-speed');
-    if (speedSel) speedSel.value = String(Sim.speedMul);
-    const recBtn = document.getElementById('sim-rec');
-    if (recBtn) {
-      recBtn.classList.toggle('on', Sim.recording);
-      recBtn.textContent = Sim.recording ? '⏹ Stop rec' : '⏺ Rec';
-    }
-    const status = document.getElementById('sim-status');
-    if (status) {
-      const parts = [];
-      parts.push(Sim.replayMode ? 'Replay' : 'Demo');
-      parts.push(Sim.speedMul + '×');
-      if (Sim.paused) parts.push('paused');
-      if (Sim.recording) parts.push('rec: ' + Sim.recordBuffer.length);
-      parts.push('drag dot to teleport');
-      status.textContent = parts.join(' · ');
-    }
   },
 
   /** v22.12: live diagnostic strip — see the alert pipeline at a glance.
@@ -3197,52 +2691,6 @@ const UI = {
     if (State.settings.voiceGender !== 'none') {
       setTimeout(() => Audio.say(text), 300);
     }
-  },
-
-  /** v22.19: open scenarios modal */
-  openScenarios() {
-    const list = document.getElementById('scenario-list');
-    if (list) {
-      list.innerHTML = Scenarios.list.map((sc, i) => `
-        <div style="display:flex;gap:6px;align-items:center;background:var(--surface);padding:8px;border:1px solid var(--line);border-radius:8px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:12px;">${Utils.escapeHtml(sc.name)}</div>
-            <div style="font-size:10px;color:var(--ink-2);">${Utils.escapeHtml(sc.desc)}</div>
-          </div>
-          <button class="btn" data-scenario="${i}" style="flex:0 0 auto;padding:6px 12px;font-size:11px;">▶ Run</button>
-        </div>
-      `).join('');
-      list.querySelectorAll('[data-scenario]').forEach(b => {
-        b.addEventListener('click', async () => {
-          const idx = +b.dataset.scenario;
-          const sc = Scenarios.list[idx];
-          UI.appendScenarioResult(`▶ Running: ${sc.name}…`);
-          try {
-            const r = await sc.run();
-            UI.appendScenarioResult(
-              (r.passed ? '✓ ' : '✗ ') + sc.name + ' — ' + r.details,
-              r.passed ? 'good' : 'bad'
-            );
-          } catch (err) {
-            UI.appendScenarioResult('✗ ' + sc.name + ' — error: ' + (err.message || err), 'bad');
-          }
-        });
-      });
-    }
-    document.getElementById('scenario-results').innerHTML = '<span style="color:var(--ink-3);">Tap a scenario to run.</span>';
-    this.openModal('m-scenarios');
-  },
-
-  appendScenarioResult(text, kind) {
-    const res = document.getElementById('scenario-results');
-    if (!res) return;
-    if (res.querySelector('span[style*="ink-3"]')) res.innerHTML = '';
-    const color = kind === 'good' ? 'var(--green)' : kind === 'bad' ? 'var(--red)' : 'var(--ink)';
-    const line = document.createElement('div');
-    line.style.color = color;
-    line.style.marginBottom = '4px';
-    line.textContent = text;
-    res.appendChild(line);
   },
 
   /** v22.8: build a diagnostic readout of the audio environment. */
@@ -3791,213 +3239,6 @@ const UI = {
 };
 
 /* ============================================================
-   7b. SCENARIOS — v22.19 scripted alert tests
-   ============================================================ */
-const Scenarios = {
-  /** Each scenario:
-   *  - name: display name
-   *  - desc: short description
-   *  - run: async function that returns { passed: bool, details: string }
-   *
-   *  Scenarios mock GPS ticks and check what Audio.alert + Audio.say receive.
-   *  They snapshot the original Audio methods and restore them after. */
-  list: [
-    {
-      name: 'A. Need 1+ point ahead',
-      desc: 'Verify ahead-list works for active destination',
-      run() {
-        const dest = State.activeDest();
-        if (!dest) return { passed: false, details: 'No active destination set. Pick one first.' };
-        const pts = State.activePoints().filter(p => p.status !== 'no');
-        if (!pts.length) return { passed: false, details: 'No active points for this destination.' };
-        return { passed: true, details: `Found ${pts.length} active points for ${dest.name}.` };
-      },
-    },
-    {
-      name: 'B. Threshold alert sequence',
-      desc: 'Approach the nearest point — expect alerts at each configured marker',
-      async run() {
-        const dest = State.activeDest();
-        const pts = State.activePoints().filter(p => p.status !== 'no');
-        if (!dest || !pts.length) return { passed: false, details: 'Need destination + 1+ point.' };
-        // Find the point closest to destination (farthest from start = "last" along route is fine).
-        // Then place us 2500m before it and step in 50m increments.
-        const target = pts[0];
-        const markers = State.settings.alertMarkersM || [2000, 1000, 500];
-        const recorded = [];
-        const patched = Scenarios._patchAudio(recorded);
-        // Place us before target, walking along bearing target→dest reversed
-        const bearingBack = (Utils.bearing(target, dest) + 180) % 360;
-        let startPos = Sim._offsetMeters(target.lat, target.lng, 2500, bearingBack);
-        Scenarios._resetState();
-        State.activeTrip = null;
-        // Walk in 50m steps toward target
-        let prev = null;
-        for (let i = 0; i <= 60; i++) {
-          const stepM = i * 50;
-          const here = Sim._offsetMeters(startPos.lat, startPos.lng, stepM, Utils.bearing(startPos, target));
-          State.prevPos = prev;
-          State.pos = here;
-          State.prevTs = Date.now();
-          State.speedMps = 30;
-          if (here.lat !== target.lat || here.lng !== target.lng) {
-            Alerts.tick();
-          }
-          prev = { lat: here.lat, lng: here.lng };
-        }
-        Scenarios._restoreAudio(patched);
-        // Check that each marker fired at least once
-        const firedMarkers = recorded.filter(r => r.kind === 'alert').map(r => r.meters);
-        const missing = markers.filter(m => !firedMarkers.some(f => Math.abs(f - m) < 50));
-        if (missing.length) {
-          return { passed: false, details: `Missed markers: ${missing.join('m, ')}m. Fired: ${firedMarkers.join('m, ') || '(none)'}m.` };
-        }
-        return { passed: true, details: `All ${markers.length} markers fired: ${firedMarkers.join('m, ')}m.` };
-      },
-    },
-    {
-      name: 'C. Only closest fires (no overlap)',
-      desc: 'With two points near each other, only the closer one fires alerts',
-      async run() {
-        const dest = State.activeDest();
-        const pts = State.activePoints().filter(p => p.status !== 'no');
-        if (!dest || pts.length < 2) return { passed: false, details: 'Need 2+ points along the route.' };
-        // Find two ahead points roughly close in distance
-        const ahead = Alerts.ahead();
-        if (ahead.length < 2) return { passed: false, details: 'Need 2+ points ahead — drive to start of route first.' };
-        const recorded = [];
-        const patched = Scenarios._patchAudio(recorded);
-        Scenarios._resetState();
-        // Walk from 1500m before nearest to past it
-        const target = ahead[0];
-        const second = ahead[1];
-        const bearingBack = (Utils.bearing(target, dest) + 180) % 360;
-        const startPos = Sim._offsetMeters(target.lat, target.lng, 1500, bearingBack);
-        let prev = null;
-        for (let i = 0; i <= 40; i++) {
-          const stepM = i * 50;
-          const here = Sim._offsetMeters(startPos.lat, startPos.lng, stepM, Utils.bearing(startPos, target));
-          State.prevPos = prev;
-          State.pos = here;
-          State.speedMps = 30;
-          Alerts.tick();
-          prev = here;
-        }
-        Scenarios._restoreAudio(patched);
-        // Count alerts per point ID
-        const byPoint = {};
-        recorded.filter(r => r.kind === 'alert').forEach(r => {
-          byPoint[r.pointId] = (byPoint[r.pointId] || 0) + 1;
-        });
-        const secondFired = (byPoint[second.id] || 0);
-        if (secondFired > 0) {
-          return { passed: false, details: `Second point alerted ${secondFired}× while focus was on the first. Expected 0.` };
-        }
-        const firstFired = (byPoint[target.id] || 0);
-        return { passed: true, details: `Only closest fired (${firstFired} alerts); second point stayed silent.` };
-      },
-    },
-    {
-      name: 'D. Pass detection',
-      desc: 'Drive past a point — it should leave the "ahead" list within 30m of passing',
-      async run() {
-        const dest = State.activeDest();
-        const ahead = Alerts.ahead();
-        if (!dest || !ahead.length) return { passed: false, details: 'Need destination + point ahead.' };
-        const target = ahead[0];
-        Scenarios._resetState();
-        // Drive past — step from -100m to +100m of the point along bearing
-        const bearingFwd = Utils.bearing(target, dest);
-        let passedSeen = false;
-        let prev = null;
-        for (let i = 0; i <= 20; i++) {
-          const offset = -100 + i * 10; // -100m to +100m
-          const here = Sim._offsetMeters(target.lat, target.lng, Math.abs(offset), offset < 0 ? (bearingFwd + 180) % 360 : bearingFwd);
-          State.prevPos = prev;
-          State.pos = here;
-          State.speedMps = 30;
-          Alerts.tick();
-          if (State.passedPoints.has(target.id)) { passedSeen = true; break; }
-          prev = here;
-        }
-        if (passedSeen) {
-          return { passed: true, details: `Point marked passed within 30m of crossing.` };
-        }
-        return { passed: false, details: `Point never marked passed after driving 100m past it.` };
-      },
-    },
-    {
-      name: 'E. Auto-announce new top',
-      desc: 'When a point becomes the closest ahead, it gets a heads-up announce',
-      async run() {
-        const ahead = Alerts.ahead();
-        if (!ahead.length) return { passed: false, details: 'No point ahead to test.' };
-        const target = ahead[0];
-        Scenarios._resetState();
-        const recorded = [];
-        const patched = Scenarios._patchAudio(recorded);
-        // Place us 2km before target
-        const dest = State.activeDest();
-        const bearingBack = (Utils.bearing(target, dest) + 180) % 360;
-        State.pos = Sim._offsetMeters(target.lat, target.lng, 2000, bearingBack);
-        Alerts.checkAutoAnnounce();
-        Scenarios._restoreAudio(patched);
-        const announced = recorded.some(r => r.kind === 'say' || r.kind === 'beep');
-        if (announced) {
-          return { passed: true, details: 'Auto-announce fired for new top point.' };
-        }
-        return { passed: false, details: 'No auto-announce when point became #1.' };
-      },
-    },
-  ],
-
-  /** Run all scenarios in sequence, return aggregated results. */
-  async runAll() {
-    const results = [];
-    for (const sc of this.list) {
-      try {
-        const r = await sc.run();
-        results.push({ name: sc.name, ...r });
-      } catch (err) {
-        results.push({ name: sc.name, passed: false, details: 'Error: ' + (err.message || err) });
-      }
-    }
-    return results;
-  },
-
-  /** Patch Audio.beep / Audio.say / Audio.alert to record invocations without
-   *  actually playing sound. Returns the original functions for restoration. */
-  _patchAudio(recorded) {
-    const orig = {
-      beep: Audio.beep,
-      say: Audio.say,
-      alert: Audio.alert,
-    };
-    Audio.beep = function(type) { recorded.push({ kind: 'beep', type }); };
-    Audio.say  = function(text) { recorded.push({ kind: 'say', text }); };
-    Audio.alert = function(point, meters) {
-      recorded.push({ kind: 'alert', pointId: point.id, name: point.name, meters });
-    };
-    return orig;
-  },
-
-  _restoreAudio(orig) {
-    Audio.beep = orig.beep;
-    Audio.say = orig.say;
-    Audio.alert = orig.alert;
-  },
-
-  /** Reset tracking state before a scenario run. */
-  _resetState() {
-    State.alertedMarkers.clear();
-    State.lastDistByPoint.clear();
-    State.minDistByPoint.clear();
-    State.passedPoints.clear();
-    State.autoAnnouncedAhead.clear();
-  },
-};
-
-/* ============================================================
    8. BACKUP
    ============================================================ */
 const Backup = {
@@ -4106,15 +3347,15 @@ function wire() {
   };
   document.getElementById('btn-theme').onclick = () => {
     const cycle = ['light', 'dark', 'auto'];
+    const labels = { light: 'Day', dark: 'Night', auto: 'Device settings' };
     const i = cycle.indexOf(State.settings.theme);
     State.settings.theme = cycle[(i + 1) % cycle.length];
     State.saveSettings();
     UI.applyTheme();
     UI.updateThemeIcon();
-    Utils.toast('Theme: ' + State.settings.theme, 'good');
+    UI.syncSettings();
+    Utils.toast('Theme: ' + labels[State.settings.theme], 'good');
   };
-  document.getElementById('btn-fit-top').onclick = () => MapView.fitAll();
-  document.getElementById('btn-recenter-top').onclick = () => MapView.recenter();
   document.getElementById('btn-route').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-route-menu').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
@@ -4131,147 +3372,7 @@ function wire() {
     UI.openModal('m-routes');
   };
   document.getElementById('confirm-start').onclick = () => UI.doStart();
-  document.getElementById('btn-demo').onclick = () => State.mode === 'demo' ? GPS.stop() : GPS.demo();
 
-  // v22.19: Sim control panel
-  document.getElementById('sim-pause').addEventListener('click', () => Sim.togglePause());
-  document.getElementById('sim-speed').addEventListener('change', (e) => Sim.setSpeed(e.target.value));
-  document.getElementById('sim-jump').addEventListener('click', () => Sim.jumpToNext());
-  document.getElementById('sim-reset').addEventListener('click', () => Sim.reset());
-  document.getElementById('sim-back-100').addEventListener('click', () => Sim.stepBy(-100));
-  document.getElementById('sim-fwd-100').addEventListener('click', () => Sim.stepBy(100));
-  document.getElementById('sim-rec').addEventListener('click', () => Sim.toggleRecording());
-  document.getElementById('sim-replay').addEventListener('click', () => {
-    const buf = Sim.loadRecording();
-    if (!buf) { Utils.toast('No saved recording yet', 'bad'); return; }
-    // Reset alert state for fresh replay
-    State.alertedMarkers.clear();
-    State.lastDistByPoint.clear();
-    State.minDistByPoint.clear();
-    State.passedPoints.clear();
-    State.autoAnnouncedAhead.clear();
-    State.alertsFiredThisTrip = 0;
-    State.mode = 'demo';
-    UI.setStatusMode('REPLAY', 'demo');
-    UI.setBtnGoActive(true);
-    Sim.startReplay(buf);
-    UI.showSimPanel();
-    Utils.toast(`Replaying ${buf.length} points`, 'good');
-  });
-
-  // v22.20: Sim config (start/end picker)
-  document.getElementById('sim-config').addEventListener('click', () => {
-    Sim.pause();
-    UI.openSimConfig();
-  });
-  // From: "Current GPS" preset
-  document.querySelectorAll('[data-from]').forEach(b => {
-    b.addEventListener('click', () => {
-      let lat, lng;
-      if (b.dataset.from === 'current' && State.pos) { lat = State.pos.lat; lng = State.pos.lng; }
-      else if (b.dataset.from === 'dest') {
-        const d = State.activeDest();
-        if (d) { lat = d.lat; lng = d.lng; }
-      }
-      if (lat != null && lng != null) {
-        document.getElementById('sim-from-lat').value = lat.toFixed(5);
-        document.getElementById('sim-from-lng').value = lng.toFixed(5);
-        document.getElementById('sim-from-point').value = '';
-        UI.updateSimConfigDist();
-      } else {
-        Utils.toast('No location available', 'bad');
-      }
-    });
-  });
-  // To: presets
-  document.querySelectorAll('[data-to]').forEach(b => {
-    b.addEventListener('click', () => {
-      let lat, lng;
-      if (b.dataset.to === 'current' && State.pos) { lat = State.pos.lat; lng = State.pos.lng; }
-      else if (b.dataset.to === 'dest') {
-        const d = State.activeDest();
-        if (d) { lat = d.lat; lng = d.lng; }
-      }
-      if (lat != null && lng != null) {
-        document.getElementById('sim-to-lat').value = lat.toFixed(5);
-        document.getElementById('sim-to-lng').value = lng.toFixed(5);
-        document.getElementById('sim-to-point').value = '';
-        UI.updateSimConfigDist();
-      } else {
-        Utils.toast('No location available', 'bad');
-      }
-    });
-  });
-  // From: captured-point dropdown
-  // v22.21: value is now "dest:<id>" or "pt:<id>" — dispatch on prefix.
-  document.getElementById('sim-from-point').addEventListener('change', (e) => {
-    const val = e.target.value;
-    if (!val) return;
-    const [kind, ...rest] = val.split(':');
-    const id = rest.join(':');
-    let item = null;
-    if (kind === 'dest') item = State.data.destinations.find(d => d.id === id);
-    else if (kind === 'pt') item = State.data.points.find(p => p.id === id);
-    if (item) {
-      document.getElementById('sim-from-lat').value = item.lat.toFixed(5);
-      document.getElementById('sim-from-lng').value = item.lng.toFixed(5);
-      UI.updateSimConfigDist();
-    }
-  });
-  document.getElementById('sim-to-point').addEventListener('change', (e) => {
-    const val = e.target.value;
-    if (!val) return;
-    const [kind, ...rest] = val.split(':');
-    const id = rest.join(':');
-    let item = null;
-    if (kind === 'dest') item = State.data.destinations.find(d => d.id === id);
-    else if (kind === 'pt') item = State.data.points.find(p => p.id === id);
-    if (item) {
-      document.getElementById('sim-to-lat').value = item.lat.toFixed(5);
-      document.getElementById('sim-to-lng').value = item.lng.toFixed(5);
-      UI.updateSimConfigDist();
-    }
-  });
-  // Live-update distance when any lat/lng input changes
-  ['sim-from-lat','sim-from-lng','sim-to-lat','sim-to-lng'].forEach(id => {
-    document.getElementById(id).addEventListener('input', () => UI.updateSimConfigDist());
-  });
-  // Apply: validate, close modal, restart sim with chosen endpoints
-  document.getElementById('sim-config-start').addEventListener('click', () => {
-    const flat = parseFloat(document.getElementById('sim-from-lat').value);
-    const flng = parseFloat(document.getElementById('sim-from-lng').value);
-    const tlat = parseFloat(document.getElementById('sim-to-lat').value);
-    const tlng = parseFloat(document.getElementById('sim-to-lng').value);
-    if ([flat, flng, tlat, tlng].some(v => isNaN(v))) {
-      Utils.toast('Fill all four coordinates', 'bad');
-      return;
-    }
-    if (Utils.distKm({lat:flat,lng:flng}, {lat:tlat,lng:tlng}) < 0.05) {
-      Utils.toast('Start and end too close', 'bad');
-      return;
-    }
-    UI.closeAllModals();
-    // Reset alert/passed state for a clean demo
-    State.alertedMarkers.clear();
-    State.lastDistByPoint.clear();
-    State.minDistByPoint.clear();
-    State.passedPoints.clear();
-    State.autoAnnouncedAhead.clear();
-    State.alertsFiredThisTrip = 0;
-    State.mode = 'demo';
-    UI.setStatusMode('DEMO', 'demo');
-    UI.setBtnGoActive(true);
-    Sim.start({ from: {lat: flat, lng: flng}, to: {lat: tlat, lng: tlng} });
-    UI.showSimPanel();
-    // v22.20: fit the map to the whole start→end route so motion is visible
-    if (MapView.m) {
-      const bounds = L.latLngBounds([[flat, flng], [tlat, tlng]]);
-      MapView.m.fitBounds(bounds, { padding: [40, 40] });
-      State.followMap = false;
-      UI.updateFollowPill();
-    }
-    Utils.toast(`Demo: ${Utils.fmtDist(Utils.distKm({lat:flat,lng:flng}, {lat:tlat,lng:tlng}))} route`, 'good');
-  });
   document.getElementById('btn-fit').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter').onclick = () => MapView.recenter();
   // v22.23: nav-mode toggle — heading-up rotation like Google Maps / Waze.
@@ -4530,20 +3631,6 @@ function wire() {
     Audio.unlock();
     UI.openSoundCheck();
   };
-  // v22.19: scenarios launcher + run-all
-  document.getElementById('btn-scenarios').addEventListener('click', () => {
-    UI.closeAllModals();
-    UI.openScenarios();
-  });
-  document.getElementById('sc-run-all').addEventListener('click', async () => {
-    UI.appendScenarioResult('▶ Running all scenarios…');
-    const results = await Scenarios.runAll();
-    const passed = results.filter(r => r.passed).length;
-    results.forEach(r => {
-      UI.appendScenarioResult((r.passed ? '✓ ' : '✗ ') + r.name + ' — ' + r.details, r.passed ? 'good' : 'bad');
-    });
-    UI.appendScenarioResult(`──── ${passed}/${results.length} passed ────`, passed === results.length ? 'good' : 'bad');
-  });
   // v22.8: Sound check test buttons
   document.getElementById('sc-tone').onclick = () => {
     Audio.unlock();
@@ -4597,7 +3684,7 @@ function wire() {
     m.addEventListener('click', e => { if (e.target === m) UI.closeAllModals(); })
   );
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && (State.mode === 'gps' || State.mode === 'demo')) {
+    if (document.visibilityState === 'visible' && State.mode === 'gps') {
       GPS.requestWakeLock();
     }
   });
