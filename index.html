@@ -574,7 +574,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
 /* ACTIONS */
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1.4fr auto;
+  grid-template-columns: 1fr 1.4fr;
   gap: 6px;
 }
 .btn {
@@ -1084,7 +1084,6 @@ body[data-nav="on"] .ra-current::after { display: block; }
   <div class="actions">
     <button class="btn btn-capture" id="btn-capture">📷 Capture</button>
     <button class="btn btn-go" id="btn-go">▶ Start GPS</button>
-    <button class="btn btn-square" id="btn-demo" title="Demo">▷</button>
   </div>
 
   <!-- STATUS LINE -->
@@ -1520,6 +1519,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
   <button class="btn" id="btn-edit-json">Edit JSON</button>
 </div>
 <input type="file" id="import-file" accept="application/json" style="display:none">
+<button class="btn" id="btn-demo">▷ Simulation demo</button>
 <button class="btn" id="btn-test-sound">🔊 Sound check</button>
 <button class="btn" id="btn-scenarios">🧪 Test scenarios</button>
 ```
@@ -4165,7 +4165,10 @@ function wire() {
     UI.openModal('m-routes');
   };
   document.getElementById('confirm-start').onclick = () => UI.doStart();
-  document.getElementById('btn-demo').onclick = () => State.mode === 'demo' ? GPS.stop() : GPS.demo();
+  document.getElementById('btn-demo').onclick = () => {
+    UI.closeAllModals();
+    State.mode === 'demo' ? GPS.stop() : GPS.demo();
+  };
 
   // v22.19: Sim control panel
   document.getElementById('sim-pause').addEventListener('click', () => Sim.togglePause());
