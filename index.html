@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.21</title>
+<title>Road Alert v22.23</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -450,6 +450,8 @@ body {
   box-shadow: var(--shadow);
 }
 .map-btn:active { transform: scale(0.92); }
+/* v22.23: nav-mode button "on" state */
+.map-btn.on { background: var(--amber); color: #0c0a09; border-color: var(--amber); }
 .follow-pill {
   position: absolute;
   left: 8px;
@@ -524,6 +526,33 @@ body {
   border-radius: 50%;
   box-shadow: 0 0 0 4px rgba(37,99,235,0.3), 0 2px 6px rgba(0,0,0,0.5);
   animation: pulsedot 2s infinite;
+  position: relative; /* v22.23: allow nose indicator inside */
+}
+/* v22.23: directional "nose" pointing forward — shown only in nav mode */
+.ra-current::after {
+  content: '';
+  display: none;
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 12px solid #2563eb;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
+  pointer-events: none;
+}
+body[data-nav="on"] .ra-current::after { display: block; }
+/* v22.23: smooth rotation of the map pane when nav mode is on */
+.leaflet-map-pane.map-rotate {
+  transition: transform 0.35s linear;
+  will-change: transform;
+}
+/* Counter-rotation target on the marker itself (so nose stays "up") */
+.ra-current {
+  transition: transform 0.35s linear;
+  transform-origin: 50% 50%;
 }
 @keyframes pulsedot {
   0%,100% { box-shadow: 0 0 0 4px rgba(37,99,235,0.3), 0 2px 6px rgba(0,0,0,0.5); }
@@ -776,7 +805,7 @@ body {
 
 .limit-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 .limit-pick {
@@ -784,7 +813,7 @@ body {
   border: 3px solid var(--red);
   background: #fff;
   color: #1c1917;
-  font: 800 22px ui-monospace, monospace;
+  font: 800 20px ui-monospace, monospace;
   aspect-ratio: 1;
   border-radius: 50%;
   cursor: pointer;
@@ -951,7 +980,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.21</span>
+      <span class="version">v22.23</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1018,6 +1047,7 @@ body {
     <div class="map-overlay-btns">
       <button class="map-btn" id="btn-fit" title="Fit all">⛶</button>
       <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
+      <button class="map-btn" id="btn-nav" title="Nav mode (heading up)">🧭</button>
     </div>
     <!-- v22.19: Sim control panel — visible only in demo/replay mode -->
     <div class="sim-panel" id="sim-panel" style="display:none;">
@@ -1700,6 +1730,8 @@ const Storage = {
       alertRepeatCount: 1,     // how many times each marker repeats (1 = no repeat)
       alertRepeatGapS: 1.5,    // seconds between repeats
       toneStyle: 'classic',    // alert tone style — see Audio.tonePatterns
+      // v22.23: nav-mode (heading-up map rotation) — opt-in
+      navMode: false,
     };
   },
   /** One-time migration: orphan points get auto-assigned to their nearest
@@ -2601,6 +2633,12 @@ const MapView = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
         { attribution: 'Tiles © Esri', maxZoom: 19, crossOrigin: true }
       ).addTo(this.m);
+      // v22.23: prepare mapPane for nav-mode rotation (CSS-transform based).
+      // Class adds will-change + smooth transition; transform is applied later.
+      try {
+        const pane = this.m.getPane('mapPane');
+        if (pane) pane.classList.add('map-rotate');
+      } catch (e) { /* ignore */ }
       this.markers = L.layerGroup().addTo(this.m);
       this.m.on('dragstart', () => {
         if (State.followMap) { State.followMap = false; UI.updateFollowPill(); }
@@ -2710,11 +2748,62 @@ const MapView = {
     if (State.followMap) {
       this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
     }
+    // v22.23: nav-mode rotation — only when explicitly enabled AND following AND moving.
+    if (State.settings.navMode) this.applyHeadingRotation();
     // Lazy "passed" refresh: only every 5 seconds
     if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > 5000) {
       this._lastPointRefresh = Date.now();
       this.updatePoints();
     }
+  },
+
+  /** v22.23: rotate the map so the user's heading points UP on screen.
+   *  Uses CSS transforms on Leaflet's mapPane. Marker is counter-rotated so
+   *  the directional nose stays oriented forward. */
+  _headingBuffer: [],
+  _smoothedHeading: 0,
+  applyHeadingRotation() {
+    if (!this.m) return;
+    // Only update heading when we have a reasonable reading.
+    // GPS heading is noisy below ~3 m/s (~10 km/h) — keep last value at low speed.
+    let h = State.heading;
+    if (h != null && !isNaN(h) && State.speedMps > 3) {
+      // Circular-mean smoothing over the last 5 samples
+      const buf = this._headingBuffer;
+      buf.push(h);
+      if (buf.length > 5) buf.shift();
+      let sx = 0, sy = 0;
+      for (const x of buf) {
+        sx += Math.cos(x * Math.PI / 180);
+        sy += Math.sin(x * Math.PI / 180);
+      }
+      let avg = Math.atan2(sy / buf.length, sx / buf.length) * 180 / Math.PI;
+      if (avg < 0) avg += 360;
+      this._smoothedHeading = avg;
+    }
+    const heading = this._smoothedHeading;
+    const pane = this.m.getPane('mapPane');
+    if (pane) pane.style.transform = pane.style.transform.replace(/rotate\([^)]+\)/, '') + ` rotate(${-heading}deg)`;
+    // Counter-rotate the user marker so the "nose" arrow always points up
+    if (this.currentMarker) {
+      const el = this.currentMarker.getElement();
+      const inner = el && el.querySelector('.ra-current');
+      if (inner) inner.style.transform = `rotate(${heading}deg)`;
+    }
+  },
+
+  /** v22.23: clear map rotation and reset marker. Called when nav mode is turned off. */
+  clearHeadingRotation() {
+    if (!this.m) return;
+    const pane = this.m.getPane('mapPane');
+    if (pane) pane.style.transform = pane.style.transform.replace(/\s*rotate\([^)]+\)/, '');
+    if (this.currentMarker) {
+      const el = this.currentMarker.getElement();
+      const inner = el && el.querySelector('.ra-current');
+      if (inner) inner.style.transform = '';
+    }
+    this._headingBuffer = [];
+    this._smoothedHeading = 0;
   },
 
   /** v22.19: enable/disable drag on the user-position marker. Used by Sim. */
@@ -3015,6 +3104,12 @@ const UI = {
     document.getElementById('follow-label').textContent = 'Follow: ' + (State.followMap ? 'ON' : 'OFF');
   },
 
+  /** v22.23: reflect nav-mode state on the toolbar button (amber when on). */
+  updateNavBtn() {
+    const b = document.getElementById('btn-nav');
+    if (b) b.classList.toggle('on', !!State.settings.navMode);
+  },
+
   openModal(id) { document.getElementById(id).classList.add('open'); },
   closeAllModals() {
     document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
@@ -3285,7 +3380,7 @@ const UI = {
     document.getElementById('limit-clear').style.display =
       mode === 'manual' ? 'block' : 'none';
     const grid = document.getElementById('limit-grid');
-    grid.innerHTML = [40,60,80,100,120,140].map(L =>
+    grid.innerHTML = [30,40,50,60,70,80,90,100,110,120,130,140].map(L =>
       `<button class="limit-pick" data-limit="${L}">${L}</button>`
     ).join('');
     grid.querySelectorAll('[data-limit]').forEach(b =>
@@ -4179,6 +4274,38 @@ function wire() {
   });
   document.getElementById('btn-fit').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter').onclick = () => MapView.recenter();
+  // v22.23: nav-mode toggle — heading-up rotation like Google Maps / Waze.
+  // Auto-enables followMap (rotation around off-center user is disorienting).
+  document.getElementById('btn-nav').onclick = () => {
+    State.settings.navMode = !State.settings.navMode;
+    State.saveSettings();
+    UI.updateNavBtn();
+    if (State.settings.navMode) {
+      document.body.setAttribute('data-nav', 'on');
+      if (!State.followMap) { State.followMap = true; UI.updateFollowPill(); }
+      if (State.pos) this.m && MapView.applyHeadingRotation();
+      Utils.toast('Nav mode: heading up', 'good');
+    } else {
+      document.body.removeAttribute('data-nav');
+      MapView.clearHeadingRotation();
+      Utils.toast('Nav mode: off', 'good');
+    }
+  };
+  // v22.23: turning OFF follow auto-disables nav mode (rotation needs centering)
+  // Hook into the existing follow toggle path is in updateFollowPill via dragstart.
+  // We also clear rotation if user pans away.
+  document.getElementById('follow-pill').addEventListener('click', () => {
+    // After the click toggles followMap (existing handler), check & clear nav if needed
+    setTimeout(() => {
+      if (!State.followMap && State.settings.navMode) {
+        State.settings.navMode = false;
+        State.saveSettings();
+        UI.updateNavBtn();
+        document.body.removeAttribute('data-nav');
+        MapView.clearHeadingRotation();
+      }
+    }, 0);
+  });
   document.getElementById('follow-pill').onclick = () => {
     State.followMap = !State.followMap;
     UI.updateFollowPill();
@@ -4546,6 +4673,9 @@ function boot() {
     UI.updateThemeIcon();
     UI.renderMarkerChips(); // v22.17: paint chips immediately so they're ready when settings opens
     MapView.init();
+    // v22.23: restore nav-mode visual state
+    UI.updateNavBtn();
+    if (State.settings.navMode) document.body.setAttribute('data-nav', 'on');
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
     // v22: driving safety reminder, once per device
