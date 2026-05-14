@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.23</title>
+<title>Road Alert v22.24</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -980,7 +980,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.23</span>
+      <span class="version">v22.24</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1923,33 +1923,50 @@ const Audio = {
   },
 
   beep(type) {
-    const ctx = this.ensure(); if (!ctx) return;
-    const patterns = {
-      petrol:        [{f:700,d:0.15}],
-      checkpoint:    [{f:600,d:0.12},{f:600,d:0.12,gap:0.08}],
-      speed_camera:  [{f:1000,d:0.08},{f:1000,d:0.08,gap:0.05},{f:1000,d:0.08,gap:0.05}],
-      mobile_camera: [{f:800,d:0.1},{f:1000,d:0.1,gap:0.05}],
-      speed_change:  [{f:500,d:0.1},{f:700,d:0.1,gap:0.05}],
-      gate:          [{f:900,d:0.25}],
-      other:         [{f:600,d:0.1}],
-    };
-    const pat = patterns[type] || patterns.other;
-    // v22.6: apply tone style (waveform + pitch shift)
-    const style = this.tonePatterns[State.settings.toneStyle] || this.tonePatterns.classic;
+    const ctx = this.ensure();
+    // v22.24: if Web Audio fails (iOS silent mode kills it sometimes),
+    // fall back to vibration so the alert isn't completely silent.
+    if (!ctx) {
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+      return;
+    }
+    // v22.24: simpler binary pattern (just on/off bits). Square wave at high
+    // gain produces a harsh, attention-grabbing tone that cuts through road
+    // noise even at iPhone max volume. Each pattern is unique per type.
+    const pattern = {
+      speed_camera:  [1,0,1,0,1],   // 3 pulses
+      mobile_camera: [1,0,1],        // 2 pulses
+      checkpoint:    [1,1],          // double
+      speed_change:  [1,0,1,0],      // 2 spaced
+      petrol:        [1],            // single
+      gate:          [1,1,1],        // triple
+      other:         [1],            // single
+    }[type] || [1];
     let t = ctx.currentTime;
-    pat.forEach(b => {
-      t += (b.gap || 0);
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = style.wave;
-      osc.frequency.value = b.f * style.basePitch;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.25, t + 0.01);
-      gain.gain.linearRampToValueAtTime(0, t + b.d);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(t); osc.stop(t + b.d + 0.02);
-      t += b.d;
+    const freq = 880;        // standard A5 — pierces road noise
+    const unit = 0.16;       // bit duration
+    const peakGain = 0.6;    // v22.24: pushed higher (was 0.25) for LOUD output
+    pattern.forEach(bit => {
+      if (bit === 1) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';   // harsh + loud
+        osc.frequency.value = freq;
+        // Exponential ramp avoids the click of a hard square start
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.exponentialRampToValueAtTime(peakGain, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + unit);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + unit);
+      }
+      t += unit + 0.08;
     });
+    // v22.24: always also vibrate — silent mode can't kill this
+    if (navigator.vibrate) {
+      navigator.vibrate(pattern.map(x => x ? 160 : 80));
+    }
   },
 
   pickVoice() {
