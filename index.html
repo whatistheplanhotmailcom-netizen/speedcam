@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.16</title>
+<title>Road Alert v22.17</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -600,6 +600,27 @@ body {
 }
 .row input[type=number] { width: 72px; text-align: center; }
 .row input[type=text]   { flex: 2; text-align: left; }
+/* v22.17: chip-style markers for alert distances */
+.marker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--amber);
+  color: #0c0a09;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: none;
+  font-family: var(--mono, monospace);
+}
+.marker-chip::after {
+  content: '×';
+  font-size: 14px;
+  opacity: 0.7;
+}
+.marker-chip:active { transform: scale(0.92); opacity: 0.7; }
 .opts {
   display: flex;
   gap: 4px;
@@ -872,7 +893,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.16</span>
+      <span class="version">v22.17</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1221,9 +1242,20 @@ body {
   </div>
 </div>
 <div class="row"><span class="label">Announce side in voice</span><span class="toggle" id="t-side"></span></div>
-<div class="row">
-  <span class="label">Alert distances (m)</span>
-  <input type="text" id="i-markers" placeholder="2000, 1000, 500">
+<div class="row" style="display:block;">
+  <span class="label" style="display:block;margin-bottom:6px;">Alert distances (meters)</span>
+  <div id="markers-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:30px;"></div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+    <input type="number" id="i-marker-add" min="50" max="10000" step="50" placeholder="add distance"
+           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:120px;font:inherit;">
+    <button class="btn" id="btn-marker-add" style="padding:6px 14px;">+ Add</button>
+  </div>
+  <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">
+    <button class="btn" data-marker-preset="default" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Default (2k/1k/500)</button>
+    <button class="btn" data-marker-preset="city" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">City (1k/500/200)</button>
+    <button class="btn" data-marker-preset="highway" style="font-size:11px;padding:4px 8px;flex:0 0 auto;">Highway (3k/2k/1k/500)</button>
+  </div>
+  <div style="font-size:10px;color:var(--ink-3);margin-top:6px;">Tap a chip to remove · alerts fire when you cross each distance</div>
 </div>
 <div class="row">
   <span class="label">Flash border at (m)</span>
@@ -2534,6 +2566,30 @@ const UI = {
     return parts.join(', ');
   },
 
+  /** v22.17: render the alert-distance markers as removable chips.
+   *  Tap a chip to remove that marker. Updates from State.settings. */
+  renderMarkerChips() {
+    const wrap = document.getElementById('markers-chips');
+    if (!wrap) return;
+    const markers = (State.settings.alertMarkersM || []).slice().sort((a, b) => b - a);
+    if (!markers.length) {
+      wrap.innerHTML = '<span style="font-size:11px;color:var(--ink-3);font-style:italic;">No alert distances set — add at least one</span>';
+      return;
+    }
+    wrap.innerHTML = markers.map(m =>
+      `<button class="marker-chip" data-marker="${m}">${m}m</button>`
+    ).join('');
+    wrap.querySelectorAll('[data-marker]').forEach(b => {
+      b.addEventListener('click', () => {
+        const v = +b.dataset.marker;
+        State.settings.alertMarkersM = (State.settings.alertMarkersM || []).filter(x => x !== v);
+        State.saveSettings();
+        UI.renderMarkerChips();
+        Utils.toast('Removed ' + v + 'm', 'good');
+      });
+    });
+  },
+
   /** v22.10: single-tap Next-ahead → announce nearest point ahead with full details. */
   announceNearestAhead() {
     Audio.unlock();
@@ -3071,7 +3127,7 @@ const UI = {
       b.classList.toggle('active', b.dataset.voice === State.settings.voiceGender));
     document.getElementById('t-side').classList.toggle('on', State.settings.announceSide);
     document.getElementById('t-autobackup').classList.toggle('on', State.settings.autoBackup);
-    document.getElementById('i-markers').value = State.settings.alertMarkersM.join(', ');
+    document.getElementById('markers-chips') && UI.renderMarkerChips();
     document.getElementById('i-over').value = State.settings.overBy;
     // v22.6: new alert settings
     document.getElementById('i-flash').value = State.settings.flashStartM;
@@ -3360,14 +3416,37 @@ function wire() {
     State.saveSettings(); UI.syncSettings();
     if (State.settings.autoBackup) Backup.start(); else Backup.stop();
   };
-  document.getElementById('i-markers').onchange = e => {
-    const parts = (e.target.value || '').split(/[,\s]+/).map(x => parseInt(x, 10)).filter(x => x > 0).sort((a,b) => b-a);
-    if (parts.length) {
-      State.settings.alertMarkersM = parts;
-      State.saveSettings();
-      Utils.toast('Alert at: ' + parts.join('m, ') + 'm', 'good');
+  // v22.17: chip-based alert distances editor
+  document.getElementById('btn-marker-add').addEventListener('click', () => {
+    const inp = document.getElementById('i-marker-add');
+    const v = parseInt(inp.value, 10);
+    if (!v || v < 50 || v > 10000) {
+      Utils.toast('Enter 50–10000 meters', 'bad');
+      return;
     }
-  };
+    const set = new Set(State.settings.alertMarkersM || []);
+    set.add(v);
+    State.settings.alertMarkersM = [...set].sort((a, b) => b - a);
+    State.saveSettings();
+    inp.value = '';
+    UI.renderMarkerChips();
+    Utils.toast('Added ' + v + 'm', 'good');
+  });
+  document.querySelectorAll('[data-marker-preset]').forEach(b => {
+    b.addEventListener('click', () => {
+      const presets = {
+        default: [2000, 1000, 500],
+        city: [1000, 500, 200],
+        highway: [3000, 2000, 1000, 500],
+      };
+      const p = presets[b.dataset.markerPreset];
+      if (!p) return;
+      State.settings.alertMarkersM = p;
+      State.saveSettings();
+      UI.renderMarkerChips();
+      Utils.toast('Preset: ' + b.dataset.markerPreset, 'good');
+    });
+  });
   document.getElementById('i-over').onchange = e => {
     const v = +e.target.value;
     if (v >= 0 && v <= 50) { State.settings.overBy = v; State.saveSettings(); }
@@ -3385,20 +3464,31 @@ function wire() {
     const v = +e.target.value;
     if (v >= 0.5 && v <= 10) { State.settings.alertRepeatGapS = v; State.saveSettings(); Utils.toast('Gap ' + v + 's', 'good'); }
   };
-  // v22.9: tone style picker — tappable buttons that preview on tap
+  // v22.17 FIX: tone style picker — use addEventListener + try/catch
+  // (more reliable on iOS than onclick assignment). Always show toast so
+  // user gets feedback even if audio playback fails.
   document.querySelectorAll('[data-tone]').forEach(b => {
-    b.onclick = () => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
       const newTone = b.dataset.tone;
-      State.settings.toneStyle = newTone;
-      State.saveSettings();
-      // Update active highlight
-      document.querySelectorAll('[data-tone]').forEach(x =>
-        x.classList.toggle('active', x.dataset.tone === newTone));
-      // Preview the tone right now
-      Audio.unlock();
-      Audio.beep('speed_camera'); // use a multi-beep pattern so it's audible
-      Utils.toast('Tone: ' + newTone, 'good');
-    };
+      try {
+        State.settings.toneStyle = newTone;
+        State.saveSettings();
+        document.querySelectorAll('[data-tone]').forEach(x =>
+          x.classList.toggle('active', x.dataset.tone === newTone));
+        Utils.toast('Tone: ' + newTone, 'good');
+        Audio.unlock();
+        // Slight delay so iOS has time to resume the audio context
+        // after unlock() if it was suspended
+        setTimeout(() => {
+          try { Audio.beep('speed_camera'); }
+          catch (err) { console.warn('beep failed', err); }
+        }, 50);
+      } catch (err) {
+        Utils.toast('Tone preview failed: ' + (err.message || err), 'bad');
+        console.error('tone preview error', err);
+      }
+    });
   });
   document.getElementById('i-gh-token').onchange = e => { State.gh.token = e.target.value.trim(); State.saveGh(); UI.updateBackupStatus(); };
   document.getElementById('i-gh-repo').onchange = e => { State.gh.repo = e.target.value.trim(); State.saveGh(); UI.updateBackupStatus(); };
@@ -3571,6 +3661,7 @@ function boot() {
     UI.updateFollowPill();
     UI.updateSoundIcon();
     UI.updateThemeIcon();
+    UI.renderMarkerChips(); // v22.17: paint chips immediately so they're ready when settings opens
     MapView.init();
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
