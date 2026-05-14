@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.10</title>
+<title>Road Alert v22.11</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -830,7 +830,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.10</span>
+      <span class="version">v22.11</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2302,7 +2302,11 @@ const UI = {
   openModal(id) { document.getElementById(id).classList.add('open'); },
   closeAllModals() {
     document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
-    State.pendingCapture = null;
+    // v22.11 FIX: do NOT clear pendingCapture here. This used to nuke
+    // captures the moment any modal in the flow closed (side picker,
+    // limit picker, etc.), making every capture silently fail.
+    // pendingCapture is cleared explicitly at end of finalizeCapture()
+    // and at the start of openCaptureMenu() (defensive reset).
   },
 
   /** v22.10: build the natural-language description of a point for voice. */
@@ -2444,6 +2448,9 @@ const UI = {
 
   openCaptureMenu() {
     if (!State.pos) { Utils.toast('Need GPS fix first', 'bad'); return; }
+    // v22.11: defensive reset — clear any leftover pendingCapture from
+    // a previous cancelled flow before starting a new one.
+    State.pendingCapture = null;
     Audio.unlock();
     this.openModal('m-capture');
   },
