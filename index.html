@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22</title>
+<title>Road Alert v22.2</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -806,7 +806,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22</span>
+      <span class="version">v22.2</span>
     </div>
     <span class="topbar-spacer"></span>
     <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
@@ -1105,6 +1105,9 @@ body {
 </div>
 
 <div class="section-title">GitHub backup</div>
+<div style="font-size:10px;color:var(--ink-3);padding:4px 6px;line-height:1.4;">
+  ⚠ Token stored in browser localStorage. Use a fine-grained token with access to <strong>one repo only</strong>. Anyone with this device can read it.
+</div>
 <div class="row"><span class="label">Token</span><input type="password" id="i-gh-token" placeholder="ghp_..."></div>
 <div class="row"><span class="label">Repo</span><input type="text" id="i-gh-repo" placeholder="user/repo"></div>
 <div class="row"><span class="label">File path</span><input type="text" id="i-gh-path" placeholder="road-alert.json"></div>
@@ -1372,6 +1375,7 @@ const State = {
   prevPos: null,
   prevTs: null,
   accuracy: null,
+  lowAccuracy: false,
   speedMps: 0,
   heading: null,
   speedBuffer: [],
@@ -1541,6 +1545,15 @@ const GPS = {
     if (!navigator.geolocation) { Utils.toast('GPS not supported', 'bad'); return; }
     Audio.unlock();
     this.stop();
+    // v22.1: reset all runtime alert state for a fresh drive session.
+    // Otherwise points that were "passed" in a previous session keep their
+    // muted state and never alert again until reload.
+    State.alertedMarkers.clear();
+    State.lastDistByPoint.clear();
+    State.passedPoints.clear();
+    State.speedAlertWasOver = false;
+    State.lastSpeedAlertZone = null;
+    State.speedBuffer = [];
     State.mode = 'gps';
     UI.setStatusMode('LIVE', 'live');
     await this.requestWakeLock();
@@ -1555,6 +1568,13 @@ const GPS = {
   demo() {
     Audio.unlock();
     this.stop();
+    // v22.1: reset runtime state same as GPS.start()
+    State.alertedMarkers.clear();
+    State.lastDistByPoint.clear();
+    State.passedPoints.clear();
+    State.speedAlertWasOver = false;
+    State.lastSpeedAlertZone = null;
+    State.speedBuffer = [];
     State.mode = 'demo';
     UI.setStatusMode('DEMO', 'demo');
     UI.setBtnGoActive(true);
@@ -1613,30 +1633,26 @@ const GPS = {
   },
 
   onTick(pos) {
-    // v22: GPS accuracy filter — ignore garbage
-    if (pos.coords.accuracy != null && pos.coords.accuracy > 100) {
-      // Still update accuracy display but skip the position update
-      State.accuracy = pos.coords.accuracy;
-      UI.renderStatusLine();
-      return;
-    }
+    // v22.1: don't silently drop low-accuracy readings.
+    // Show a "LOW GPS" warning in the status line but still use the position;
+    // skipping entirely can freeze the map in poor-signal areas (tunnel, urban canyon).
+    State.accuracy = pos.coords.accuracy;
+    const lowAcc = pos.coords.accuracy != null && pos.coords.accuracy > 100;
+    State.lowAccuracy = lowAcc;
 
     const prevPos = State.pos;
     const prevTs = State.prevTs;
     State.prevPos = prevPos;
     State.pos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
     State.prevTs = pos.timestamp || Date.now();
-    State.accuracy = pos.coords.accuracy;
 
     // Speed: prefer GPS, fall back to time-delta calc
     let rawSpeed = pos.coords.speed;
     if (rawSpeed == null || isNaN(rawSpeed) || rawSpeed < 0) {
       if (prevPos && prevTs) {
-        // v22: proper time-delta math
         const dtSec = (State.prevTs - prevTs) / 1000;
         if (dtSec > 0 && dtSec < 30) {
           const meters = Utils.distKm(prevPos, State.pos) * 1000;
-          // Reject single-tick jumps > 1km
           if (meters < 1000) {
             rawSpeed = meters / dtSec;
           }
@@ -1645,7 +1661,6 @@ const GPS = {
     }
     State.speedMps = this.smoothSpeed(rawSpeed);
 
-    // v22: sanity cap
     if (State.speedMps * 3.6 > 350) State.speedMps = 0;
 
     if (pos.coords.heading != null && !isNaN(pos.coords.heading) && State.speedMps > 2) {
@@ -1661,9 +1676,11 @@ const GPS = {
       }
     }
 
-    Alerts.tick();
+    // Only run alerts when accuracy is decent — alerting on noisy positions
+    // would create false threshold-crossing events
+    if (!lowAcc) Alerts.tick();
     UI.render();
-    Map.update();
+    MapView.update();
   },
 };
 
@@ -1806,7 +1823,7 @@ const Alerts = {
 /* ============================================================
    6. MAP
    ============================================================ */
-const Map = {
+const MapView = {
   m: null,
   markers: null,
   currentMarker: null,
@@ -1902,7 +1919,7 @@ const Map = {
       marker.on('popupopen', () => {
         setTimeout(() => {
           document.querySelectorAll('[data-edit]').forEach(b => {
-            b.onclick = () => { Map.m.closePopup(); UI.openPointEditor(b.getAttribute('data-edit')); };
+            b.onclick = () => { MapView.m.closePopup(); UI.openPointEditor(b.getAttribute('data-edit')); };
           });
           document.querySelectorAll('[data-del]').forEach(b => {
             b.onclick = () => {
@@ -1913,7 +1930,7 @@ const Map = {
               State.lastDistByPoint.delete(id);
               State.passedPoints.delete(id);
               State.saveData();
-              Map.m.closePopup();
+              MapView.m.closePopup();
               Utils.toast('Deleted');
             };
           });
@@ -1924,16 +1941,27 @@ const Map = {
   },
 
   update() {
+    // v22.1: only update the user-location marker on each GPS tick.
+    // Points are refreshed only when data changes (via updatePoints()).
+    // The "passed" greyout used to require a full rebuild; we now do that
+    // lazily every ~5s instead of every GPS reading.
     if (!this.m || !State.pos) return;
-    if (this.currentMarker) this.m.removeLayer(this.currentMarker);
-    this.currentMarker = L.marker([State.pos.lat, State.pos.lng], {
-      icon: L.divIcon({ className: '', html: '<div class="ra-current"></div>', iconSize: [22,22], iconAnchor: [11,11] }),
-      zIndexOffset: 1000,
-    }).addTo(this.m);
+    if (this.currentMarker) {
+      this.currentMarker.setLatLng([State.pos.lat, State.pos.lng]);
+    } else {
+      this.currentMarker = L.marker([State.pos.lat, State.pos.lng], {
+        icon: L.divIcon({ className: '', html: '<div class="ra-current"></div>', iconSize: [22,22], iconAnchor: [11,11] }),
+        zIndexOffset: 1000,
+      }).addTo(this.m);
+    }
     if (State.followMap) {
       this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
     }
-    this.updatePoints();
+    // Lazy "passed" refresh: only every 5 seconds
+    if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > 5000) {
+      this._lastPointRefresh = Date.now();
+      this.updatePoints();
+    }
   },
 
   fitAll() {
@@ -2003,8 +2031,14 @@ const UI = {
   },
 
   renderStatusLine() {
-    document.getElementById('status-gps').textContent =
-      State.accuracy != null ? `±${Math.round(State.accuracy)}m` : '—';
+    const gpsEl = document.getElementById('status-gps');
+    if (State.accuracy != null) {
+      gpsEl.textContent = `±${Math.round(State.accuracy)}m` + (State.lowAccuracy ? ' ⚠' : '');
+      gpsEl.style.color = State.lowAccuracy ? 'var(--red)' : '';
+    } else {
+      gpsEl.textContent = '—';
+      gpsEl.style.color = '';
+    }
     document.getElementById('status-pts').textContent =
       `${State.activePoints().filter(p => p.status !== 'no').length} pts`;
   },
@@ -2027,7 +2061,7 @@ const UI = {
     btn.textContent = active ? '■ Stop' : '▶ Start GPS';
   },
 
-  updateMapPoints() { Map.updatePoints(); },
+  updateMapPoints() { MapView.updatePoints(); },
 
   updateFollowPill() {
     const pill = document.getElementById('follow-pill');
@@ -2204,7 +2238,7 @@ const UI = {
         State.passedPoints.clear();
         State.saveData();
         this.renderRoutesList();
-        Map.updatePoints();
+        MapView.updatePoints();
         Utils.toast('Destination set', 'good');
       }
     );
@@ -2269,7 +2303,7 @@ const UI = {
     }
     State.saveData();
     this.closeAllModals();
-    Map.updatePoints();
+    MapView.updatePoints();
     Utils.toast('Destination saved', 'good');
   },
 
@@ -2282,7 +2316,7 @@ const UI = {
     }
     State.saveData();
     this.closeAllModals();
-    Map.updatePoints();
+    MapView.updatePoints();
     Utils.toast('Destination deleted');
   },
 
@@ -2537,12 +2571,12 @@ function wire() {
   document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
   document.getElementById('btn-go').onclick = () => State.mode === 'idle' ? GPS.start() : GPS.stop();
   document.getElementById('btn-demo').onclick = () => State.mode === 'demo' ? GPS.stop() : GPS.demo();
-  document.getElementById('btn-fit').onclick = () => Map.fitAll();
-  document.getElementById('btn-recenter').onclick = () => Map.recenter();
+  document.getElementById('btn-fit').onclick = () => MapView.fitAll();
+  document.getElementById('btn-recenter').onclick = () => MapView.recenter();
   document.getElementById('follow-pill').onclick = () => {
     State.followMap = !State.followMap;
     UI.updateFollowPill();
-    if (State.followMap && State.pos) Map.recenter();
+    if (State.followMap && State.pos) MapView.recenter();
   };
   document.getElementById('sign').onclick = () => UI.openLimitPicker('manual');
 
@@ -2768,7 +2802,7 @@ function importJson(e) {
       } else throw new Error('Unrecognized file format');
       UI.render();
       UI.applyTheme();
-      Map.updatePoints();
+      MapView.updatePoints();
     } catch (err) { Utils.toast(err.message, 'bad'); }
   };
   reader.readAsText(file);
@@ -2784,7 +2818,7 @@ function boot() {
     wire();
     UI.render();
     UI.updateFollowPill();
-    Map.init();
+    MapView.init();
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
     // v22: driving safety reminder, once per device
