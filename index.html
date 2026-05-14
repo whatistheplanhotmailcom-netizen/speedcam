@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Road Alert v21</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Road Alert v21.3</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';">
 <style>
   :root {
     --bg: #f5f1e8;
@@ -242,8 +242,11 @@ max-width: 90%; text-align: center;
 /* === Modal (sheet) === */
 .modal {
 position: fixed; inset: 0; z-index: 9500;
-background: rgba(0,0,0,0.4); display: none;
+background: rgba(0,0,0,0.65);
+display: none;
 align-items: flex-end; justify-content: center;
+-webkit-backdrop-filter: blur(2px);
+backdrop-filter: blur(2px);
 }
 .modal.open { display: flex; }
 .modal-card {
@@ -253,6 +256,8 @@ border-radius: 16px 16px 0 0;
 padding: 14px 14px 24px;
 max-height: 85vh; overflow-y: auto;
 padding-bottom: calc(24px + env(safe-area-inset-bottom));
+box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
+border-top: 2px solid var(–amber);
 }
 .modal-grip {
 width: 40px; height: 4px; background: var(–line);
@@ -369,7 +374,7 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
     <div class="brand">
       <span class="brand-dot"></span>
       <span>Road Alert</span>
-      <span class="v">v21</span>
+      <span class="v">v21.3</span>
     </div>
     <button class="dest" id="dest-btn">→ Pick destination</button>
     <button class="menu-btn" id="menu-btn" title="Menu">⋯</button>
@@ -431,8 +436,10 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
       <button class="modal-btn" id="m-dest"><span class="ic">📍</span><span>Destinations</span></button>
       <button class="modal-btn" id="m-points"><span class="ic">📋</span><span>Saved points</span></button>
       <button class="modal-btn" id="m-export"><span class="ic">⬇</span><span>Backup data</span></button>
-      <button class="modal-btn" id="m-close"><span class="ic">✕</span><span>Close</span></button>
+      <button class="modal-btn" id="m-import"><span class="ic">⬆</span><span>Restore backup</span></button>
+      <button class="modal-btn" id="m-close" style="grid-column:span 2;"><span class="ic">✕</span><span>Close</span></button>
     </div>
+    <input type="file" id="m-import-file" accept="application/json,.json" style="display:none;">
   </div>
 </div>
 
@@ -495,7 +502,7 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
       <button class="limit-pick" data-lim="100">100</button>
       <button class="limit-pick" data-lim="120">120</button>
       <button class="limit-pick" data-lim="140">140</button>
-      <button class="limit-pick clear" data-lim="">Auto</button>
+      <button class="limit-pick clear" data-lim="">Clear</button>
       <button class="limit-pick clear" data-lim="-">Cancel</button>
     </div>
   </div>
@@ -538,13 +545,45 @@ display: flex; flex-direction: column; align-items: center; gap: 4px;
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// v21.3: load Leaflet with fallback CDN.
+(function loadLeaflet(){
+  function tryLoad(url, onfail){
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = function(){ console.log('Leaflet loaded from', url); };
+    s.onerror = function(){ console.warn('Leaflet load failed from', url); if (onfail) onfail(); };
+    document.head.appendChild(s);
+  }
+  tryLoad('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', function(){
+    tryLoad('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', function(){
+      tryLoad('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js');
+    });
+  });
+})();
+</script>
 
 <script>
 // =====================================================
 // Road Alert v21 - Clean fresh build
 // =====================================================
 'use strict';
+
+// v21.3: catch any uncaught errors and surface them
+window.addEventListener('error', (e) => {
+  console.error('[uncaught]', e.message, e.filename, e.lineno);
+  try {
+    const t = document.getElementById('toast');
+    if (t) {
+      t.textContent = 'Error: ' + (e.message || 'unknown') + (e.lineno ? ' (line ' + e.lineno + ')' : '');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 6000);
+    }
+  } catch(_){}
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[promise]', e.reason);
+});
 
 // --- Storage keys (same as old app so data carries over) ---
 const STORAGE_DATA = 'roadAlert.v8.data';
@@ -567,6 +606,7 @@ let mode = 'idle'; // 'idle' | 'gps'
 let watchId = null;
 let currentPos = null;
 let prevPos = null;
+let lastGPSTimestamp = null; // v21.1: track timestamps for speed fallback
 let currentSpeed = 0; // m/s
 let map = null;
 let userMarker = null;
@@ -574,6 +614,7 @@ let pointMarkers = [];
 let followUser = true;
 const alertedMarkers = new Map(); // pointKey -> Set of meters
 const passedPoints = new Set(); // pointKeys already passed
+const lastDistByPoint = new Map(); // v21.1: track last distance per point for threshold crossing
 
 // =====================================================
 // Storage
@@ -606,6 +647,7 @@ function loadSettings() {
         if (typeof s.voiceGender === 'string') settings.voiceGender = s.voiceGender;
         if (Array.isArray(s.alertMarkersM)) settings.alertMarkersM = s.alertMarkersM;
         if (typeof s.speedAlertOver === 'number') settings.speedAlertOver = s.speedAlertOver;
+        if (typeof s.manualLimit === 'number') settings.manualLimit = s.manualLimit;
       }
     }
   } catch(e) { console.warn('loadSettings', e); }
@@ -755,28 +797,47 @@ function pointLabel(t) { return (POINT_TYPES[t] || POINT_TYPES.other).label; }
 // =====================================================
 function initMap() {
   if (map) return;
-  map = L.map('map', {
-    center: [21.4858, 39.1925], // Jeddah default
-    zoom: 13,
-    zoomControl: true,
-    attributionControl: false,
-  });
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 19,
-    attribution: 'Esri',
-  }).addTo(map);
-  // User-interaction stops auto-follow
-  map.on('dragstart', () => { followUser = false; });
-  map.on('zoomstart', (e) => {
-    // Ignore zoom changes triggered by setView()
-    if (e.target._zoomingProgrammatically) return;
-  });
-  refreshMapMarkers();
-  setTimeout(() => map.invalidateSize(true), 300);
+  // v21.3: guard against Leaflet not loaded (CDN failure)
+  if (typeof L === 'undefined') {
+    console.warn('Leaflet not loaded — map disabled');
+    const wrap = document.getElementById('map');
+    if (wrap) {
+      wrap.style.background = '#2a2520';
+      wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#a8a29e;font-family:monospace;font-size:11px;padding:20px;text-align:center;">' +
+        '<div style="font-size:32px;margin-bottom:8px;">🗺</div>' +
+        '<div>Map library failed to load.</div>' +
+        '<div style="margin-top:6px;opacity:0.6;">Check internet and reload.</div>' +
+        '<button onclick="location.reload()" style="margin-top:12px;padding:8px 14px;background:#d97706;color:#000;border:none;border-radius:6px;font-family:monospace;font-weight:700;">Reload</button>' +
+        '</div>';
+    }
+    return;
+  }
+  try {
+    map = L.map('map', {
+      center: [21.4858, 39.1925], // Jeddah default
+      zoom: 13,
+      zoomControl: true,
+      attributionControl: false,
+    });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Esri',
+    }).addTo(map);
+    // User-interaction stops auto-follow
+    map.on('dragstart', () => { followUser = false; });
+    map.on('zoomstart', (e) => {
+      if (e.target._zoomingProgrammatically) return;
+    });
+    refreshMapMarkers();
+    setTimeout(() => map.invalidateSize(true), 300);
+  } catch (err) {
+    console.error('Map init failed:', err);
+    showToast('Map failed: ' + (err.message || err));
+  }
 }
 
 function refreshMapMarkers() {
-  if (!map) return;
+  if (!map || typeof L === 'undefined') return;
   // Clear old markers
   pointMarkers.forEach(m => m.remove());
   pointMarkers = [];
@@ -791,7 +852,7 @@ function refreshMapMarkers() {
       iconSize: [28, 28], iconAnchor: [14, 14],
     });
     const m = L.marker([p.lat, p.lng], { icon }).addTo(map);
-    m.bindPopup(pointLabel(p.type));
+    m.bindPopup(escapeHtml(pointLabel(p.type)));
     pointMarkers.push(m);
   });
   // Destination marker (flag)
@@ -801,12 +862,12 @@ function refreshMapMarkers() {
     iconSize: [30, 30], iconAnchor: [15, 15],
   });
   const dm = L.marker([dest.lat, dest.lng], { icon: destIcon }).addTo(map);
-  dm.bindPopup(dest.name);
+  dm.bindPopup(escapeHtml(dest.name));
   pointMarkers.push(dm);
 }
 
 function updateUserMarker() {
-  if (!map || !currentPos) return;
+  if (!map || !currentPos || typeof L === 'undefined') return;
   if (!userMarker) {
     const userIcon = L.divIcon({
       className: 'user-icon',
@@ -890,11 +951,21 @@ function stopGPS() {
 }
 function onGPS(pos) {
   prevPos = currentPos;
+  const prevTs = lastGPSTimestamp;
   currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  lastGPSTimestamp = pos.timestamp || Date.now();
   if (pos.coords.speed != null && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
-    currentSpeed = pos.coords.speed; // m/s
-  } else if (prevPos) {
-    currentSpeed = distanceKm(prevPos, currentPos) * 1000;
+    currentSpeed = pos.coords.speed; // m/s from GPS
+  } else if (prevPos && prevTs) {
+    // v21.1: fallback uses distance over time delta, not just distance * 1000
+    const dtSec = (lastGPSTimestamp - prevTs) / 1000;
+    if (dtSec > 0 && dtSec < 30) {
+      const meters = distanceKm(prevPos, currentPos) * 1000;
+      // Reject single-tick jumps > 500m (GPS glitches)
+      if (meters < 500) {
+        currentSpeed = meters / dtSec; // m/s
+      }
+    }
   }
   // Sanity: cap speed to 350 km/h
   if (currentSpeed * 3.6 > 350) currentSpeed = 0;
@@ -938,25 +1009,62 @@ function nearestPointAhead() {
 
 function checkAlerts() {
   if (mode !== 'gps') return;
-  const near = nearestPointAhead();
-  if (!near) return;
-  const meters = Math.round(near.distKm * 1000);
-  // Mark as passed if we've gotten very close (within 50m) then started moving away
-  if (near.distKm < 0.05 && prevPos) {
-    const wasCloser = distanceKm(prevPos, near.point) > near.distKm;
-    if (!wasCloser) passedPoints.add(near.point.id);
-  }
-  // Fire markers in order
-  const fired = alertedMarkers.get(near.point.id) || new Set();
-  for (const m of settings.alertMarkersM) {
-    if (meters <= m && meters > m - 100 && !fired.has(m)) {
-      // Within 100m window of the marker, fire once
-      alert(near.point, m);
-      fired.add(m);
-      alertedMarkers.set(near.point.id, fired);
-      break;
+  const dest = activeDest();
+  if (!dest) return;
+  // v21.1: check ALL points within 5km (not just nearest), so we don't miss
+  // any when GPS jumps. Each point tracks its own previous distance.
+  const pts = data.points.filter(p => p.destinationId === dest.id);
+  pts.forEach(p => {
+    if (passedPoints.has(p.id)) return;
+    const distKm = distanceKm(currentPos, p);
+    if (distKm > 5) {
+      // Too far; clear stale state for this point
+      lastDistByPoint.delete(p.id);
+      return;
     }
-  }
+    const meters = distKm * 1000;
+    const prevMeters = lastDistByPoint.get(p.id);
+    // Heading check: only alert points roughly ahead of us
+    let ahead = true;
+    if (prevPos) {
+      const heading = bearing(prevPos, currentPos);
+      const toPt = bearing(currentPos, p);
+      const diff = Math.abs(((toPt - heading + 540) % 360) - 180);
+      if (diff > 90) ahead = false;
+    }
+    if (!ahead) {
+      // We've passed this point or it's beside/behind us
+      if (prevMeters != null && meters > prevMeters && meters > 80) {
+        // Moving away from a behind-point that's now > 80m → mark as passed
+        passedPoints.add(p.id);
+        alertedMarkers.delete(p.id);
+        lastDistByPoint.delete(p.id);
+      } else {
+        lastDistByPoint.set(p.id, meters);
+      }
+      return;
+    }
+    // Fire markers that we just crossed (was > marker, now <= marker)
+    const fired = alertedMarkers.get(p.id) || new Set();
+    for (const m of settings.alertMarkersM) {
+      if (fired.has(m)) continue;
+      if (prevMeters == null) {
+        // First time we're seeing this point — only fire if very close
+        if (meters <= m && meters > m - 200) {
+          alert(p, m);
+          fired.add(m);
+        }
+      } else {
+        // Threshold crossing: was above, now at or below
+        if (prevMeters > m && meters <= m) {
+          alert(p, m);
+          fired.add(m);
+        }
+      }
+    }
+    alertedMarkers.set(p.id, fired);
+    lastDistByPoint.set(p.id, meters);
+  });
 }
 
 // =====================================================
@@ -1170,6 +1278,55 @@ document.getElementById('m-export').addEventListener('click', () => {
   closeModal('menu-modal');
   showToast('Backup downloaded');
 });
+// v21.1: import
+document.getElementById('m-import').addEventListener('click', () => {
+  document.getElementById('m-import-file').click();
+});
+document.getElementById('m-import-file').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const obj = JSON.parse(ev.target.result);
+      if (!obj || typeof obj !== 'object') throw new Error('not a json object');
+      const destsIn = Array.isArray(obj.destinations) ? obj.destinations : [];
+      const ptsIn = Array.isArray(obj.points) ? obj.points : [];
+      // Merge by id (don't duplicate existing)
+      const existingDestIds = new Set(data.destinations.map(d => d.id));
+      const existingPtIds = new Set(data.points.map(p => p.id));
+      let addedD = 0, addedP = 0;
+      destsIn.forEach(d => {
+        if (d && d.id && !existingDestIds.has(d.id) && typeof d.lat === 'number' && typeof d.lng === 'number') {
+          data.destinations.push({ id: d.id, name: String(d.name || 'Unnamed'), lat: d.lat, lng: d.lng });
+          addedD++;
+        }
+      });
+      ptsIn.forEach(p => {
+        if (p && p.id && !existingPtIds.has(p.id) && typeof p.lat === 'number' && typeof p.lng === 'number') {
+          data.points.push({
+            id: p.id,
+            destinationId: String(p.destinationId || ''),
+            type: String(p.type || 'other'),
+            lat: p.lat, lng: p.lng,
+            capturedAt: Number(p.capturedAt) || Date.now(),
+          });
+          addedP++;
+        }
+      });
+      saveData();
+      refreshMapMarkers();
+      refreshUI();
+      closeModal('menu-modal');
+      showToast(`Imported: ${addedD} dests, ${addedP} points`);
+    } catch (err) {
+      showToast('Bad backup file');
+      console.warn('import failed', err);
+    }
+    e.target.value = ''; // reset so same file can be re-picked
+  };
+  reader.readAsText(file);
+});
 
 // Destination modal: add current location
 document.getElementById('dest-add-here').addEventListener('click', () => {
@@ -1227,8 +1384,8 @@ document.querySelectorAll('[data-lim]').forEach(b => {
     const v = b.getAttribute('data-lim');
     closeModal('limit-modal');
     if (v === '-') return;
-    if (v === '') { settings.manualLimit = null; showToast('Limit: auto'); }
-    else { settings.manualLimit = parseInt(v, 10); showToast('Limit: ' + v + ' km/h'); }
+    if (v === '') { settings.manualLimit = null; saveSettings(); showToast('Limit cleared'); }
+    else { settings.manualLimit = parseInt(v, 10); saveSettings(); showToast('Limit: ' + v + ' km/h'); }
     refreshUI();
   });
 });
@@ -1283,31 +1440,54 @@ document.getElementById('opt-test-sound').addEventListener('click', () => {
 // Init
 // =====================================================
 function init() {
-  loadData();
-  loadSettings();
-  initMap();
-  refreshUI();
-  // Ask for initial GPS fix quietly so destination "use current" works without starting watch
-  if ('geolocation' in navigator) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      if (!currentPos) {
-        currentPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        updateUserMarker();
-        if (map && !activeDest()) {
-          map.setView([currentPos.lat, currentPos.lng], 13);
-        }
-        refreshUI();
+  try {
+    loadData();
+    loadSettings();
+    initMap();
+    refreshUI();
+    // v21.1: do NOT request GPS silently on page load.
+    // GPS permission is only asked when the user taps Start GPS,
+    // or "Use current location" inside the Destinations modal.
+    // Refresh UI on a slow tick so dest distance updates
+    setInterval(refreshUI, 1000);
+    // v21.1: driving safety reminder, once per device
+    try {
+      if (!localStorage.getItem('roadAlert.safetyShown')) {
+        setTimeout(() => {
+          showToast('Set up while parked. Drive safely.');
+          localStorage.setItem('roadAlert.safetyShown', '1');
+        }, 1500);
       }
-    }, () => {}, { timeout: 8000, enableHighAccuracy: false });
+    } catch(e) {}
+  } catch (err) {
+    console.error('init failed:', err);
+    showToast('Init error: ' + (err.message || err));
   }
-  // Refresh UI on a slow tick so dest distance updates
-  setInterval(refreshUI, 1000);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', initWhenReady);
 } else {
-  init();
+  initWhenReady();
+}
+
+// v21.3: wait briefly for Leaflet to load (it's loaded async with fallback)
+function initWhenReady(){
+  var tries = 0;
+  function check(){
+    if (typeof L !== 'undefined') {
+      init();
+      return;
+    }
+    tries++;
+    if (tries > 30) { // ~6s
+      console.warn('Leaflet never loaded; initializing without map');
+      init();
+      return;
+    }
+    setTimeout(check, 200);
+  }
+  check();
 }
 </script>
 
