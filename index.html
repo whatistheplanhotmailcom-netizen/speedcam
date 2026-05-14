@@ -1047,6 +1047,8 @@ body[data-nav="on"] .ra-current::after { display: block; }
       <span id="follow-label">Follow: ON</span>
     </button>
     <div class="map-overlay-btns">
+      <button class="map-btn" id="btn-fit" title="Fit all">⛶</button>
+      <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
       <button class="map-btn" id="btn-nav" title="Nav mode (heading up)">🧭</button>
     </div>
     <!-- v22.19: Sim control panel — visible only in demo/replay mode -->
@@ -4305,6 +4307,8 @@ function wire() {
     }
     Utils.toast(`Demo: ${Utils.fmtDist(Utils.distKm({lat:flat,lng:flng}, {lat:tlat,lng:tlng}))} route`, 'good');
   });
+  document.getElementById('btn-fit').onclick = () => MapView.fitAll();
+  document.getElementById('btn-recenter').onclick = () => MapView.recenter();
   // v22.23: nav-mode toggle — heading-up rotation like Google Maps / Waze.
   // Auto-enables followMap (rotation around off-center user is disorienting).
   document.getElementById('btn-nav').onclick = () => {
