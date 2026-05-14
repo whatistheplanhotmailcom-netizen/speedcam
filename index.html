@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.19</title>
+<title>Road Alert v22.21</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -951,7 +951,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.19</span>
+      <span class="version">v22.21</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1025,9 +1025,9 @@ body {
         <button class="sim-btn" id="sim-pause" title="Pause / Play">⏸</button>
         <select class="sim-speed" id="sim-speed" title="Speed">
           <option value="0.5">0.5×</option>
-          <option value="1" selected>1×</option>
+          <option value="1">1× real</option>
           <option value="2">2×</option>
-          <option value="5">5×</option>
+          <option value="5" selected>5×</option>
           <option value="10">10×</option>
           <option value="20">20×</option>
         </select>
@@ -1039,6 +1039,7 @@ body {
         <button class="sim-btn sim-btn-sm" id="sim-fwd-100" title="Step forward 100m">+100m</button>
         <button class="sim-btn sim-btn-sm" id="sim-rec" title="Record">⏺ Rec</button>
         <button class="sim-btn sim-btn-sm" id="sim-replay" title="Replay">▶ Replay</button>
+        <button class="sim-btn sim-btn-sm" id="sim-config" title="Pick start/end">⚙</button>
       </div>
       <div class="sim-status" id="sim-status">Demo · 1× · drag the dot to teleport</div>
     </div>
@@ -1062,6 +1063,64 @@ body {
 </div>
 
 <!-- ============== MODALS ============== -->
+
+<!-- v22.20: Sim start/end config -->
+
+<div class="modal" id="m-sim-config">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div class="modal-title">▷ Demo: pick route</div>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div style="font-size:11px;color:var(--ink-2);padding:6px;line-height:1.5;">
+      Pick two saved destinations (or captured points) to drive the demo between them as a
+      fixed route. The simulator will emit fake GPS positions just like a real drive.
+    </div>
+
+```
+<div class="section-title">From (start)</div>
+<div class="row" style="display:block;">
+  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+    <button class="btn" data-from="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
+    <button class="btn" data-from="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
+  </div>
+  <select id="sim-from-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
+    <option value="">— or pick captured point —</option>
+  </select>
+  <div style="display:flex;gap:6px;">
+    <input type="number" id="sim-from-lat" step="0.0001" placeholder="lat"
+           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+    <input type="number" id="sim-from-lng" step="0.0001" placeholder="lng"
+           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+  </div>
+</div>
+
+<div class="section-title">To (end)</div>
+<div class="row" style="display:block;">
+  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+    <button class="btn" data-to="current" style="flex:1;font-size:11px;padding:6px;">📍 Current GPS</button>
+    <button class="btn" data-to="dest" style="flex:1;font-size:11px;padding:6px;">🚩 Active dest</button>
+  </div>
+  <select id="sim-to-point" style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;width:100%;font:inherit;margin-bottom:6px;">
+    <option value="">— or pick captured point —</option>
+  </select>
+  <div style="display:flex;gap:6px;">
+    <input type="number" id="sim-to-lat" step="0.0001" placeholder="lat"
+           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+    <input type="number" id="sim-to-lng" step="0.0001" placeholder="lng"
+           style="background:var(--bg);border:1px solid var(--line-2);color:var(--ink);padding:6px 8px;border-radius:6px;flex:1;font:inherit;">
+  </div>
+</div>
+
+<div style="font-size:10px;color:var(--ink-3);text-align:center;margin:6px 0;">
+  <span id="sim-config-dist">Distance: —</span>
+</div>
+
+<button class="btn btn-go" id="sim-config-start" style="font-size:14px;font-weight:800;">▶ Start demo</button>
+```
+
+  </div>
+</div>
 
 <!-- v22.19: Scenario tester -->
 
@@ -2074,7 +2133,7 @@ const GPS = {
 const Sim = {
   active: false,
   paused: false,
-  speedMul: 1,       // 0.5, 1, 2, 5, 10, 20
+  speedMul: 5,       // v22.20: default 5× so motion is visible on the map at any zoom
   tickIntervalMs: 350,
   pos: null,         // {lat, lng}
   dest: null,        // {lat, lng}
@@ -2090,29 +2149,42 @@ const Sim = {
   // Last fake heading (used for "heading" coord)
   lastHeading: 0,
 
-  /** Start a simulation from current GPS pos (or fallback) to active dest.
-   *  If no dest, drives a default Jeddah→Medina span. */
-  start() {
+  /** Start a simulation. Optionally pass {from: {lat, lng}, to: {lat, lng}}
+   *  to use specific endpoints; otherwise defaults to current GPS pos → active dest. */
+  start(opts) {
     this.stop();
     this.active = true;
     this.paused = false;
     this.replayMode = false;
     this.recordBuffer = [];
 
-    const dest = State.activeDest();
-    if (State.pos && dest) {
-      this.pos  = { lat: State.pos.lat, lng: State.pos.lng };
-      this.dest = { lat: dest.lat, lng: dest.lng };
-    } else if (dest) {
-      // No GPS yet: start 0.5° west of dest
-      this.pos  = { lat: dest.lat, lng: dest.lng - 0.5 };
-      this.dest = { lat: dest.lat, lng: dest.lng };
+    opts = opts || {};
+    if (opts.from && opts.to) {
+      // v22.20: explicit start/end provided by user via config modal
+      this.pos  = { lat: opts.from.lat, lng: opts.from.lng };
+      this.dest = { lat: opts.to.lat, lng: opts.to.lng };
     } else {
-      // No dest: default Jeddah → Medina
-      this.pos  = { lat: 21.5433, lng: 39.1728 };
-      this.dest = { lat: 24.4539, lng: 39.5680 };
+      const dest = State.activeDest();
+      if (State.pos && dest) {
+        this.pos  = { lat: State.pos.lat, lng: State.pos.lng };
+        this.dest = { lat: dest.lat, lng: dest.lng };
+      } else if (dest) {
+        // No GPS yet: start 0.5° west of dest
+        this.pos  = { lat: dest.lat, lng: dest.lng - 0.5 };
+        this.dest = { lat: dest.lat, lng: dest.lng };
+      } else {
+        // No dest: default Jeddah → Medina
+        this.pos  = { lat: 21.5433, lng: 39.1728 };
+        this.dest = { lat: 24.4539, lng: 39.5680 };
+      }
     }
     this.lastHeading = Utils.bearing(this.pos, this.dest);
+
+    // v22.20: prime the position immediately so the user sees the dot
+    // at the start and the map can fit the route before the first tick.
+    const fake = this._makeFakePos(this.pos.lat, this.pos.lng, this.baseSpeedMps, this.lastHeading);
+    GPS.onTick(fake);
+
     this._scheduleTicks();
   },
 
@@ -2687,6 +2759,70 @@ const UI = {
     this.renderStatusLine();
     this.renderDisabledCount();
     this.renderDiagStrip(); // v22.12
+  },
+
+  /** v22.20: open the Demo start/end config modal. Populates inputs with
+   *  defaults (current GPS for start, active dest for end) and lets the user
+   *  override either with captured points OR arbitrary lat/lng.
+   *  v22.21: dropdowns now include both destinations and points, grouped. */
+  openSimConfig() {
+    const fromLat = document.getElementById('sim-from-lat');
+    const fromLng = document.getElementById('sim-from-lng');
+    const toLat = document.getElementById('sim-to-lat');
+    const toLng = document.getElementById('sim-to-lng');
+    // Defaults
+    if (State.pos) {
+      fromLat.value = State.pos.lat.toFixed(5);
+      fromLng.value = State.pos.lng.toFixed(5);
+    }
+    const dest = State.activeDest();
+    if (dest) {
+      toLat.value = dest.lat.toFixed(5);
+      toLng.value = dest.lng.toFixed(5);
+    }
+    // v22.21: build a grouped option list — destinations FIRST, then points.
+    // Value format: "dest:<id>" or "pt:<id>" so we can dispatch on change.
+    const dests = State.data.destinations || [];
+    const pts = State.data.points.filter(p => p.status !== 'no');
+    const destGroup = dests.length ? (
+      `<optgroup label="🚩 Destinations">` +
+      dests.map(d =>
+        `<option value="dest:${Utils.escapeHtml(d.id)}">${Utils.escapeHtml(d.name || 'Unnamed')} (${d.lat.toFixed(3)}, ${d.lng.toFixed(3)})</option>`
+      ).join('') +
+      `</optgroup>`
+    ) : '';
+    const ptGroup = pts.length ? (
+      `<optgroup label="📷 Captured points">` +
+      pts.map(p =>
+        `<option value="pt:${Utils.escapeHtml(p.id)}">${Utils.escapeHtml(p.name || Utils.typeLabel(p.type))} (${p.lat.toFixed(3)}, ${p.lng.toFixed(3)})</option>`
+      ).join('') +
+      `</optgroup>`
+    ) : '';
+    const allOpts = '<option value="">— pick a destination or point —</option>' + destGroup + ptGroup;
+    const fromSel = document.getElementById('sim-from-point');
+    const toSel = document.getElementById('sim-to-point');
+    fromSel.innerHTML = allOpts;
+    toSel.innerHTML = allOpts;
+    fromSel.value = '';
+    toSel.value = '';
+    this.updateSimConfigDist();
+    this.openModal('m-sim-config');
+  },
+
+  /** v22.20: live-update the "distance" line in the sim config modal. */
+  updateSimConfigDist() {
+    const flat = parseFloat(document.getElementById('sim-from-lat').value);
+    const flng = parseFloat(document.getElementById('sim-from-lng').value);
+    const tlat = parseFloat(document.getElementById('sim-to-lat').value);
+    const tlng = parseFloat(document.getElementById('sim-to-lng').value);
+    const out = document.getElementById('sim-config-dist');
+    if (!out) return;
+    if ([flat, flng, tlat, tlng].some(v => isNaN(v))) {
+      out.textContent = 'Distance: — (fill all four fields)';
+      return;
+    }
+    const km = Utils.distKm({ lat: flat, lng: flng }, { lat: tlat, lng: tlng });
+    out.textContent = 'Distance: ' + Utils.fmtDist(km);
   },
 
   /** v22.19: show / hide the floating sim control panel (only in demo mode). */
@@ -3926,6 +4062,120 @@ function wire() {
     Sim.startReplay(buf);
     UI.showSimPanel();
     Utils.toast(`Replaying ${buf.length} points`, 'good');
+  });
+
+  // v22.20: Sim config (start/end picker)
+  document.getElementById('sim-config').addEventListener('click', () => {
+    Sim.pause();
+    UI.openSimConfig();
+  });
+  // From: "Current GPS" preset
+  document.querySelectorAll('[data-from]').forEach(b => {
+    b.addEventListener('click', () => {
+      let lat, lng;
+      if (b.dataset.from === 'current' && State.pos) { lat = State.pos.lat; lng = State.pos.lng; }
+      else if (b.dataset.from === 'dest') {
+        const d = State.activeDest();
+        if (d) { lat = d.lat; lng = d.lng; }
+      }
+      if (lat != null && lng != null) {
+        document.getElementById('sim-from-lat').value = lat.toFixed(5);
+        document.getElementById('sim-from-lng').value = lng.toFixed(5);
+        document.getElementById('sim-from-point').value = '';
+        UI.updateSimConfigDist();
+      } else {
+        Utils.toast('No location available', 'bad');
+      }
+    });
+  });
+  // To: presets
+  document.querySelectorAll('[data-to]').forEach(b => {
+    b.addEventListener('click', () => {
+      let lat, lng;
+      if (b.dataset.to === 'current' && State.pos) { lat = State.pos.lat; lng = State.pos.lng; }
+      else if (b.dataset.to === 'dest') {
+        const d = State.activeDest();
+        if (d) { lat = d.lat; lng = d.lng; }
+      }
+      if (lat != null && lng != null) {
+        document.getElementById('sim-to-lat').value = lat.toFixed(5);
+        document.getElementById('sim-to-lng').value = lng.toFixed(5);
+        document.getElementById('sim-to-point').value = '';
+        UI.updateSimConfigDist();
+      } else {
+        Utils.toast('No location available', 'bad');
+      }
+    });
+  });
+  // From: captured-point dropdown
+  // v22.21: value is now "dest:<id>" or "pt:<id>" — dispatch on prefix.
+  document.getElementById('sim-from-point').addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (!val) return;
+    const [kind, ...rest] = val.split(':');
+    const id = rest.join(':');
+    let item = null;
+    if (kind === 'dest') item = State.data.destinations.find(d => d.id === id);
+    else if (kind === 'pt') item = State.data.points.find(p => p.id === id);
+    if (item) {
+      document.getElementById('sim-from-lat').value = item.lat.toFixed(5);
+      document.getElementById('sim-from-lng').value = item.lng.toFixed(5);
+      UI.updateSimConfigDist();
+    }
+  });
+  document.getElementById('sim-to-point').addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (!val) return;
+    const [kind, ...rest] = val.split(':');
+    const id = rest.join(':');
+    let item = null;
+    if (kind === 'dest') item = State.data.destinations.find(d => d.id === id);
+    else if (kind === 'pt') item = State.data.points.find(p => p.id === id);
+    if (item) {
+      document.getElementById('sim-to-lat').value = item.lat.toFixed(5);
+      document.getElementById('sim-to-lng').value = item.lng.toFixed(5);
+      UI.updateSimConfigDist();
+    }
+  });
+  // Live-update distance when any lat/lng input changes
+  ['sim-from-lat','sim-from-lng','sim-to-lat','sim-to-lng'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => UI.updateSimConfigDist());
+  });
+  // Apply: validate, close modal, restart sim with chosen endpoints
+  document.getElementById('sim-config-start').addEventListener('click', () => {
+    const flat = parseFloat(document.getElementById('sim-from-lat').value);
+    const flng = parseFloat(document.getElementById('sim-from-lng').value);
+    const tlat = parseFloat(document.getElementById('sim-to-lat').value);
+    const tlng = parseFloat(document.getElementById('sim-to-lng').value);
+    if ([flat, flng, tlat, tlng].some(v => isNaN(v))) {
+      Utils.toast('Fill all four coordinates', 'bad');
+      return;
+    }
+    if (Utils.distKm({lat:flat,lng:flng}, {lat:tlat,lng:tlng}) < 0.05) {
+      Utils.toast('Start and end too close', 'bad');
+      return;
+    }
+    UI.closeAllModals();
+    // Reset alert/passed state for a clean demo
+    State.alertedMarkers.clear();
+    State.lastDistByPoint.clear();
+    State.minDistByPoint.clear();
+    State.passedPoints.clear();
+    State.autoAnnouncedAhead.clear();
+    State.alertsFiredThisTrip = 0;
+    State.mode = 'demo';
+    UI.setStatusMode('DEMO', 'demo');
+    UI.setBtnGoActive(true);
+    Sim.start({ from: {lat: flat, lng: flng}, to: {lat: tlat, lng: tlng} });
+    UI.showSimPanel();
+    // v22.20: fit the map to the whole start→end route so motion is visible
+    if (MapView.m) {
+      const bounds = L.latLngBounds([[flat, flng], [tlat, tlng]]);
+      MapView.m.fitBounds(bounds, { padding: [40, 40] });
+      State.followMap = false;
+      UI.updateFollowPill();
+    }
+    Utils.toast(`Demo: ${Utils.fmtDist(Utils.distKm({lat:flat,lng:flng}, {lat:tlat,lng:tlng}))} route`, 'good');
   });
   document.getElementById('btn-fit').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter').onclick = () => MapView.recenter();
