@@ -1706,11 +1706,6 @@ const State = {
     if (!id) return []; // No active destination → show nothing on the map
     return this.data.points.filter(p => p.destId === id);
   },
-
-  /** All points without a destination assignment (for orphan management). */
-  orphanPoints() {
-    return this.data.points.filter(p => !p.destId);
-  },
 };
 
 /* ============================================================
@@ -1851,8 +1846,6 @@ const Audio = {
     if (s === 'off') return;
     // v22.12: count for diagnostic strip
     State.alertsFiredThisTrip = (State.alertsFiredThisTrip || 0) + 1;
-    State.lastAlertAt = Date.now();
-    State.lastAlertText = (point.name || Utils.typeLabel(point.type)) + ' @ ' + (meters >= 1000 ? (meters/1000) + 'km' : meters + 'm');
     const distText = meters >= 1000 ? (meters/1000) + ' kilometers' : meters + ' meters';
     let text = (point.name || Utils.typeLabel(point.type)) + ' in ' + distText;
     if (State.settings.announceSide && point.side) {
@@ -2175,8 +2168,6 @@ const Alerts = {
 
     // Count it for the diag strip
     State.alertsFiredThisTrip = (State.alertsFiredThisTrip || 0) + 1;
-    State.lastAlertAt = Date.now();
-    State.lastAlertText = '(auto) ' + (top.name || Utils.typeLabel(top.type));
   },
 
   checkSpeed() {
