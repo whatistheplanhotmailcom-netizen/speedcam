@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.55</title>
+<title>Road Alert v22.56</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1061,12 +1061,15 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.55</span>
+      <span class="version">v22.56</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
       <button class="icon-btn" id="btn-sound" title="Sound mode">🔊</button>
       <button class="icon-btn" id="btn-theme" title="Theme">☀</button>
+      <!-- v22.56: toggle long-press-to-capture on/off. OFF (🔒) prevents
+           accidental captures. ON (🔓) enables long-press on empty map. -->
+      <button class="icon-btn" id="btn-longpress" title="Long-press capture">🔒</button>
       <button class="icon-btn" id="btn-fit-top" title="Fit all">⛶</button>
       <button class="icon-btn" id="btn-recenter-top" title="Recenter">📍</button>
       <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
@@ -1684,6 +1687,9 @@ const Storage = {
       // v22.54: toggle for auto-rotation (heading-up). Off by default — user
       // taps 🧭 to enable. Survives across sessions.
       navMode: false,
+      // v22.56: long-press on map captures a point at that location. OFF by
+      // default to prevent accidental captures while panning/zooming.
+      longPressCapture: false,
       alertRepeatCount: 1,     // how many times each marker repeats (1 = no repeat)
       alertRepeatGapS: 1.5,    // seconds between repeats
       // v22.32: tone frequency (Hz) for proximity ping and base tone (800–3000)
@@ -2413,7 +2419,11 @@ const Alerts = {
         State.alertedMarkers.delete(p.id);
         State.lastDistByPoint.delete(p.id);
         State.minDistByPoint.delete(p.id);
-        Confirm.onPassed(p); // v22.38
+        // v22.56: only ASK the user to confirm if we got DIRECTLY over the
+        // point (≤30m). If we only got close (30–200m), still mark passed
+        // for the visual greyout — but skip the popup, since we can't be
+        // sure if we actually drove past it or just near it.
+        if (curMin <= 30) Confirm.onPassed(p);
         return;
       }
 
@@ -2437,7 +2447,8 @@ const Alerts = {
           State.alertedMarkers.delete(p.id);
           State.lastDistByPoint.delete(p.id);
           State.minDistByPoint.delete(p.id);
-          Confirm.onPassed(p); // v22.38
+          // v22.56: same 30m gate on the geometry-based pass path
+          if (curMin != null && curMin <= 30) Confirm.onPassed(p);
         } else {
           State.lastDistByPoint.set(p.id, meters);
         }
@@ -2919,6 +2930,9 @@ const MapView = {
 
   startCaptureAt(latlng) {
     if (!latlng || latlng.lat == null || latlng.lng == null) return;
+    // v22.56: respect the long-press toggle (off by default). When off,
+    // tapping/holding on the map does nothing — prevents accidental captures.
+    if (!State.settings.longPressCapture) return;
     const pt = { lat: +latlng.lat, lng: +latlng.lng };
     const nearby = State.data.points.find(p => Utils.distKm(p, pt) * 1000 < 30);
     if (nearby) {
@@ -3130,6 +3144,17 @@ const UI = {
     const pill = document.getElementById('follow-pill');
     pill.classList.toggle('off', !State.followMap);
     document.getElementById('follow-label').textContent = 'Follow: ' + (State.followMap ? 'ON' : 'OFF');
+  },
+
+  /** v22.56: reflect long-press-capture state on the top-bar button.
+   *  Locked icon (🔒) when off, unlocked (🔓) + amber highlight when on. */
+  updateLongPressBtn() {
+    const b = document.getElementById('btn-longpress');
+    if (!b) return;
+    const on = !!State.settings.longPressCapture;
+    b.textContent = on ? '🔓' : '🔒';
+    b.classList.toggle('on', on);
+    b.title = on ? 'Long-press capture: ON (tap to disable)' : 'Long-press capture: OFF (tap to enable)';
   },
 
   openModal(id) { document.getElementById(id).classList.add('open'); },
@@ -3801,22 +3826,10 @@ const Confirm = {
 
   /** Called by Alerts.tick when a point transitions to "passed". */
   onPassed(point) {
-    // v22.55 debug: visible trace so we know if the hook is firing.
-    // Remove these toasts once we've identified the actual issue.
-    if (!point || !point.id) { Utils.toast('Confirm: no point', 'bad'); return; }
-    if (!this.ASKABLE_TYPES.includes(point.type)) {
-      Utils.toast(`Confirm skip: type "${point.type}" not askable`, 'bad');
-      return;
-    }
-    if (point.status === 'no') {
-      Utils.toast('Confirm skip: retired', 'bad');
-      return;
-    }
-    if (this._askedThisTrip.has(point.id)) {
-      Utils.toast('Confirm skip: already asked this trip', 'bad');
-      return;
-    }
-    Utils.toast(`Confirm queued: ${Utils.typeLabel(point.type)}`, 'good');
+    if (!point || !point.id) return;
+    if (!this.ASKABLE_TYPES.includes(point.type)) return;
+    if (point.status === 'no') return; // already retired — don't pester
+    if (this._askedThisTrip.has(point.id)) return;
     this._askedThisTrip.add(point.id);
     this._queue.push(point.id);
     if (!this._activeId) this._showNext();
@@ -3827,18 +3840,12 @@ const Confirm = {
     this._cleanup();
     if (!this._queue.length) {
       this._activeId = null;
-      Utils.toast('Confirm: queue empty', 'bad');
       return;
     }
     const id = this._queue.shift();
     const point = State.data.points.find(p => p.id === id);
-    if (!point) {
-      Utils.toast('Confirm: point not found in data', 'bad');
-      this._showNext();
-      return;
-    }
+    if (!point) { this._showNext(); return; }
     this._activeId = id;
-    Utils.toast(`Confirm rendering: ${point.id.slice(0,6)}`, 'good');
     this._render(point);
     this._startCountdown(10);
   },
@@ -4108,6 +4115,16 @@ function wire() {
   };
   document.getElementById('btn-fit-top').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter-top').onclick = () => MapView.recenter();
+  // v22.56: long-press capture toggle
+  document.getElementById('btn-longpress').onclick = () => {
+    State.settings.longPressCapture = !State.settings.longPressCapture;
+    State.saveSettings();
+    UI.updateLongPressBtn();
+    Utils.toast(
+      State.settings.longPressCapture ? 'Long-press capture: ON' : 'Long-press capture: OFF',
+      'good'
+    );
+  };
   document.getElementById('btn-route').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-route-menu').onclick = () => { UI.renderRoutesList(); UI.openModal('m-routes'); };
   document.getElementById('btn-capture').onclick = () => UI.openCaptureMenu();
@@ -4523,6 +4540,7 @@ function boot() {
     UI.updateFollowPill();
     UI.updateSoundIcon();
     UI.updateThemeIcon();
+    UI.updateLongPressBtn(); // v22.56: restore long-press toggle icon
     UI.renderMarkerChips(); // v22.17: paint chips immediately so they're ready when settings opens
     MapView.init();
     // v22.54: restore 🧭 button state
