@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.44</title>
+<title>Road Alert v22.45</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1091,7 +1091,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.44</span>
+      <span class="version">v22.45</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1150,6 +1150,7 @@ body {
     <div class="map-overlay-btns">
       <button class="map-btn" id="btn-fit" title="Fit all">⛶</button>
       <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
+      <button class="map-btn" id="btn-nav" title="Nav mode (heading up)">🧭</button>
     </div>
   </div>
 
@@ -1570,18 +1571,54 @@ body {
 <!-- Leaflet with CDN fallback -->
 <script>
 (function loadLeaflet() {
-  function tryLoad(url, onfail) {
+  function tryLoad(url, onfail, onok) {
     var s = document.createElement('script');
     s.src = url;
-    s.onload = function() { window._leafletReady = true; };
+    s.onload = function() { if (onok) onok(); };
     s.onerror = function() { if (onfail) onfail(); };
     document.head.appendChild(s);
   }
-  tryLoad('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', function() {
-    tryLoad('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', function() {
-      tryLoad('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js');
-    });
-  });
+  // v22.45: after Leaflet loads, load leaflet-rotate plugin (rotation support).
+  // If plugin fails (CDN down, etc.) we still set _leafletReady so the map
+  // still works — just without rotation, gracefully degrading to v22.43 behavior.
+  function loadRotatePlugin() {
+    tryLoad(
+      'https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.7/dist/leaflet-rotate.js',
+      function() {
+        // jsDelivr failed — try unpkg
+        tryLoad(
+          'https://unpkg.com/leaflet-rotate@0.2.7/dist/leaflet-rotate.js',
+          function() {
+            console.warn('leaflet-rotate failed to load — falling back to north-up map');
+            window._leafletReady = true;
+            window._rotatePluginFailed = true;
+          },
+          function() {
+            window._leafletReady = true;
+            window._rotatePluginLoaded = true;
+          }
+        );
+      },
+      function() {
+        window._leafletReady = true;
+        window._rotatePluginLoaded = true;
+      }
+    );
+  }
+  tryLoad('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+    function() {
+      tryLoad('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+        function() {
+          tryLoad('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
+            function() { /* all three failed */ },
+            loadRotatePlugin
+          );
+        },
+        loadRotatePlugin
+      );
+    },
+    loadRotatePlugin
+  );
 })();
 </script>
 
@@ -1719,6 +1756,8 @@ const Storage = {
       flashStartM: 500,        // start flashing Next-ahead border at this distance
       alertRepeatCount: 1,     // how many times each marker repeats (1 = no repeat)
       alertRepeatGapS: 1.5,    // seconds between repeats
+      // v22.45: nav mode (heading-up) — uses leaflet-rotate plugin
+      navMode: false,
       // v22.32: tone frequency (Hz) for proximity ping and base tone (800–3000)
       toneFreq: 1900,
       // v22.32: continuous proximity ping (stepped beeps as you approach)
@@ -2603,6 +2642,13 @@ const MapView = {
         zoomControl: true,
         attributionControl: true,
         tap: true,
+        // v22.45: enable leaflet-rotate plugin support when available.
+        // If plugin failed to load (window._rotatePluginFailed), these
+        // options are ignored by stock Leaflet — graceful degradation.
+        rotate: !!window._rotatePluginLoaded,
+        rotateControl: false, // we control bearing programmatically, no UI control
+        touchRotate: false,   // disable user pinch-rotate — could confuse the auto-rotate
+        bearing: 0,
       });
       this.m.setView(center, 13);
       L.tileLayer(
@@ -2813,20 +2859,17 @@ const MapView = {
   },
 
   /** v22.43: rotate the user-marker beam toward heading.
-   *  Uses circular-mean smoothing over the last 5 samples so the cone
-   *  doesn't jitter every time GPS heading flickers. Speed-gated to
-   *  avoid spinning at standstill when GPS heading is meaningless. */
+   *  v22.45: also rotates the WHOLE MAP when nav mode is on (using
+   *  leaflet-rotate plugin's setBearing method).  Falls back to marker-only
+   *  rotation if plugin didn't load.
+   *  Smoothed via circular mean over the last 5 samples. Speed-gated so
+   *  cone/map doesn't spin at standstill (GPS heading is meaningless then). */
   _markerHeadingBuf: [],
   _markerSmoothedHeading: null,
   applyMarkerHeading() {
     if (!this.currentMarker) return;
     const el = this.currentMarker.getElement();
-    if (!el) return;
-    const wrap = el.querySelector('.ra-current-wrap');
-    if (!wrap) return;
-    // Only update heading at speed > ~10 km/h.  Below that, GPS heading
-    // is noisy / meaningless; we keep the previous direction so the cone
-    // doesn't spin while you idle at a light.
+    const wrap = el && el.querySelector('.ra-current-wrap');
     if (State.speedMps > 3 && State.heading != null && !isNaN(State.heading)) {
       const buf = this._markerHeadingBuf;
       buf.push(State.heading);
@@ -2841,9 +2884,30 @@ const MapView = {
       this._markerSmoothedHeading = avg;
     }
     if (this._markerSmoothedHeading != null) {
-      wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
-      wrap.classList.add('has-heading');
-    } else {
+      // v22.45: when nav mode is on AND the plugin is loaded, rotate the
+      // whole map so heading is UP. We then keep the beam at 0° (it would
+      // already be pointing up). When nav mode is off, the beam itself
+      // rotates and the map stays north-up (v22.43 behavior).
+      const navOn = State.settings.navMode && window._rotatePluginLoaded;
+      if (navOn && this.m && typeof this.m.setBearing === 'function') {
+        try {
+          this.m.setBearing(-this._markerSmoothedHeading);
+          if (wrap) {
+            wrap.style.transform = 'rotate(0deg)';
+            wrap.classList.add('has-heading');
+          }
+        } catch (e) {
+          // Plugin error — fall back to marker rotation
+          if (wrap) {
+            wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
+            wrap.classList.add('has-heading');
+          }
+        }
+      } else if (wrap) {
+        wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
+        wrap.classList.add('has-heading');
+      }
+    } else if (wrap) {
       wrap.classList.remove('has-heading');
     }
   },
@@ -4085,6 +4149,32 @@ function wire() {
   document.getElementById('confirm-start').onclick = () => UI.doStart();
   document.getElementById('btn-fit').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter').onclick = () => MapView.recenter();
+
+  // v22.45: nav mode toggle — heading-up rotation via leaflet-rotate plugin
+  document.getElementById('btn-nav').onclick = () => {
+    if (window._rotatePluginFailed) {
+      Utils.toast('Rotation plugin unavailable — map stays north-up', 'bad');
+      return;
+    }
+    State.settings.navMode = !State.settings.navMode;
+    State.saveSettings();
+    const btn = document.getElementById('btn-nav');
+    btn.classList.toggle('on', State.settings.navMode);
+    if (State.settings.navMode) {
+      if (!State.followMap) { State.followMap = true; UI.updateFollowPill(); }
+      // Trigger an immediate rotation if we already have a heading
+      if (State.pos && MapView.m) MapView.applyMarkerHeading();
+      Utils.toast('Nav mode: heading up', 'good');
+    } else {
+      // Snap back to north
+      if (MapView.m && typeof MapView.m.setBearing === 'function') {
+        try { MapView.m.setBearing(0); } catch (e) {}
+      }
+      // Beam falls back to rotating itself
+      if (MapView.currentMarker) MapView.applyMarkerHeading();
+      Utils.toast('Nav mode: off', 'good');
+    }
+  };
   document.getElementById('follow-pill').onclick = () => {
     State.followMap = !State.followMap;
     UI.updateFollowPill();
@@ -4457,6 +4547,9 @@ function boot() {
     UI.updateThemeIcon();
     UI.renderMarkerChips(); // v22.17: paint chips immediately so they're ready when settings opens
     MapView.init();
+    // v22.45: restore nav button visual state
+    const navBtn = document.getElementById('btn-nav');
+    if (navBtn) navBtn.classList.toggle('on', !!State.settings.navMode);
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
     // v22: driving safety reminder, once per device
