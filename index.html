@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.40</title>
+<title>Road Alert v22.41</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -379,10 +379,18 @@ body {
   min-height: 200px;
 }
 #map { width: 100%; height: 100%; background: var(--surface-2); }
-/* v22.40: nav-mode pre-scales the map so rotation corners don't show gaps.
-   sqrt(2) ≈ 1.42 is enough to cover any rotation angle. transition smooths
-   the heading change so the map doesn't jerk around. */
+/* v22.41: nav-mode physically oversizes the map so rotation corners don't
+   show gaps. Negative margins + 142% width/height — equivalent to a 1.42×
+   scale but WITHOUT a CSS transform-scale, so Leaflet's pinch-zoom and
+   touch gestures keep working correctly. */
+body[data-nav="on"] .map-wrap {
+  /* Wrapper keeps overflow:hidden so the oversized #map is clipped to view */
+}
 body[data-nav="on"] #map {
+  width: 142%;
+  height: 142%;
+  margin-left: -21%;
+  margin-top: -21%;
   transform-origin: 50% 50%;
   transition: transform 0.4s ease-out;
 }
@@ -1065,7 +1073,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.40</span>
+      <span class="version">v22.41</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2742,15 +2750,13 @@ const MapView = {
       this._smoothedHeading = avg;
     }
     const heading = this._smoothedHeading;
-    // v22.40: apply rotation to the map CONTAINER, not Leaflet's internal mapPane.
-    // Leaflet writes its own translate3d on mapPane on every pan; mixing our
-    // rotate() in caused the rotation to interact wrong with the translate
-    // origin, making the map flip sideways/upside down during movement.
-    // Rotating the container leaves Leaflet's transforms alone.
-    // Scale 1.42 (sqrt 2) so rotation corners don't show gaps in the wrapper.
+    // v22.41: apply rotation only — no scale. The #map element is physically
+    // oversized via CSS when [data-nav="on"], so rotation corners naturally
+    // stay within the clipped wrapper.  Avoiding transform: scale() preserves
+    // Leaflet's pinch-zoom and touch-gesture math.
     const container = this.m.getContainer();
     if (container) {
-      container.style.transform = `scale(1.42) rotate(${-heading}deg)`;
+      container.style.transform = `rotate(${-heading}deg)`;
     }
     // Counter-rotate the user marker so the "nose" arrow always points up
     if (this.currentMarker) {
@@ -3999,11 +4005,24 @@ function wire() {
     if (State.settings.navMode) {
       document.body.setAttribute('data-nav', 'on');
       if (!State.followMap) { State.followMap = true; UI.updateFollowPill(); }
-      if (State.pos && MapView.m) MapView.applyHeadingRotation();
+      // v22.41: physical size changes when [data-nav="on"] kicks in (#map
+      // grows to 142%). Leaflet must be told to recalculate tile coverage
+      // and zoom math for the new dimensions, else tiles can be missing
+      // and pinch-zoom anchors are off.
+      if (MapView.m) {
+        setTimeout(() => {
+          MapView.m.invalidateSize(true);
+          if (State.pos) MapView.applyHeadingRotation();
+        }, 50);
+      }
       Utils.toast('Nav mode: heading up', 'good');
     } else {
       document.body.removeAttribute('data-nav');
       MapView.clearHeadingRotation();
+      // v22.41: same — Leaflet needs to recalc when the map shrinks back
+      if (MapView.m) {
+        setTimeout(() => MapView.m.invalidateSize(true), 50);
+      }
       Utils.toast('Nav mode: off', 'good');
     }
   };
@@ -4396,7 +4415,12 @@ function boot() {
     MapView.init();
     // v22.23: restore nav-mode visual state
     UI.updateNavBtn();
-    if (State.settings.navMode) document.body.setAttribute('data-nav', 'on');
+    if (State.settings.navMode) {
+      document.body.setAttribute('data-nav', 'on');
+      // v22.41: invalidate after CSS applies + tiles load, so the resized
+      // map area is recalc'd correctly
+      setTimeout(() => { if (MapView.m) MapView.m.invalidateSize(true); }, 400);
+    }
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
     // v22: driving safety reminder, once per device
