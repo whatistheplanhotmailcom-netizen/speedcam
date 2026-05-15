@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.49</title>
+<title>Road Alert v22.50</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -622,33 +622,6 @@ body {
   animation: pulsedot 2s infinite;
   position: relative;
 }
-/* v22.43: directional beam — a translucent blue cone pointing in the heading
-   direction.  Apple Maps style.  Rotated via inline transform on the wrapper.
-   .ra-current-wrap is the rotated parent, .ra-current is the dot inside
-   (counter-rotated isn't needed since the dot is circular). */
-.ra-current-wrap {
-  position: relative;
-  width: 22px; height: 22px;
-  transform-origin: 50% 50%;
-  transition: transform 0.35s ease-out;
-}
-.ra-current-beam {
-  position: absolute;
-  left: 50%;
-  bottom: 50%;
-  width: 0; height: 0;
-  margin-left: -32px;
-  /* Triangle pointing UP (away from dot center).  Apex at top, base at dot. */
-  border-left: 32px solid transparent;
-  border-right: 32px solid transparent;
-  border-bottom: 48px solid rgba(37,99,235,0.35);
-  filter: blur(1px);
-  pointer-events: none;
-  /* Hide beam until we have a real heading */
-  opacity: 0;
-  transition: opacity 0.2s linear;
-}
-.ra-current-wrap.has-heading .ra-current-beam { opacity: 1; }
 @keyframes pulsedot {
   0%,100% { box-shadow: 0 0 0 4px rgba(37,99,235,0.3), 0 2px 6px rgba(0,0,0,0.5); }
   50% { box-shadow: 0 0 0 10px rgba(37,99,235,0), 0 2px 6px rgba(0,0,0,0.5); }
@@ -1077,7 +1050,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.49</span>
+      <span class="version">v22.50</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2161,9 +2134,6 @@ const GPS = {
     // v22.36: reset U-turn detection state
     State.prevHeading = null;
     State.uTurnTicks = 0;
-    // v22.43: reset marker heading smoothing
-    MapView._markerHeadingBuf = [];
-    MapView._markerSmoothedHeading = null;
     // v22.38: reset confirmation queue for fresh trip
     Confirm.resetTrip();
     State.mode = 'gps';
@@ -2614,6 +2584,28 @@ const MapView = {
     }
   },
 
+  /** v22.50: update the visual rank class (ahead-1/2/3) on existing markers
+   *  WITHOUT rebuilding them. Called every GPS tick. Lightweight — just
+   *  touches className on a small number of div elements. */
+  updateAheadRanks() {
+    if (!this.markers) return;
+    const aheadList = Alerts.ahead();
+    const aheadIds = new Map();
+    aheadList.slice(0, 3).forEach((a, idx) => aheadIds.set(a.id, idx + 1));
+    this.markers.eachLayer(layer => {
+      const el = layer.getElement && layer.getElement();
+      if (!el) return;
+      const inner = el.querySelector('.ra-marker');
+      if (!inner) return;
+      // Strip any existing ahead-* class
+      inner.classList.remove('ahead-1', 'ahead-2', 'ahead-3');
+      const pid = layer._raPointId;
+      if (pid && aheadIds.has(pid)) {
+        inner.classList.add('ahead-' + aheadIds.get(pid));
+      }
+    });
+  },
+
   updatePoints() {
     if (!this.m || !this.markers) return;
     this.markers.clearLayers();
@@ -2662,6 +2654,8 @@ const MapView = {
           iconSize: [36, 36], iconAnchor: [18, 18],
         }),
       });
+      // v22.50: tag marker with point id so updateAheadRanks() can find it without rebuild
+      marker._raPointId = p.id;
       const dist = State.pos ? Utils.distKm(State.pos, p) : null;
       const agoText = p.createdAt ? Utils.fmtAgo(p.createdAt) : '';
       const confText = (p.confidence && p.confidence > 1) ? ` · ×${p.confidence}` : '';
@@ -2705,64 +2699,28 @@ const MapView = {
     if (this.currentMarker) {
       this.currentMarker.setLatLng([State.pos.lat, State.pos.lng]);
     } else {
-      // v22.43: wrap + beam markup so the directional cone can rotate
-      // independently of the (circular) blue dot.
       this.currentMarker = L.marker([State.pos.lat, State.pos.lng], {
         icon: L.divIcon({
           className: '',
-          html: '<div class="ra-current-wrap"><div class="ra-current-beam"></div><div class="ra-current"></div></div>',
+          html: '<div class="ra-current"></div>',
           iconSize: [22, 22],
           iconAnchor: [11, 11],
         }),
         zIndexOffset: 1000,
       }).addTo(this.m);
     }
-    // v22.43: marker heading rotation (beam if nav off, map bearing if nav on).
-    this.applyMarkerHeading();
     if (State.followMap) {
-      // v22.48: simple centered panTo. Removed auto-zoom + offset-center —
-      // they were stacking on top of rotation and causing lag + jank.
       this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
     }
-    // v22.48: slower point-marker refresh during GPS (was 1.5s) to reduce
-    // total per-second work while rotation is also happening.
-    const refreshMs = State.mode === 'gps' ? 3000 : 5000;
+    // v22.50: rank classes update every tick (super cheap — just className tweak).
+    this.updateAheadRanks();
+    // v22.50: full point rebuild is heavy (clearLayers + recreate every marker).
+    // Only rebuild when data changes (push from capture/edit/delete) OR every
+    // 30 s as a passive refresh for fmtAgo & passed-status updates.
+    const refreshMs = 30000;
     if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > refreshMs) {
       this._lastPointRefresh = Date.now();
       this.updatePoints();
-    }
-  },
-
-
-  /** v22.43: rotate the user-marker beam toward heading. Map stays north-up.
-   *  Uses circular-mean smoothing over the last 3 samples so the cone doesn't
-   *  jitter every tick. Speed-gated so it doesn't spin at standstill (GPS
-   *  heading is meaningless then). */
-  _markerHeadingBuf: [],
-  _markerSmoothedHeading: null,
-  applyMarkerHeading() {
-    if (!this.currentMarker) return;
-    const el = this.currentMarker.getElement();
-    const wrap = el && el.querySelector('.ra-current-wrap');
-    if (!wrap) return;
-    if (State.speedMps > 3 && State.heading != null && !isNaN(State.heading)) {
-      const buf = this._markerHeadingBuf;
-      buf.push(State.heading);
-      if (buf.length > 3) buf.shift();
-      let sx = 0, sy = 0;
-      for (const x of buf) {
-        sx += Math.cos(x * Math.PI / 180);
-        sy += Math.sin(x * Math.PI / 180);
-      }
-      let avg = Math.atan2(sy / buf.length, sx / buf.length) * 180 / Math.PI;
-      if (avg < 0) avg += 360;
-      this._markerSmoothedHeading = avg;
-    }
-    if (this._markerSmoothedHeading != null) {
-      wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
-      wrap.classList.add('has-heading');
-    } else {
-      wrap.classList.remove('has-heading');
     }
   },
 
