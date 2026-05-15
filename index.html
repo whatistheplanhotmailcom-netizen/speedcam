@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.33</title>
+<title>Road Alert v22.38</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -448,8 +448,131 @@ body {
   background: var(--surface);
   position: relative;
 }
-.ra-marker.passed { opacity: 0.4; }
+.ra-marker.passed {
+  opacity: 0.45;
+  filter: grayscale(0.7) saturate(0.5);
+}
 .ra-marker.disabled { opacity: 0.3; filter: grayscale(1); }
+
+/* v22.34: visual indicator for the ahead-ranking points.
+   #1 (focused/closest): hard on/off flash synced with proximity ping
+   #2 / #3 (next-up): heartbeat glow (continuous breathing pulse)
+   Both use amber/orange caution color. */
+.ra-marker.ahead-1 {
+  outline: 4px solid #f59e0b;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 4px rgba(245,158,11,0.4), 0 0 16px 6px rgba(245,158,11,0.6);
+  z-index: 600;
+}
+.ra-marker.ahead-1.flash-on {
+  outline-color: #fbbf24;
+  box-shadow: 0 0 0 6px rgba(245,158,11,0.9), 0 0 24px 10px rgba(245,158,11,0.95);
+  transform: scale(1.18);
+  filter: brightness(1.4);
+}
+.ra-marker.ahead-1 { transition: transform 0.10s linear, box-shadow 0.10s linear, filter 0.10s linear; }
+
+.ra-marker.ahead-2,
+.ra-marker.ahead-3 {
+  outline: 3px solid #f59e0b;
+  outline-offset: -1px;
+  box-shadow: 0 0 0 3px rgba(245,158,11,0.3), 0 0 10px 4px rgba(245,158,11,0.5);
+  animation: heartbeat 1.4s ease-in-out infinite;
+  z-index: 550;
+}
+.ra-marker.ahead-3 {
+  /* Slightly less intense than ahead-2 */
+  outline-width: 2px;
+  animation-duration: 1.8s;
+  opacity: 0.85;
+}
+@keyframes heartbeat {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.3), 0 0 10px 4px rgba(245,158,11,0.5);
+    transform: scale(1);
+  }
+  20% {
+    box-shadow: 0 0 0 6px rgba(245,158,11,0.6), 0 0 18px 8px rgba(245,158,11,0.85);
+    transform: scale(1.10);
+  }
+  40% {
+    box-shadow: 0 0 0 4px rgba(245,158,11,0.4), 0 0 12px 5px rgba(245,158,11,0.65);
+    transform: scale(1.04);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(245,158,11,0.55), 0 0 16px 7px rgba(245,158,11,0.8);
+    transform: scale(1.08);
+  }
+}
+
+/* v22.38: post-pass "still there?" confirmation popup (bottom-pinned). */
+.confirm-popup {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: 12px;
+  z-index: 2000;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.confirm-popup.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.confirm-card {
+  background: var(--surface);
+  border: 2px solid var(--amber);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  padding: 10px 12px 12px;
+}
+.confirm-head { margin-bottom: 8px; }
+.confirm-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.confirm-meta {
+  font-size: 11px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+.confirm-progress {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.confirm-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--amber);
+  transition: width 0.1s linear;
+}
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.confirm-btn {
+  appearance: none;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  min-height: 48px;
+}
+.confirm-yes { background: var(--green-2); color: #0c0a09; }
+.confirm-no  { background: var(--red);     color: #fff;     }
+.confirm-btn:active { transform: scale(0.96); opacity: 0.85; }
 .ra-marker.t-petrol        { border-color: #65a30d; background: #ecfccb; }
 .ra-marker.t-checkpoint    { border-color: #ca8a04; background: #fef9c3; }
 .ra-marker.t-speed_camera  { border-color: #dc2626; background: #fee2e2; }
@@ -935,7 +1058,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.33</span>
+      <span class="version">v22.38</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1648,8 +1771,16 @@ const State = {
   prevTs: null,
   accuracy: null,
   lowAccuracy: false,
+  // v22.37: GPS health tracking
+  lastFixAt: null,        // timestamp of last position update
+  lastFixJump: false,     // flag if the latest fix was suspiciously far from the previous one
   speedMps: 0,
   heading: null,
+  // v22.36: U-turn detection — track previous heading + how many consecutive
+  // ticks the heading has reversed. We require sustained reversal (~3 ticks)
+  // to avoid false positives from momentary GPS jitter / lane changes.
+  prevHeading: null,
+  uTurnTicks: 0,
   speedBuffer: [],
   manualLimit: null, // user override via tap on sign
   // v22: threshold-crossing alerts
@@ -1903,13 +2034,14 @@ const Audio = {
   },
   /** v22.32: short single ping at user-configured frequency.
    *  Used by the proximity ping system (continuous stepped beep).
-   *  Different from beep() — single tone, short duration, no per-type pattern. */
+   *  Different from beep() — single tone, short duration, no per-type pattern.
+   *  v22.34: also pulses the focused (#1) map marker visually in sync. */
   proximityPing() {
     const ctx = this.ensure();
     if (!ctx) return;
     const freq = +State.settings.toneFreq || 1900;
     const dur = 0.10;
-    const peakGain = 0.5; // slightly quieter than alert beeps so it doesn't overwhelm
+    const peakGain = 0.5;
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -1923,6 +2055,14 @@ const Audio = {
     gain.connect(ctx.destination);
     osc.start(t);
     osc.stop(t + dur + 0.01);
+    // v22.34: visual flash on the focused (#1) marker, synced with this ping
+    try {
+      const els = document.querySelectorAll('.ra-marker.ahead-1');
+      els.forEach(el => {
+        el.classList.add('flash-on');
+        setTimeout(() => el.classList.remove('flash-on'), 140);
+      });
+    } catch (e) {}
   },
 
   /** v22.32: state for the stepped proximity pinger.
@@ -1998,6 +2138,11 @@ const GPS = {
     State.speedBuffer = [];
     State.lastTripCaptureId = null; // v22.10: reset for new trip
     State.alertsFiredThisTrip = 0; // v22.12: reset alert counter for new trip
+    // v22.36: reset U-turn detection state
+    State.prevHeading = null;
+    State.uTurnTicks = 0;
+    // v22.38: reset confirmation queue for fresh trip
+    Confirm.resetTrip();
     State.mode = 'gps';
     UI.setStatusMode('LIVE', 'live');
     await this.requestWakeLock();
@@ -2031,6 +2176,39 @@ const GPS = {
     return State.speedBuffer.reduce((a, b) => a + b, 0) / State.speedBuffer.length;
   },
 
+  /** v22.36: U-turn detected — un-pass nearby points so they can re-alert.
+   *  Only points within 5 km of current position are affected; far-away ones
+   *  stay passed (no point re-arming cameras you'll never approach again). */
+  _handleUTurn() {
+    if (!State.pos) return;
+    let reArmed = 0;
+    const toReArm = [];
+    for (const pid of State.passedPoints) {
+      const p = State.data.points.find(x => x.id === pid);
+      if (!p) continue;
+      const distKm = Utils.distKm(State.pos, p);
+      if (distKm <= 5) {
+        toReArm.push(pid);
+      }
+    }
+    toReArm.forEach(pid => {
+      State.passedPoints.delete(pid);
+      State.alertedMarkers.delete(pid);
+      State.autoAnnouncedAhead.delete(pid);
+      State.minDistByPoint.delete(pid);
+      State.lastDistByPoint.delete(pid);
+      reArmed++;
+    });
+    if (reArmed > 0) {
+      Utils.toast(`U-turn — ${reArmed} point${reArmed === 1 ? '' : 's'} re-armed`, 'good');
+      // Force an immediate map refresh so visuals update
+      if (MapView.m) {
+        MapView._lastPointRefresh = 0;
+        MapView.updatePoints();
+      }
+    }
+  },
+
   onTick(pos) {
     // v22.1: don't silently drop low-accuracy readings.
     // Show a "LOW GPS" warning in the status line but still use the position;
@@ -2048,6 +2226,19 @@ const GPS = {
     State.prevPos = prevPos;
     State.pos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
     State.prevTs = pos.timestamp || Date.now();
+    // v22.37: GPS health — record timestamp + detect implausible position jumps.
+    // A "jump" is a position change > 500m in under 5 seconds (impossible at
+    // realistic driving speed). Could indicate multipath GPS or a bad satellite
+    // fix; alert accuracy will be poor until it settles.
+    const nowMs = Date.now();
+    State.lastFixAt = nowMs;
+    if (prevPos && prevTs) {
+      const dtSec = (State.prevTs - prevTs) / 1000;
+      const jumpM = Utils.distKm(prevPos, State.pos) * 1000;
+      State.lastFixJump = (dtSec > 0 && dtSec < 5 && jumpM > 500);
+    } else {
+      State.lastFixJump = false;
+    }
 
     // Speed: prefer GPS, fall back to time-delta calc
     let rawSpeed = pos.coords.speed;
@@ -2067,6 +2258,24 @@ const GPS = {
     if (State.speedMps * 3.6 > 350) State.speedMps = 0;
 
     if (pos.coords.heading != null && !isNaN(pos.coords.heading) && State.speedMps > 2) {
+      // v22.36: U-turn detection — check angular delta vs last heading.
+      // Circular subtraction so 350° → 20° gives a small delta, not 330°.
+      if (State.prevHeading != null && State.speedMps > 5) {
+        let delta = Math.abs(pos.coords.heading - State.prevHeading);
+        if (delta > 180) delta = 360 - delta;
+        if (delta > 120) {
+          State.uTurnTicks = (State.uTurnTicks || 0) + 1;
+        } else if (delta < 30) {
+          // Heading stable — reset counter
+          State.uTurnTicks = 0;
+        }
+        // Trigger after 3 consecutive ticks of large heading change
+        if (State.uTurnTicks >= 3) {
+          this._handleUTurn();
+          State.uTurnTicks = 0;
+        }
+      }
+      State.prevHeading = pos.coords.heading;
       State.heading = pos.coords.heading;
     }
 
@@ -2171,6 +2380,7 @@ const Alerts = {
         State.alertedMarkers.delete(p.id);
         State.lastDistByPoint.delete(p.id);
         State.minDistByPoint.delete(p.id);
+        Confirm.onPassed(p); // v22.38
         return;
       }
 
@@ -2194,6 +2404,7 @@ const Alerts = {
           State.alertedMarkers.delete(p.id);
           State.lastDistByPoint.delete(p.id);
           State.minDistByPoint.delete(p.id);
+          Confirm.onPassed(p); // v22.38
         } else {
           State.lastDistByPoint.set(p.id, meters);
         }
@@ -2394,14 +2605,30 @@ const MapView = {
       }).bindPopup(`<div class="pop-name">🚩 ${Utils.escapeHtml(dest.name)}</div><div class="pop-meta">Destination</div>`).addTo(this.m);
     }
 
+    // v22.34: identify the top-3 ahead points so we can apply visual rank classes
+    const aheadList = Alerts.ahead();
+    const aheadIds = new Map();
+    aheadList.slice(0, 3).forEach((a, idx) => aheadIds.set(a.id, idx + 1));
+
     const myDist = (State.pos && dest) ? Utils.distKm(State.pos, dest) : null;
     State.activePoints().forEach(p => {
-      const passed = (myDist != null && dest)
+      // v22.35: a point is "passed" if EITHER geometric check OR runtime tracker says so.
+      // The runtime tracker (State.passedPoints) catches cases where you drove past a
+      // point but it's still "geometrically ahead" of the destination — e.g. when the
+      // route doubles back, or when there's a detour. Both signals together give the
+      // most accurate "behind you" indicator.
+      const passedByGeometry = (myDist != null && dest)
         ? Utils.distKm(p, dest) > myDist
         : false;
+      const passedByTracker = State.passedPoints.has(p.id);
+      const passed = passedByGeometry || passedByTracker;
       const cls = ['ra-marker', 't-' + p.type];
       if (passed) cls.push('passed');
       if (p.status === 'no') cls.push('disabled');
+      // v22.34: visual rank for top-3 ahead (only if NOT passed)
+      if (!passed && p.status !== 'no' && aheadIds.has(p.id)) {
+        cls.push('ahead-' + aheadIds.get(p.id));
+      }
       const sideHtml = p.side ? `<span class="side">${p.side === 'left' ? 'L' : 'R'}</span>` : '';
       const marker = L.marker([p.lat, p.lng], {
         icon: L.divIcon({
@@ -2461,10 +2688,11 @@ const MapView = {
     if (State.followMap) {
       this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
     }
-    // v22.23: nav-mode rotation — only when explicitly enabled AND following AND moving.
     if (State.settings.navMode) this.applyHeadingRotation();
-    // Lazy "passed" refresh: only every 5 seconds
-    if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > 5000) {
+    // v22.34: refresh markers faster when GPS is live so the ahead-1/2/3
+    // visual ranking follows our position. Idle mode keeps the lazy 5s rate.
+    const refreshMs = State.mode === 'gps' ? 1500 : 5000;
+    if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > refreshMs) {
       this._lastPointRefresh = Date.now();
       this.updatePoints();
     }
@@ -2556,22 +2784,58 @@ const UI = {
     this.renderDiagStrip(); // v22.12
   },
 
-  /** v22.29: simplified diagnostic strip — GPS accuracy only.
-   *  Removed pts/ahead/nearest/fired indicators for cleaner UI. */
+  /** v22.37: GPS health indicator — multi-state strip.
+   *  Detects: never-locked, stale fix, position jump, low accuracy.
+   *  Colors: good (green) / warn (amber) / bad (red).
+   *  Idle mode (no GPS started) shows neutral "off" — not red. */
   renderDiagStrip() {
     const gpsEl = document.getElementById('diag-gps');
     if (!gpsEl) return;
-    if (State.accuracy == null) {
+
+    // Idle: app not actively listening for GPS — neutral, not red
+    if (State.mode === 'idle') {
       gpsEl.textContent = 'GPS off';
+      gpsEl.className = '';
+      return;
+    }
+
+    // GPS started but no fix yet
+    if (State.accuracy == null || State.lastFixAt == null) {
+      gpsEl.textContent = 'GPS acquiring…';
+      gpsEl.className = 'warn';
+      return;
+    }
+
+    // Stale fix detection — no update in 8+ seconds is suspicious
+    const sinceFixMs = Date.now() - State.lastFixAt;
+    if (sinceFixMs > 30000) {
+      gpsEl.textContent = `GPS LOST · ${Math.round(sinceFixMs / 1000)}s ago`;
       gpsEl.className = 'bad';
-    } else if (State.accuracy > 500) {
-      gpsEl.textContent = `GPS ±${Math.round(State.accuracy)}m`;
+      return;
+    }
+    if (sinceFixMs > 8000) {
+      gpsEl.textContent = `GPS stale · ${Math.round(sinceFixMs / 1000)}s ago`;
+      gpsEl.className = 'warn';
+      return;
+    }
+
+    // Position jump — last fix was implausibly far from previous
+    if (State.lastFixJump) {
+      gpsEl.textContent = `GPS jump ±${Math.round(State.accuracy)}m`;
+      gpsEl.className = 'warn';
+      return;
+    }
+
+    // Accuracy tiers (existing)
+    const acc = Math.round(State.accuracy);
+    if (State.accuracy > 500) {
+      gpsEl.textContent = `GPS ±${acc}m (poor)`;
       gpsEl.className = 'bad';
     } else if (State.accuracy > 200) {
-      gpsEl.textContent = `GPS ±${Math.round(State.accuracy)}m`;
+      gpsEl.textContent = `GPS ±${acc}m (degraded)`;
       gpsEl.className = 'warn';
     } else {
-      gpsEl.textContent = `GPS ±${Math.round(State.accuracy)}m`;
+      gpsEl.textContent = `GPS ±${acc}m ✓`;
       gpsEl.className = 'good';
     }
   },
@@ -3323,6 +3587,142 @@ const UI = {
     el.textContent = ageMin < 1 ? 'Last backup: just now'
                     : ageMin < 60 ? `Last backup: ${ageMin} min ago`
                     : `Last backup: ${Math.floor(ageMin / 60)} hr ago`;
+  },
+};
+
+/* ============================================================
+   7c. CONFIRM — v22.38 post-pass survey ("is this point still there?")
+   ============================================================ */
+const Confirm = {
+  // Point types that warrant a confirmation popup after passing.
+  ASKABLE_TYPES: ['speed_camera', 'mobile_camera', 'pole_camera', 'spider_camera', 'checkpoint'],
+  // After this many consecutive "NO" answers, the point auto-retires (status='no').
+  RETIRE_AFTER: 3,
+  // Don't ask more than once per point per trip.
+  _askedThisTrip: new Set(),
+  // FIFO queue of point IDs waiting to be asked about.
+  _queue: [],
+  _activeId: null,
+  _timer: null,
+  _remainingMs: 0,
+
+  /** Called by Alerts.tick when a point transitions to "passed". */
+  onPassed(point) {
+    if (!point || !point.id) return;
+    if (!this.ASKABLE_TYPES.includes(point.type)) return;
+    if (point.status === 'no') return; // already retired — don't pester
+    if (this._askedThisTrip.has(point.id)) return;
+    this._askedThisTrip.add(point.id);
+    this._queue.push(point.id);
+    if (!this._activeId) this._showNext();
+  },
+
+  /** Show the next queued point, if any. */
+  _showNext() {
+    this._cleanup();
+    if (!this._queue.length) {
+      this._activeId = null;
+      return;
+    }
+    const id = this._queue.shift();
+    const point = State.data.points.find(p => p.id === id);
+    if (!point) { this._showNext(); return; }
+    this._activeId = id;
+    this._render(point);
+    this._startCountdown(10);
+  },
+
+  _render(point) {
+    let host = document.getElementById('confirm-popup');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'confirm-popup';
+      host.className = 'confirm-popup';
+      document.body.appendChild(host);
+    }
+    const typeLbl = Utils.typeLabel(point.type);
+    const side = point.side ? (point.side === 'left' ? 'L' : 'R') : '';
+    const sideText = side ? ` · ${side}` : '';
+    const name = Utils.escapeHtml(point.name || typeLbl);
+    host.innerHTML = `
+      <div class="confirm-card">
+        <div class="confirm-head">
+          <div class="confirm-title">${Utils.emoji(point.type)} ${name}</div>
+          <div class="confirm-meta">${Utils.escapeHtml(typeLbl)}${sideText} · Still there?</div>
+        </div>
+        <div class="confirm-progress"><div class="confirm-progress-bar" id="confirm-bar"></div></div>
+        <div class="confirm-actions">
+          <button class="confirm-btn confirm-yes" id="confirm-yes">YES</button>
+          <button class="confirm-btn confirm-no"  id="confirm-no">NO</button>
+        </div>
+      </div>`;
+    host.classList.add('show');
+    document.getElementById('confirm-yes').onclick = () => this._answer('yes');
+    document.getElementById('confirm-no').onclick  = () => this._answer('no');
+  },
+
+  _startCountdown(secs) {
+    this._remainingMs = secs * 1000;
+    const startedAt = Date.now();
+    const totalMs = this._remainingMs;
+    const bar = document.getElementById('confirm-bar');
+    if (this._timer) clearInterval(this._timer);
+    this._timer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const left = Math.max(0, totalMs - elapsed);
+      this._remainingMs = left;
+      if (bar) bar.style.width = (left / totalMs * 100) + '%';
+      if (left <= 0) {
+        // No answer — timeout. Don't log anything, just move on.
+        this._showNext();
+      }
+    }, 100);
+  },
+
+  _answer(value) {
+    const id = this._activeId;
+    if (!id) return;
+    const point = State.data.points.find(p => p.id === id);
+    if (!point) { this._showNext(); return; }
+    // Initialize log array + counter if missing
+    if (!Array.isArray(point.confirmations)) point.confirmations = [];
+    if (typeof point.missingCount !== 'number') point.missingCount = 0;
+    point.confirmations.push({ ts: Date.now(), value });
+    if (value === 'yes') {
+      point.missingCount = 0;
+      // If it was retired and now confirmed back, re-enable
+      if (point.status === 'no') point.status = 'yes';
+    } else {
+      point.missingCount += 1;
+      if (point.missingCount >= Confirm.RETIRE_AFTER) {
+        point.status = 'no';
+      }
+    }
+    State.saveData();
+    Utils.toast(
+      value === 'yes'
+        ? `✓ ${point.name || Utils.typeLabel(point.type)} confirmed`
+        : (point.status === 'no'
+            ? `${point.name || Utils.typeLabel(point.type)} retired (3 missed)`
+            : `${point.name || Utils.typeLabel(point.type)} marked missing (${point.missingCount}/${Confirm.RETIRE_AFTER})`),
+      value === 'yes' ? 'good' : 'bad'
+    );
+    if (MapView.m) { MapView._lastPointRefresh = 0; MapView.updatePoints(); }
+    this._showNext();
+  },
+
+  _cleanup() {
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+    const host = document.getElementById('confirm-popup');
+    if (host) host.classList.remove('show');
+  },
+
+  /** Reset trip state when GPS starts a fresh session. */
+  resetTrip() {
+    this._askedThisTrip.clear();
+    this._queue = [];
+    this._activeId = null;
+    this._cleanup();
   },
 };
 
