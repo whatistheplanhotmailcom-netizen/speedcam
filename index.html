@@ -7,13 +7,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.50</title>
+<title>Road Alert v22.51</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
 <link rel="preconnect" href="https://unpkg.com">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';">
+<!-- v22.51: switched from Leaflet to MapLibre GL JS for native map rotation -->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.7.3/dist/maplibre-gl.css"
+      onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/maplibre-gl@5.7.3/dist/maplibre-gl.css';">
 
 <style>
 /* ============================================================
@@ -992,25 +993,32 @@ body {
 .toast.good { background: var(--green); color: #fff; }
 .toast.bad { background: var(--red); color: #fff; }
 
-/* Leaflet overrides */
-.leaflet-container { background: var(--surface-2); font-family: ui-monospace, monospace; }
-.leaflet-control-attribution {
+/* v22.51: MapLibre overrides */
+.maplibregl-map { background: var(--surface-2); font-family: ui-monospace, monospace; }
+.maplibregl-ctrl-attrib {
   background: rgba(255,255,255,0.7) !important;
   font-size: 9px !important;
   color: var(--ink-2) !important;
 }
-.leaflet-control-attribution a { color: var(--amber-2) !important; }
-.leaflet-popup-content-wrapper {
+.maplibregl-ctrl-attrib a { color: var(--amber-2) !important; }
+.maplibregl-popup-content {
   background: var(--surface) !important;
   color: var(--ink) !important;
   border-radius: 10px !important;
   border: 1px solid var(--line-2);
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  font-size: 12px;
 }
-.leaflet-popup-tip { background: var(--surface) !important; }
-.leaflet-popup-content { margin: 10px 14px !important; font-size: 12px; }
-.leaflet-popup-content .pop-name { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
-.leaflet-popup-content .pop-meta { font-size: 10px; color: var(--ink-2); margin-bottom: 6px; }
-.leaflet-popup-content button {
+.maplibregl-popup-tip { border-top-color: var(--surface) !important; border-bottom-color: var(--surface) !important; }
+.maplibregl-popup-close-button {
+  color: var(--ink) !important;
+  font-size: 18px !important;
+  padding: 4px 8px !important;
+}
+.maplibregl-popup-content .pop-name { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
+.maplibregl-popup-content .pop-meta { font-size: 10px; color: var(--ink-2); margin-bottom: 6px; }
+.maplibregl-popup-content button {
   appearance: none;
   border: none;
   background: var(--amber);
@@ -1025,11 +1033,14 @@ body {
   min-height: 38px;
   min-width: 70px;
 }
-.leaflet-control-zoom a {
+.maplibregl-ctrl-group button {
   background: var(--surface) !important;
   color: var(--ink) !important;
   border-color: var(--line) !important;
 }
+/* MapLibre wraps custom marker DOM in .maplibregl-marker — ensure our
+   .ra-marker / .ra-current styling isn't broken by the wrapper */
+.maplibregl-marker { cursor: pointer; }
 
 /* Tight phone screens */
 @media (max-height: 700px) {
@@ -1050,7 +1061,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.50</span>
+      <span class="version">v22.51</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1519,19 +1530,19 @@ body {
 
 <div class="toast" id="toast"></div>
 
-<!-- Leaflet with CDN fallback -->
+<!-- v22.51: MapLibre GL JS with CDN fallback (~250 KB minified) -->
 <script>
-(function loadLeaflet() {
+(function loadMapLibre() {
   function tryLoad(url, onfail) {
     var s = document.createElement('script');
     s.src = url;
-    s.onload = function() { window._leafletReady = true; };
+    s.onload = function() { window._maplibreReady = true; };
     s.onerror = function() { if (onfail) onfail(); };
     document.head.appendChild(s);
   }
-  tryLoad('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', function() {
-    tryLoad('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', function() {
-      tryLoad('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js');
+  tryLoad('https://unpkg.com/maplibre-gl@5.7.3/dist/maplibre-gl.js', function() {
+    tryLoad('https://cdn.jsdelivr.net/npm/maplibre-gl@5.7.3/dist/maplibre-gl.js', function() {
+      tryLoad('https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.7.3/maplibre-gl.js');
     });
   });
 })();
@@ -2524,15 +2535,25 @@ const Alerts = {
    ============================================================ */
 const MapView = {
   m: null,
-  markers: null,
   currentMarker: null,
+  currentMarkerEl: null,
   destMarker: null,
+  _pointMarkers: null,   // id -> maplibregl.Marker
+  _activePopup: null,
   longPressTimer: null,
   _initTries: 0,
+  _mapLoaded: false,
+  _lastPointRefresh: 0,
+
+  // v22.51: heading smoothing for auto-rotation
+  _headingBuf: [],
+  _smoothedHeading: null,
+  _lastBearingApplied: null,
+  _lastBearingAt: 0,
 
   init() {
     if (this.m) return;
-    if (typeof L === 'undefined') {
+    if (typeof maplibregl === 'undefined') {
       this._initTries++;
       if (this._initTries > 30) {
         const mapEl = document.getElementById('map');
@@ -2545,95 +2566,194 @@ const MapView = {
     }
     try {
       const dest = State.activeDest();
-      const center = dest ? [dest.lat, dest.lng]
-                  : State.pos ? [State.pos.lat, State.pos.lng]
-                  : [21.5433, 39.1728];
-      this.m = L.map('map', {
-        zoomControl: true,
-        attributionControl: true,
-        tap: true,
+      // MapLibre uses [lng, lat] (NOT [lat, lng] like Leaflet!).
+      const center = dest ? [dest.lng, dest.lat]
+                  : State.pos ? [State.pos.lng, State.pos.lat]
+                  : [39.1728, 21.5433]; // Jeddah fallback
+
+      this._pointMarkers = new globalThis.Map();
+
+      this.m = new maplibregl.Map({
+        container: 'map',
+        // OpenFreeMap Liberty style (OSM-based, no API key required)
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: center,
+        zoom: 13,
+        bearing: 0,
+        pitch: 0,
+        // Disable pitch (3D tilt) — we want flat top-down for driving
+        pitchWithRotate: false,
+        dragRotate: false,    // no 2-finger drag rotation (we control bearing)
+        touchPitch: false,    // no 2-finger pitch
+        // Snap bearing to north when within this many degrees on user-stop.
+        // 0 means never snap — we want auto-rotate to "stick" at any bearing.
+        bearingSnap: 0,
+        // Show zoom controls
+        attributionControl: { compact: true },
+        // Performance: lower the device pixel ratio cap on iOS to keep WebGL fast
+        maxPixelRatio: 2,
       });
-      this.m.setView(center, 13);
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-        { attribution: 'Tiles © Esri', maxZoom: 19, crossOrigin: true }
-      ).addTo(this.m);
-      this.markers = L.layerGroup().addTo(this.m);
+
+      // Add zoom-in/out buttons (top-right by default; CSS-tweak placement)
+      this.m.addControl(new maplibregl.NavigationControl({
+        visualizePitch: false,
+        showCompass: false,
+        showZoom: true,
+      }), 'top-left');
+
+      // v22.51: when user drags, exit follow mode (matches old Leaflet behavior)
       this.m.on('dragstart', () => {
         if (State.followMap) { State.followMap = false; UI.updateFollowPill(); }
       });
-      // v22.39: long-press (700ms tap on empty map) opens the Capture menu
-      // at the touched location. Markers swallow these events, so this only
-      // fires on blank map.
-      // v22.40: simplified — Leaflet's 'mousedown' fires on touch too (it
-      // synthesizes mouse events). One handler is enough; touchstart was
-      // double-arming the timer and causing weird interactions.
-      this.m.on('contextmenu', e => this.startCaptureAt(e.latlng));
-      this.m.on('mousedown', e => {
-        clearTimeout(this.longPressTimer);
-        const latlng = e.latlng;
-        if (!latlng) return;
-        this.longPressTimer = setTimeout(() => this.startCaptureAt(latlng), 700);
+
+      // v22.51: long-press to capture — MapLibre fires 'contextmenu' on iOS
+      // long-press natively. Use that directly. e.lngLat has {lng, lat}.
+      this.m.on('contextmenu', (e) => {
+        e.preventDefault && e.preventDefault();
+        this.startCaptureAt({ lat: e.lngLat.lat, lng: e.lngLat.lng });
       });
-      this.m.on('mouseup mousemove dragstart', () => clearTimeout(this.longPressTimer));
-      this.updatePoints();
-      setTimeout(() => this.m.invalidateSize(true), 200);
+
+      // Backup long-press detection on touchstart, in case contextmenu doesn't fire
+      this.m.on('touchstart', (e) => {
+        clearTimeout(this.longPressTimer);
+        // Only one finger
+        if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length !== 1) return;
+        const lngLat = e.lngLat;
+        if (!lngLat) return;
+        this.longPressTimer = setTimeout(() => {
+          this.startCaptureAt({ lat: lngLat.lat, lng: lngLat.lng });
+        }, 700);
+      });
+      this.m.on('touchend touchmove dragstart', () => clearTimeout(this.longPressTimer));
+
+      // Wait for style+tiles to load before drawing points (otherwise markers
+      // attach to a non-ready map and may not render).
+      this.m.on('load', () => {
+        this._mapLoaded = true;
+        this.updatePoints();
+      });
+
+      // Resize after a tick so the canvas matches the actual container size
+      setTimeout(() => { try { this.m.resize(); } catch (e) {} }, 200);
+
     } catch (e) {
       console.error('Map init error', e);
       Utils.toast('Map error: ' + e.message, 'bad');
     }
   },
 
-  /** v22.50: update the visual rank class (ahead-1/2/3) on existing markers
-   *  WITHOUT rebuilding them. Called every GPS tick. Lightweight — just
-   *  touches className on a small number of div elements. */
+  /** v22.51: build a DOM element for a captured point. The same .ra-marker
+   *  CSS from the Leaflet era works as long as MapLibre wraps our element. */
+  _buildPointEl(p, classes) {
+    const el = document.createElement('div');
+    // MapLibre wraps in .maplibregl-marker; our inner .ra-marker keeps existing styles
+    const sideHtml = p.side ? `<span class="side">${p.side === 'left' ? 'L' : 'R'}</span>` : '';
+    el.innerHTML = `<div class="${classes.join(' ')}">${Utils.emoji(p.type, p.subtype)}${sideHtml}</div>`;
+    return el;
+  },
+
+  /** v22.51 (was v22.50): update ahead-rank class on existing point markers
+   *  without rebuilding them. Cheap; called every GPS tick. */
   updateAheadRanks() {
-    if (!this.markers) return;
+    if (!this._pointMarkers) return;
     const aheadList = Alerts.ahead();
-    const aheadIds = new Map();
+    const aheadIds = new globalThis.Map();
     aheadList.slice(0, 3).forEach((a, idx) => aheadIds.set(a.id, idx + 1));
-    this.markers.eachLayer(layer => {
-      const el = layer.getElement && layer.getElement();
-      if (!el) return;
-      const inner = el.querySelector('.ra-marker');
+    this._pointMarkers.forEach((mk, pid) => {
+      const el = mk.getElement();
+      const inner = el && el.querySelector('.ra-marker');
       if (!inner) return;
-      // Strip any existing ahead-* class
       inner.classList.remove('ahead-1', 'ahead-2', 'ahead-3');
-      const pid = layer._raPointId;
-      if (pid && aheadIds.has(pid)) {
-        inner.classList.add('ahead-' + aheadIds.get(pid));
-      }
+      if (aheadIds.has(pid)) inner.classList.add('ahead-' + aheadIds.get(pid));
     });
   },
 
-  updatePoints() {
-    if (!this.m || !this.markers) return;
-    this.markers.clearLayers();
-    if (this.destMarker) { this.m.removeLayer(this.destMarker); this.destMarker = null; }
+  /** Open a popup near a marker. We render edit/delete buttons and wire
+   *  them after the popup opens so they work in the WebGL canvas. */
+  _showPointPopup(p, lngLat) {
+    if (this._activePopup) {
+      try { this._activePopup.remove(); } catch (e) {}
+      this._activePopup = null;
+    }
+    const dist = State.pos ? Utils.distKm(State.pos, p) : null;
+    const agoText = p.createdAt ? Utils.fmtAgo(p.createdAt) : '';
+    const confText = (p.confidence && p.confidence > 1) ? ` · ×${p.confidence}` : '';
+    const html = `
+      <div class="pop-name">${Utils.emoji(p.type, p.subtype)} ${Utils.escapeHtml(p.name)}</div>
+      <div class="pop-meta">${Utils.escapeHtml(Utils.typeLabel(p.type))}${p.side ? ' · ' + p.side : ''}${dist != null ? ' · ' + Utils.fmtDist(dist) : ''}${confText}</div>
+      ${agoText ? `<div class="pop-meta" style="margin-top:2px;">📅 ${Utils.escapeHtml(agoText)}</div>` : ''}
+      <button data-edit="${Utils.escapeHtml(p.id)}">✎ Edit</button>
+      <button data-del="${Utils.escapeHtml(p.id)}" style="background:var(--red);color:#fff;">🗑 Delete</button>
+    `;
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px' })
+      .setLngLat(lngLat)
+      .setHTML(html)
+      .addTo(this.m);
+    this._activePopup = popup;
+    // Wire buttons after DOM exists
+    setTimeout(() => {
+      const root = popup.getElement();
+      if (!root) return;
+      const editBtn = root.querySelector('[data-edit]');
+      const delBtn  = root.querySelector('[data-del]');
+      if (editBtn) editBtn.onclick = () => {
+        const id = editBtn.getAttribute('data-edit');
+        try { popup.remove(); } catch (e) {}
+        this._activePopup = null;
+        UI.openPointEditor(id);
+      };
+      if (delBtn) delBtn.onclick = () => {
+        const id = delBtn.getAttribute('data-del');
+        if (!confirm('Delete this point?')) return;
+        State.data.points = State.data.points.filter(p => p.id !== id);
+        State.alertedMarkers.delete(id);
+        State.lastDistByPoint.delete(id);
+        State.passedPoints.delete(id);
+        State.saveData();
+        try { popup.remove(); } catch (e) {}
+        this._activePopup = null;
+        // Remove the marker from the map directly (no full rebuild needed)
+        const mk = this._pointMarkers.get(id);
+        if (mk) { mk.remove(); this._pointMarkers.delete(id); }
+        Utils.toast('Deleted');
+      };
+    }, 50);
+  },
 
+  /** v22.51: rebuild all point markers from scratch. Called on data change
+   *  (capture / edit / delete) and via a passive 30s refresh sweep. */
+  updatePoints() {
+    if (!this.m || !this._mapLoaded) return;
+
+    // Tear down existing markers
+    if (this._pointMarkers) {
+      this._pointMarkers.forEach(mk => { try { mk.remove(); } catch (e) {} });
+      this._pointMarkers.clear();
+    } else {
+      this._pointMarkers = new globalThis.Map();
+    }
+    if (this.destMarker) { try { this.destMarker.remove(); } catch (e) {} this.destMarker = null; }
+
+    // Destination marker
     const dest = State.activeDest();
     if (dest) {
-      this.destMarker = L.marker([dest.lat, dest.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: `<div class="ra-dest">📍</div>`,
-          iconSize: [36, 36], iconAnchor: [18, 18],
-        }),
-      }).bindPopup(`<div class="pop-name">🚩 ${Utils.escapeHtml(dest.name)}</div><div class="pop-meta">Destination</div>`).addTo(this.m);
+      const destEl = document.createElement('div');
+      destEl.innerHTML = `<div class="ra-dest">📍</div>`;
+      const popup = new maplibregl.Popup({ offset: 18 })
+        .setHTML(`<div class="pop-name">🚩 ${Utils.escapeHtml(dest.name)}</div><div class="pop-meta">Destination</div>`);
+      this.destMarker = new maplibregl.Marker({ element: destEl, anchor: 'center' })
+        .setLngLat([dest.lng, dest.lat])
+        .setPopup(popup)
+        .addTo(this.m);
     }
 
-    // v22.34: identify the top-3 ahead points so we can apply visual rank classes
+    // v22.34: top-3 ahead get rank classes
     const aheadList = Alerts.ahead();
-    const aheadIds = new Map();
+    const aheadIds = new globalThis.Map();
     aheadList.slice(0, 3).forEach((a, idx) => aheadIds.set(a.id, idx + 1));
 
     const myDist = (State.pos && dest) ? Utils.distKm(State.pos, dest) : null;
     State.activePoints().forEach(p => {
-      // v22.35: a point is "passed" if EITHER geometric check OR runtime tracker says so.
-      // The runtime tracker (State.passedPoints) catches cases where you drove past a
-      // point but it's still "geometrically ahead" of the destination — e.g. when the
-      // route doubles back, or when there's a detour. Both signals together give the
-      // most accurate "behind you" indicator.
       const passedByGeometry = (myDist != null && dest)
         ? Utils.distKm(p, dest) > myDist
         : false;
@@ -2642,81 +2762,86 @@ const MapView = {
       const cls = ['ra-marker', 't-' + p.type];
       if (passed) cls.push('passed');
       if (p.status === 'no') cls.push('disabled');
-      // v22.34: visual rank for top-3 ahead (only if NOT passed)
-      if (!passed && p.status !== 'no' && aheadIds.has(p.id)) {
-        cls.push('ahead-' + aheadIds.get(p.id));
-      }
-      const sideHtml = p.side ? `<span class="side">${p.side === 'left' ? 'L' : 'R'}</span>` : '';
-      const marker = L.marker([p.lat, p.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: `<div class="${cls.join(' ')}">${Utils.emoji(p.type, p.subtype)}${sideHtml}</div>`,
-          iconSize: [36, 36], iconAnchor: [18, 18],
-        }),
+      if (!passed && p.status !== 'no' && aheadIds.has(p.id)) cls.push('ahead-' + aheadIds.get(p.id));
+
+      const el = this._buildPointEl(p, cls);
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([p.lng, p.lat])
+        .addTo(this.m);
+      // Tap to open popup
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        this._showPointPopup(p, [p.lng, p.lat]);
       });
-      // v22.50: tag marker with point id so updateAheadRanks() can find it without rebuild
-      marker._raPointId = p.id;
-      const dist = State.pos ? Utils.distKm(State.pos, p) : null;
-      const agoText = p.createdAt ? Utils.fmtAgo(p.createdAt) : '';
-      const confText = (p.confidence && p.confidence > 1) ? ` · ×${p.confidence}` : '';
-      marker.bindPopup(`
-        <div class="pop-name">${Utils.emoji(p.type, p.subtype)} ${Utils.escapeHtml(p.name)}</div>
-        <div class="pop-meta">${Utils.escapeHtml(Utils.typeLabel(p.type))}${p.side ? ' · ' + p.side : ''}${dist != null ? ' · ' + Utils.fmtDist(dist) : ''}${confText}</div>
-        ${agoText ? `<div class="pop-meta" style="margin-top:2px;">📅 ${Utils.escapeHtml(agoText)}</div>` : ''}
-        <button data-edit="${Utils.escapeHtml(p.id)}">✎ Edit</button>
-        <button data-del="${Utils.escapeHtml(p.id)}" style="background:var(--red);color:#fff;">🗑 Delete</button>
-      `, { maxWidth: 280 });
-      marker.on('popupopen', () => {
-        setTimeout(() => {
-          document.querySelectorAll('[data-edit]').forEach(b => {
-            b.onclick = () => { MapView.m.closePopup(); UI.openPointEditor(b.getAttribute('data-edit')); };
-          });
-          document.querySelectorAll('[data-del]').forEach(b => {
-            b.onclick = () => {
-              const id = b.getAttribute('data-del');
-              if (!confirm('Delete this point?')) return;
-              State.data.points = State.data.points.filter(p => p.id !== id);
-              State.alertedMarkers.delete(id);
-              State.lastDistByPoint.delete(id);
-              State.passedPoints.delete(id);
-              State.saveData();
-              MapView.m.closePopup();
-              Utils.toast('Deleted');
-            };
-          });
-        }, 50);
-      });
-      this.markers.addLayer(marker);
+      this._pointMarkers.set(p.id, marker);
     });
   },
 
   update() {
-    // v22.1: only update the user-location marker on each GPS tick.
-    // Points are refreshed only when data changes (via updatePoints()).
-    // The "passed" greyout used to require a full rebuild; we now do that
-    // lazily every ~5s instead of every GPS reading.
-    if (!this.m || !State.pos) return;
-    if (this.currentMarker) {
-      this.currentMarker.setLatLng([State.pos.lat, State.pos.lng]);
+    if (!this.m || !this._mapLoaded || !State.pos) return;
+
+    // Move or create user marker
+    if (!this.currentMarkerEl) {
+      this.currentMarkerEl = document.createElement('div');
+      this.currentMarkerEl.innerHTML = '<div class="ra-current"></div>';
+      this.currentMarker = new maplibregl.Marker({ element: this.currentMarkerEl, anchor: 'center' })
+        .setLngLat([State.pos.lng, State.pos.lat])
+        .addTo(this.m);
     } else {
-      this.currentMarker = L.marker([State.pos.lat, State.pos.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: '<div class="ra-current"></div>',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-        }),
-        zIndexOffset: 1000,
-      }).addTo(this.m);
+      this.currentMarker.setLngLat([State.pos.lng, State.pos.lat]);
     }
+
+    // v22.51: auto-rotate map so heading is UP, smoothed with circular mean
+    // over 3 samples and speed-gated (heading is noisy at standstill).
+    if (State.speedMps > 3 && State.heading != null && !isNaN(State.heading)) {
+      this._headingBuf.push(State.heading);
+      if (this._headingBuf.length > 3) this._headingBuf.shift();
+      let sx = 0, sy = 0;
+      for (const x of this._headingBuf) {
+        sx += Math.cos(x * Math.PI / 180);
+        sy += Math.sin(x * Math.PI / 180);
+      }
+      let avg = Math.atan2(sy / this._headingBuf.length, sx / this._headingBuf.length) * 180 / Math.PI;
+      if (avg < 0) avg += 360;
+      this._smoothedHeading = avg;
+    }
+    if (this._smoothedHeading != null) {
+      // Throttle: only rotate if delta > 2° AND > 250ms since last rotate.
+      // Map bearing convention: positive = rotates map clockwise (= our
+      // viewpoint rotates counter-clockwise). To make heading "point up"
+      // we use NEGATIVE heading as the map's bearing.
+      const now = Date.now();
+      const last = this._lastBearingApplied;
+      let delta = (last == null) ? 999 : Math.abs(this._smoothedHeading - last);
+      if (delta > 180) delta = 360 - delta;
+      if (now - this._lastBearingAt > 250 && delta > 2) {
+        try {
+          this.m.easeTo({
+            bearing: -this._smoothedHeading,
+            duration: 300,
+            // ease while panning (if follow on) for a smooth combined motion
+          });
+          this._lastBearingApplied = this._smoothedHeading;
+          this._lastBearingAt = now;
+        } catch (e) { /* ignore */ }
+      }
+    }
+
     if (State.followMap) {
-      this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
+      // easeTo handles both panning and (above) bearing — when bearing wasn't
+      // changed this tick, fall back to a simple pan.
+      const now = Date.now();
+      if (now - this._lastBearingAt > 100) {
+        this.m.easeTo({
+          center: [State.pos.lng, State.pos.lat],
+          duration: 500,
+        });
+      }
     }
-    // v22.50: rank classes update every tick (super cheap — just className tweak).
+
     this.updateAheadRanks();
-    // v22.50: full point rebuild is heavy (clearLayers + recreate every marker).
-    // Only rebuild when data changes (push from capture/edit/delete) OR every
-    // 30 s as a passive refresh for fmtAgo & passed-status updates.
+
+    // Lazy full rebuild every 30 s (passed-status, fmtAgo)
     const refreshMs = 30000;
     if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > refreshMs) {
       this._lastPointRefresh = Date.now();
@@ -2727,20 +2852,38 @@ const MapView = {
   fitAll() {
     if (!this.m) return;
     State.followMap = false; UI.updateFollowPill();
-    const bounds = L.latLngBounds([]);
-    if (State.pos) bounds.extend([State.pos.lat, State.pos.lng]);
+    // Build a bounding box [west, south, east, north]
+    let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+    const extend = (lat, lng) => {
+      if (lng < west) west = lng;
+      if (lat < south) south = lat;
+      if (lng > east) east = lng;
+      if (lat > north) north = lat;
+    };
+    if (State.pos) extend(State.pos.lat, State.pos.lng);
     const dest = State.activeDest();
-    if (dest) bounds.extend([dest.lat, dest.lng]);
-    State.activePoints().forEach(p => bounds.extend([p.lat, p.lng]));
-    if (bounds.isValid()) this.m.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-    else if (dest) this.m.setView([dest.lat, dest.lng], 13);
+    if (dest) extend(dest.lat, dest.lng);
+    State.activePoints().forEach(p => extend(p.lat, p.lng));
+    if (isFinite(west)) {
+      this.m.fitBounds([[west, south], [east, north]], {
+        padding: 40,
+        maxZoom: 14,
+        duration: 600,
+      });
+    } else if (dest) {
+      this.m.jumpTo({ center: [dest.lng, dest.lat], zoom: 13 });
+    }
   },
 
   recenter() {
     if (!this.m) return;
     if (!State.pos) { Utils.toast('No GPS yet'); this.fitAll(); return; }
     State.followMap = true; UI.updateFollowPill();
-    this.m.setView([State.pos.lat, State.pos.lng], Math.max(this.m.getZoom(), 13), { animate: true });
+    this.m.easeTo({
+      center: [State.pos.lng, State.pos.lat],
+      zoom: Math.max(this.m.getZoom(), 13),
+      duration: 500,
+    });
   },
 
   askSetDest(latlng) {
@@ -2748,35 +2891,24 @@ const MapView = {
     UI.openDestEditor(null, { lat: +latlng.lat.toFixed(5), lng: +latlng.lng.toFixed(5) });
   },
 
-  /** v22.39: long-press handler — open the Capture menu with this map
-   *  location set as the override (instead of current GPS).  Guards against
-   *  presses too close to an existing point so we don't accidentally pile up
-   *  duplicates; user should edit the existing one instead. */
   startCaptureAt(latlng) {
     if (!latlng || latlng.lat == null || latlng.lng == null) return;
-    // Pinpoint validation — must be inside current map bounds
     const pt = { lat: +latlng.lat, lng: +latlng.lng };
-    // Block if a point already exists within 30m — that's an "edit" case
-    const nearby = State.data.points.find(p =>
-      Utils.distKm(p, pt) * 1000 < 30
-    );
+    const nearby = State.data.points.find(p => Utils.distKm(p, pt) * 1000 < 30);
     if (nearby) {
       Utils.toast('Existing point nearby — tap it to edit', 'bad');
       return;
     }
-    // Need an active destination so the new point gets attached correctly
     if (!State.data.activeDestId) {
       Utils.toast('Pick a destination first', 'bad');
       UI.renderRoutesList();
       UI.openModal('m-routes');
       return;
     }
-    // Stash the override; openCaptureMenu and beginCapture will honor it
     State.captureLocationOverride = {
       lat: +pt.lat.toFixed(5),
       lng: +pt.lng.toFixed(5),
     };
-    // Light haptic confirm + open menu
     if (navigator.vibrate) navigator.vibrate(40);
     Utils.toast(`Capture at ${pt.lat.toFixed(4)}, ${pt.lng.toFixed(4)}`, 'good');
     UI.openCaptureMenu();
