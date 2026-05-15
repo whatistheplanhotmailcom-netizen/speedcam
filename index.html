@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.53</title>
+<title>Road Alert v22.55</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -175,21 +175,6 @@ body {
 .diag-strip .good { color: var(--green); font-weight: 700; }
 .diag-strip .bad  { color: var(--red); font-weight: 700; }
 .diag-strip .warn { color: var(--amber-2); font-weight: 700; }
-/* v22.53: BIG rotation diagnostic so we can see what the app actually
-   knows about heading + rotation in real time. Removed after debug. */
-.rot-diag {
-  margin-top: 4px;
-  padding: 8px 10px;
-  font-family: var(--mono, monospace);
-  font-size: 13px;
-  font-weight: 700;
-  background: #1e293b;
-  color: #f0abfc;
-  border: 2px solid #c026d3;
-  border-radius: 8px;
-  text-align: center;
-  letter-spacing: 0.5px;
-}
 .route-current {
   appearance: none;
   background: var(--surface);
@@ -1076,7 +1061,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.53</span>
+      <span class="version">v22.55</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1101,9 +1086,6 @@ body {
   <div class="diag-strip" id="diag-strip">
     <span id="diag-gps">GPS —</span>
   </div>
-
-  <!-- v22.53: big visible rotation diagnostic, can't miss it -->
-  <div class="rot-diag" id="rot-diag">ROT: starting…</div>
 
   <!-- STATS -->
   <div class="stats">
@@ -1138,6 +1120,7 @@ body {
     <div class="map-overlay-btns">
       <button class="map-btn" id="btn-fit" title="Fit all">⛶</button>
       <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
+      <button class="map-btn" id="btn-nav" title="Auto-rotate (heading up)">🧭</button>
     </div>
   </div>
 
@@ -1698,6 +1681,9 @@ const Storage = {
       autoBackup: false,
       // v22.6: new settings
       flashStartM: 500,        // start flashing Next-ahead border at this distance
+      // v22.54: toggle for auto-rotation (heading-up). Off by default — user
+      // taps 🧭 to enable. Survives across sessions.
+      navMode: false,
       alertRepeatCount: 1,     // how many times each marker repeats (1 = no repeat)
       alertRepeatGapS: 1.5,    // seconds between repeats
       // v22.32: tone frequency (Hz) for proximity ping and base tone (800–3000)
@@ -2834,8 +2820,11 @@ const MapView = {
       this.currentMarker.setLngLat([State.pos.lng, State.pos.lat]);
     }
 
-    // v22.51: auto-rotate map so heading is UP, smoothed with circular mean
-    // over 3 samples and speed-gated (heading is noisy at standstill).
+    // v22.54: auto-rotation runs ONLY when nav mode is on (via 🧭 button).
+    // When off, map stays north-up.
+    const navOn = !!State.settings.navMode;
+
+    // Build smoothed heading regardless — used immediately when nav toggles on
     if (State.speedMps > 1.5 && State.heading != null && !isNaN(State.heading)) {
       this._headingBuf.push(State.heading);
       if (this._headingBuf.length > 3) this._headingBuf.shift();
@@ -2848,31 +2837,32 @@ const MapView = {
       if (avg < 0) avg += 360;
       this._smoothedHeading = avg;
     }
-    if (this._smoothedHeading != null) {
-      // v22.53: combine bearing + center change in ONE jumpTo call.
-      // easeTo (v22.51/52) didn't seem to take on iOS — animations may get
-      // cancelled by overlapping calls. jumpTo is instantaneous and atomic.
+
+    if (navOn && this._smoothedHeading != null) {
+      // v22.54: use setBearing directly. v22.53 used jumpTo and the diagnostic
+      // showed mapb stuck at 0 — possibly because jumpTo with only `bearing`
+      // and `center` together was being ignored or partially applied.
+      // setBearing is the simplest, most direct call.
       const now = Date.now();
       const last = this._lastBearingApplied;
       let delta = (last == null) ? 999 : Math.abs(this._smoothedHeading - last);
       if (delta > 180) delta = 360 - delta;
       if (now - this._lastBearingAt > 150 && delta > 1) {
         try {
-          const cam = { bearing: -this._smoothedHeading };
-          if (State.followMap) cam.center = [State.pos.lng, State.pos.lat];
-          this.m.jumpTo(cam);
+          this.m.setBearing(-this._smoothedHeading);
           this._lastBearingApplied = this._smoothedHeading;
           this._lastBearingAt = now;
         } catch (e) {
           console.error('setBearing error', e);
         }
-      } else if (State.followMap) {
-        // Bearing didn't change much this tick — still pan to new position
-        try { this.m.jumpTo({ center: [State.pos.lng, State.pos.lat] }); } catch (e) {}
+      }
+      // Still pan to user when following (separate from rotation)
+      if (State.followMap) {
+        try { this.m.setCenter([State.pos.lng, State.pos.lat]); } catch (e) {}
       }
     } else if (State.followMap) {
-      // No heading available — just pan
-      try { this.m.jumpTo({ center: [State.pos.lng, State.pos.lat] }); } catch (e) {}
+      // No rotation — just pan to user
+      try { this.m.setCenter([State.pos.lng, State.pos.lat]); } catch (e) {}
     }
 
     this.updateAheadRanks();
@@ -2961,30 +2951,6 @@ const UI = {
     this.renderStatusLine();
     this.renderDisabledCount();
     this.renderDiagStrip(); // v22.12
-    this.renderRotDiag();   // v22.53
-  },
-
-  /** v22.53: BIG rotation diagnostic. Removed after we figure out what's
-   *  going wrong with auto-rotation. */
-  renderRotDiag() {
-    const el = document.getElementById('rot-diag');
-    if (!el) return;
-    const parts = [];
-    parts.push(`spd ${(State.speedMps * 3.6).toFixed(0)}`);
-    parts.push(`hdg ${State.heading == null ? '—' : Math.round(State.heading)}`);
-    parts.push(`src ${State.headingSource || '—'}`);
-    if (MapView.m) {
-      try {
-        const b = MapView.m.getBearing();
-        parts.push(`mapb ${Math.round(b)}`);
-      } catch (e) {
-        parts.push('mapb ERR');
-      }
-    } else {
-      parts.push('map —');
-    }
-    parts.push(`smo ${MapView._smoothedHeading == null ? '—' : Math.round(MapView._smoothedHeading)}`);
-    el.textContent = parts.join(' | ');
   },
 
   /** v22.37: GPS health indicator — multi-state strip.
@@ -3835,10 +3801,22 @@ const Confirm = {
 
   /** Called by Alerts.tick when a point transitions to "passed". */
   onPassed(point) {
-    if (!point || !point.id) return;
-    if (!this.ASKABLE_TYPES.includes(point.type)) return;
-    if (point.status === 'no') return; // already retired — don't pester
-    if (this._askedThisTrip.has(point.id)) return;
+    // v22.55 debug: visible trace so we know if the hook is firing.
+    // Remove these toasts once we've identified the actual issue.
+    if (!point || !point.id) { Utils.toast('Confirm: no point', 'bad'); return; }
+    if (!this.ASKABLE_TYPES.includes(point.type)) {
+      Utils.toast(`Confirm skip: type "${point.type}" not askable`, 'bad');
+      return;
+    }
+    if (point.status === 'no') {
+      Utils.toast('Confirm skip: retired', 'bad');
+      return;
+    }
+    if (this._askedThisTrip.has(point.id)) {
+      Utils.toast('Confirm skip: already asked this trip', 'bad');
+      return;
+    }
+    Utils.toast(`Confirm queued: ${Utils.typeLabel(point.type)}`, 'good');
     this._askedThisTrip.add(point.id);
     this._queue.push(point.id);
     if (!this._activeId) this._showNext();
@@ -3849,12 +3827,18 @@ const Confirm = {
     this._cleanup();
     if (!this._queue.length) {
       this._activeId = null;
+      Utils.toast('Confirm: queue empty', 'bad');
       return;
     }
     const id = this._queue.shift();
     const point = State.data.points.find(p => p.id === id);
-    if (!point) { this._showNext(); return; }
+    if (!point) {
+      Utils.toast('Confirm: point not found in data', 'bad');
+      this._showNext();
+      return;
+    }
     this._activeId = id;
+    Utils.toast(`Confirm rendering: ${point.id.slice(0,6)}`, 'good');
     this._render(point);
     this._startCountdown(10);
   },
@@ -4142,6 +4126,32 @@ function wire() {
   document.getElementById('confirm-start').onclick = () => UI.doStart();
   document.getElementById('btn-fit').onclick = () => MapView.fitAll();
   document.getElementById('btn-recenter').onclick = () => MapView.recenter();
+
+  // v22.54: nav-mode toggle — turns auto-rotation on/off
+  document.getElementById('btn-nav').onclick = () => {
+    State.settings.navMode = !State.settings.navMode;
+    State.saveSettings();
+    const btn = document.getElementById('btn-nav');
+    btn.classList.toggle('on', State.settings.navMode);
+    // Reset rotation throttle so the very next tick rotates immediately
+    MapView._lastBearingApplied = null;
+    MapView._lastBearingAt = 0;
+    if (State.settings.navMode) {
+      if (!State.followMap) { State.followMap = true; UI.updateFollowPill(); }
+      Utils.toast('Rotation: heading up', 'good');
+      // If we already have a heading, rotate immediately rather than waiting
+      // for the next GPS tick
+      if (MapView.m && MapView._smoothedHeading != null) {
+        try { MapView.m.setBearing(-MapView._smoothedHeading); } catch (e) {}
+      }
+    } else {
+      // Snap back to north when turning off
+      if (MapView.m) {
+        try { MapView.m.setBearing(0); } catch (e) {}
+      }
+      Utils.toast('Rotation: north up', 'good');
+    }
+  };
 
   document.getElementById('follow-pill').onclick = () => {
     State.followMap = !State.followMap;
@@ -4515,6 +4525,9 @@ function boot() {
     UI.updateThemeIcon();
     UI.renderMarkerChips(); // v22.17: paint chips immediately so they're ready when settings opens
     MapView.init();
+    // v22.54: restore 🧭 button state
+    const navBtn = document.getElementById('btn-nav');
+    if (navBtn) navBtn.classList.toggle('on', !!State.settings.navMode);
     if (State.settings.autoBackup) Backup.start();
     setInterval(() => { if (State.settings.theme === 'auto') UI.applyTheme(); }, 60 * 60 * 1000);
     // v22: driving safety reminder, once per device
