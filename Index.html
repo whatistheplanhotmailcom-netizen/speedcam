@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.27</title>
+<title>Road Alert v22.26</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -37,7 +37,7 @@
   --cyan: #06b6d4;
   --sign-bg: #ffffff;
   --sign-ring: #ef4444;
-  --sign-ink: #1c1917;       /* v22.27: black (was blue #2563eb) */
+  --sign-ink: #2563eb;
   --speedo-bg: #1c1917;
   --speedo-ink: #ffffff;
   --shadow: 0 2px 8px rgba(28,25,23,0.06);
@@ -219,11 +219,10 @@ body {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 8px 10px;      /* v22.27: tighter (was 10px 12px) */
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;        /* v22.27: defensive — content can never escape card border */
 }
 .stat-label {
   font-size: 11px;
@@ -231,19 +230,18 @@ body {
   color: var(--ink-2);
   text-transform: uppercase;
   font-weight: 700;
-  margin-bottom: 4px;      /* v22.27: tighter (was 6px) */
+  margin-bottom: 6px;
 }
 .speed-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex: 1;
-  min-width: 0;          /* v22.27: lets flex children shrink within card */
 }
 .sign {
-  width: 80px; height: 80px;          /* v22.27: bumped from 72 */
+  width: 72px; height: 72px;
   border-radius: 50%;
-  border: 6px solid var(--sign-ring);  /* v22.27: thicker ring for visibility */
+  border: 5px solid var(--sign-ring);
   background: var(--sign-bg);
   display: grid;
   place-items: center;
@@ -252,16 +250,16 @@ body {
   cursor: pointer;
 }
 .sign-value {
-  font-size: 34px;        /* v22.27: bumped from 26px */
-  font-weight: 900;        /* v22.27: extra bold */
+  font-size: 26px;
+  font-weight: 800;
   color: var(--sign-ink);
   line-height: 1;
   letter-spacing: -0.04em;
 }
 .sign-label {
   position: absolute;
-  bottom: 8px;             /* v22.27: tighter spacing inside bigger circle */
-  font-size: 8px;
+  bottom: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: var(--ink-2);
   letter-spacing: 0.04em;
@@ -273,8 +271,6 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); transform: scale(1); }
 }
 .speedo {
-  flex: 1;                 /* v22.27: fills remaining width */
-  min-width: 0;            /* v22.27: lets it actually shrink */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -283,20 +279,14 @@ body {
 .speedo-val {
   background: var(--speedo-bg);
   color: var(--speedo-ink);
-  font-weight: 900;        /* v22.27: extra bold */
-  font-size: 40px;          /* v22.27: bumped from 26px */
+  font-weight: 800;
+  font-size: 26px;
   line-height: 1;
-  padding: 14px 4px;        /* v22.27: more vertical padding */
+  padding: 8px 10px;
   border-radius: 8px;
   font-variant-numeric: tabular-nums;
-  width: 100%;              /* v22.27: full width of speedo column */
+  min-width: 50px;
   text-align: center;
-  box-sizing: border-box;   /* v22.27: prevent overflow */
-}
-/* v22.27: auto-shrink for 3-digit speeds (100+) so it never overflows the card */
-.speedo-val.three-digit {
-  font-size: 34px;
-  padding: 16px 4px;
 }
 .speedo-val.over { background: var(--red); animation: overpulse 0.6s infinite; }
 @keyframes overpulse {
@@ -976,11 +966,10 @@ body[data-nav="on"] .ra-current::after { display: block; }
 
 /* Tight phone screens */
 @media (max-height: 700px) {
-  .sign { width: 66px; height: 66px; border-width: 5px; }
-  .sign-value { font-size: 28px; }
+  .sign { width: 60px; height: 60px; border-width: 4px; }
+  .sign-value { font-size: 22px; }
   .sign-label { bottom: 7px; font-size: 8px; }
-  .speedo-val { font-size: 32px; padding: 10px 4px; }
-  .speedo-val.three-digit { font-size: 26px; padding: 12px 4px; }
+  .speedo-val { font-size: 22px; padding: 6px 8px; }
   .next-dist { font-size: 18px; }
 }
 </style>
@@ -993,7 +982,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.27</span>
+      <span class="version">v22.26</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -3022,8 +3011,6 @@ const UI = {
     speedo.textContent = kmh;
     const isOver = limit != null && kmh > limit + State.settings.overBy;
     speedo.classList.toggle('over', isOver);
-    // v22.27: auto-shrink font when speed reaches 3 digits so it never overflows the card
-    speedo.classList.toggle('three-digit', kmh >= 100);
 
     const aheadList = Alerts.ahead();
     const body = document.getElementById('next-body');
