@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.46</title>
+<title>Road Alert v22.47</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -1091,7 +1091,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.46</span>
+      <span class="version">v22.47</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2895,7 +2895,7 @@ const MapView = {
     if (State.speedMps > 3 && State.heading != null && !isNaN(State.heading)) {
       const buf = this._markerHeadingBuf;
       buf.push(State.heading);
-      if (buf.length > 5) buf.shift();
+      if (buf.length > 3) buf.shift(); // v22.47: 3 samples (was 5) for snappier response
       let sx = 0, sy = 0;
       for (const x of buf) {
         sx += Math.cos(x * Math.PI / 180);
@@ -2906,25 +2906,35 @@ const MapView = {
       this._markerSmoothedHeading = avg;
     }
     if (this._markerSmoothedHeading != null) {
-      // v22.45: when nav mode is on AND the plugin is loaded, rotate the
-      // whole map so heading is UP. We then keep the beam at 0° (it would
-      // already be pointing up). When nav mode is off, the beam itself
-      // rotates and the map stays north-up (v22.43 behavior).
       const navOn = State.settings.navMode && window._rotatePluginLoaded;
       if (navOn && this.m && typeof this.m.setBearing === 'function') {
-        try {
-          this.m.setBearing(-this._markerSmoothedHeading);
-          if (wrap) {
-            wrap.style.transform = 'rotate(0deg)';
-            wrap.classList.add('has-heading');
-          }
-        } catch (e) {
-          // Plugin error — fall back to marker rotation
-          if (wrap) {
-            wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
-            wrap.classList.add('has-heading');
+        // v22.47: throttle setBearing — only update if heading moved >2°
+        // OR at least 250ms since last call. Cuts re-renders ~10x and
+        // eliminates the laggy stop-start motion from too-frequent rotation.
+        const now = Date.now();
+        const lastBearing = this._lastBearingApplied;
+        const lastBearingAt = this._lastBearingAt || 0;
+        let bearingDelta = (lastBearing == null) ? 999 : Math.abs(this._markerSmoothedHeading - lastBearing);
+        if (bearingDelta > 180) bearingDelta = 360 - bearingDelta;
+        const enoughTime = now - lastBearingAt > 250;
+        const enoughDelta = bearingDelta > 2;
+        if (enoughTime && enoughDelta) {
+          try {
+            this.m.setBearing(-this._markerSmoothedHeading);
+            this._lastBearingApplied = this._markerSmoothedHeading;
+            this._lastBearingAt = now;
+          } catch (e) {
+            // Plugin error — fall back to marker rotation below
+            if (wrap) {
+              wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
+              wrap.classList.add('has-heading');
+            }
+            return;
           }
         }
+        // v22.47: in nav mode the beam is redundant (the whole map points
+        // your direction). Hide it so it doesn't draw extra geometry.
+        if (wrap) wrap.classList.remove('has-heading');
       } else if (wrap) {
         wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
         wrap.classList.add('has-heading');
@@ -4182,6 +4192,9 @@ function wire() {
     State.saveSettings();
     const btn = document.getElementById('btn-nav');
     btn.classList.toggle('on', State.settings.navMode);
+    // v22.47: reset bearing throttle so first rotation isn't suppressed
+    MapView._lastBearingApplied = null;
+    MapView._lastBearingAt = 0;
     if (State.settings.navMode) {
       if (!State.followMap) { State.followMap = true; UI.updateFollowPill(); }
       // Trigger an immediate rotation if we already have a heading
