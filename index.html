@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.42</title>
+<title>Road Alert v22.43</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -604,6 +604,33 @@ body {
   animation: pulsedot 2s infinite;
   position: relative;
 }
+/* v22.43: directional beam — a translucent blue cone pointing in the heading
+   direction.  Apple Maps style.  Rotated via inline transform on the wrapper.
+   .ra-current-wrap is the rotated parent, .ra-current is the dot inside
+   (counter-rotated isn't needed since the dot is circular). */
+.ra-current-wrap {
+  position: relative;
+  width: 22px; height: 22px;
+  transform-origin: 50% 50%;
+  transition: transform 0.35s ease-out;
+}
+.ra-current-beam {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 0; height: 0;
+  margin-left: -32px;
+  /* Triangle pointing UP (away from dot center).  Apex at top, base at dot. */
+  border-left: 32px solid transparent;
+  border-right: 32px solid transparent;
+  border-bottom: 48px solid rgba(37,99,235,0.35);
+  filter: blur(1px);
+  pointer-events: none;
+  /* Hide beam until we have a real heading */
+  opacity: 0;
+  transition: opacity 0.2s linear;
+}
+.ra-current-wrap.has-heading .ra-current-beam { opacity: 1; }
 @keyframes pulsedot {
   0%,100% { box-shadow: 0 0 0 4px rgba(37,99,235,0.3), 0 2px 6px rgba(0,0,0,0.5); }
   50% { box-shadow: 0 0 0 10px rgba(37,99,235,0), 0 2px 6px rgba(0,0,0,0.5); }
@@ -1032,7 +1059,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.42</span>
+      <span class="version">v22.43</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2116,6 +2143,9 @@ const GPS = {
     // v22.36: reset U-turn detection state
     State.prevHeading = null;
     State.uTurnTicks = 0;
+    // v22.43: reset marker heading smoothing
+    MapView._markerHeadingBuf = [];
+    MapView._markerSmoothedHeading = null;
     // v22.38: reset confirmation queue for fresh trip
     Confirm.resetTrip();
     State.mode = 'gps';
@@ -2657,11 +2687,21 @@ const MapView = {
     if (this.currentMarker) {
       this.currentMarker.setLatLng([State.pos.lat, State.pos.lng]);
     } else {
+      // v22.43: wrap + beam markup so the directional cone can rotate
+      // independently of the (circular) blue dot.
       this.currentMarker = L.marker([State.pos.lat, State.pos.lng], {
-        icon: L.divIcon({ className: '', html: '<div class="ra-current"></div>', iconSize: [22,22], iconAnchor: [11,11] }),
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="ra-current-wrap"><div class="ra-current-beam"></div><div class="ra-current"></div></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        }),
         zIndexOffset: 1000,
       }).addTo(this.m);
     }
+    // v22.43: rotate the beam toward the user's heading.  No map rotation —
+    // the map stays north-up; only this little cone spins.  Cheap + safe.
+    this.applyMarkerHeading();
     if (State.followMap) {
       this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
     }
@@ -2674,6 +2714,41 @@ const MapView = {
     }
   },
 
+  /** v22.43: rotate the user-marker beam toward heading.
+   *  Uses circular-mean smoothing over the last 5 samples so the cone
+   *  doesn't jitter every time GPS heading flickers. Speed-gated to
+   *  avoid spinning at standstill when GPS heading is meaningless. */
+  _markerHeadingBuf: [],
+  _markerSmoothedHeading: null,
+  applyMarkerHeading() {
+    if (!this.currentMarker) return;
+    const el = this.currentMarker.getElement();
+    if (!el) return;
+    const wrap = el.querySelector('.ra-current-wrap');
+    if (!wrap) return;
+    // Only update heading at speed > ~10 km/h.  Below that, GPS heading
+    // is noisy / meaningless; we keep the previous direction so the cone
+    // doesn't spin while you idle at a light.
+    if (State.speedMps > 3 && State.heading != null && !isNaN(State.heading)) {
+      const buf = this._markerHeadingBuf;
+      buf.push(State.heading);
+      if (buf.length > 5) buf.shift();
+      let sx = 0, sy = 0;
+      for (const x of buf) {
+        sx += Math.cos(x * Math.PI / 180);
+        sy += Math.sin(x * Math.PI / 180);
+      }
+      let avg = Math.atan2(sy / buf.length, sx / buf.length) * 180 / Math.PI;
+      if (avg < 0) avg += 360;
+      this._markerSmoothedHeading = avg;
+    }
+    if (this._markerSmoothedHeading != null) {
+      wrap.style.transform = `rotate(${this._markerSmoothedHeading}deg)`;
+      wrap.classList.add('has-heading');
+    } else {
+      wrap.classList.remove('has-heading');
+    }
+  },
 
   fitAll() {
     if (!this.m) return;
