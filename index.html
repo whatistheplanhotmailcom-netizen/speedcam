@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.47</title>
+<title>Road Alert v22.48</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -647,38 +647,6 @@ body {
 }
 
 /* ACTIONS */
-/* v22.44: ETA / distance-to-destination footer */
-.eta-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 12px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.eta-bar .eta-dest {
-  font-weight: 700;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.eta-bar .eta-dist {
-  color: var(--ink-2);
-  font-weight: 600;
-}
-.eta-bar .eta-time {
-  color: var(--ink);
-  font-weight: 700;
-  background: var(--surface-2);
-  border-radius: 6px;
-  padding: 2px 8px;
-}
 .actions {
   display: grid;
   grid-template-columns: 1fr 1.4fr;
@@ -1091,7 +1059,7 @@ body {
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.47</span>
+      <span class="version">v22.48</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -1152,13 +1120,6 @@ body {
       <button class="map-btn" id="btn-recenter" title="Recenter">📍</button>
       <button class="map-btn" id="btn-nav" title="Nav mode (heading up)">🧭</button>
     </div>
-  </div>
-
-  <!-- v22.44: ETA footer — destination · distance remaining · ETA -->
-  <div class="eta-bar" id="eta-bar" style="display:none;">
-    <span class="eta-dest"   id="eta-dest"></span>
-    <span class="eta-dist"   id="eta-dist"></span>
-    <span class="eta-time"   id="eta-time"></span>
   </div>
 
   <!-- ACTIONS -->
@@ -2681,12 +2642,6 @@ const MapView = {
       this.m.on('dragstart', () => {
         if (State.followMap) { State.followMap = false; UI.updateFollowPill(); }
       });
-      // v22.44: detect user-initiated zoom (pinch / +- buttons) so auto-zoom
-      // backs off for 30 s after a manual gesture. Only count zooms that
-      // didn't come from our own setZoom() — we set a guard flag for those.
-      this.m.on('zoomstart', () => {
-        if (!this._programmaticZoom) this._userZoomedAt = Date.now();
-      });
       // v22.39: long-press (700ms tap on empty map) opens the Capture menu
       // at the touched location. Markers swallow these events, so this only
       // fires on blank map.
@@ -2812,73 +2767,22 @@ const MapView = {
         zIndexOffset: 1000,
       }).addTo(this.m);
     }
-    // v22.43: rotate the beam toward the user's heading.  No map rotation —
-    // the map stays north-up; only this little cone spins.  Cheap + safe.
+    // v22.43: marker heading rotation (beam if nav off, map bearing if nav on).
     this.applyMarkerHeading();
     if (State.followMap) {
-      // v22.44: auto-zoom + offset-center for Google-Maps-style follow.
-      // - Auto-zoom: tighter at slow speed (more detail), wider at highway
-      //   speed (more lookahead). Hysteresis prevents zoom thrash near the
-      //   speed band edges (e.g. 99↔101 km/h).
-      // - Offset-center: pan so the user sits ~35% from the bottom of the
-      //   visible map, putting ~65% of the view AHEAD of them. This is what
-      //   Apple/Google Maps do during nav so you see what's coming up.
-      this.applyAutoZoom();
-      this.panToWithOffset(State.pos);
+      // v22.48: simple centered panTo. Removed auto-zoom + offset-center —
+      // they were stacking on top of rotation and causing lag + jank.
+      this.m.panTo([State.pos.lat, State.pos.lng], { animate: true, duration: 0.5 });
     }
-    // v22.34: refresh markers faster when GPS is live so the ahead-1/2/3
-    // visual ranking follows our position. Idle mode keeps the lazy 5s rate.
-    const refreshMs = State.mode === 'gps' ? 1500 : 5000;
+    // v22.48: slower point-marker refresh during GPS (was 1.5s) to reduce
+    // total per-second work while rotation is also happening.
+    const refreshMs = State.mode === 'gps' ? 3000 : 5000;
     if (!this._lastPointRefresh || Date.now() - this._lastPointRefresh > refreshMs) {
       this._lastPointRefresh = Date.now();
       this.updatePoints();
     }
   },
 
-  /** v22.44: choose a target zoom level from current speed. Higher numbers
-   *  mean closer in. Hysteresis (1 km/h dead band on each edge) prevents
-   *  zoom thrash when speed bounces around a band boundary. */
-  _autoZoomTarget: null,
-  _userZoomedAt: 0,
-  applyAutoZoom() {
-    if (!this.m) return;
-    // If the user manually pinched recently, defer auto-zoom for 30 s so we
-    // don't fight their gesture. Detected via the Leaflet 'zoomstart' event
-    // wired in init() — sets MapView._userZoomedAt.
-    if (Date.now() - this._userZoomedAt < 30000) return;
-    const kmh = State.speedMps * 3.6;
-    // Bands with 1 km/h hysteresis
-    let target;
-    const cur = this._autoZoomTarget;
-    if (kmh < 25 || (cur === 16 && kmh < 30))        target = 16;
-    else if (kmh < 55 || (cur === 15 && kmh < 60))   target = 15;
-    else if (kmh < 95 || (cur === 14 && kmh < 100))  target = 14;
-    else                                              target = 13;
-    if (target !== cur) {
-      this._autoZoomTarget = target;
-      this._programmaticZoom = true;
-      this.m.setZoom(target, { animate: true });
-      // Clear the guard after the zoom animation settles
-      setTimeout(() => { this._programmaticZoom = false; }, 400);
-    }
-  },
-
-  /** v22.44: pan the map so the user is positioned ~35% from the BOTTOM of
-   *  the visible map (so 65% of the view is ahead in the heading direction).
-   *  For simplicity we always offset toward the screen bottom — works well
-   *  enough for north-up maps. */
-  panToWithOffset(pos) {
-    if (!this.m || !pos) return;
-    // Convert the user position to a map-relative point, then push it down.
-    const targetPoint = this.m.project([pos.lat, pos.lng], this.m.getZoom());
-    const size = this.m.getSize();
-    // Negative dy shifts the target point UP in the projection, which moves
-    // the map view's CENTER DOWN — placing the user lower on screen.
-    const dy = -(size.y * 0.15);
-    targetPoint.y += dy;
-    const newCenter = this.m.unproject(targetPoint, this.m.getZoom());
-    this.m.panTo(newCenter, { animate: true, duration: 0.5 });
-  },
 
   /** v22.43: rotate the user-marker beam toward heading.
    *  v22.45: also rotates the WHOLE MAP when nav mode is on (using
@@ -3013,37 +2917,6 @@ const UI = {
     this.renderStatusLine();
     this.renderDisabledCount();
     this.renderDiagStrip(); // v22.12
-    this.renderEta();       // v22.44
-  },
-
-  /** v22.44: ETA footer — destination, distance remaining, time-to-arrival.
-   *  Hidden when no destination or no GPS fix. ETA uses smoothed speed
-   *  (State.speedMps from speedBuffer) so it doesn't jump every tick. */
-  renderEta() {
-    const bar = document.getElementById('eta-bar');
-    if (!bar) return;
-    const dest = State.activeDest();
-    if (!dest || !State.pos) { bar.style.display = 'none'; return; }
-    const distKm = Utils.distKm(State.pos, dest);
-    // ETA from current speed; require >5 km/h to give a meaningful number.
-    // At slower speeds we show "—" so the number doesn't flicker wildly.
-    const kmh = State.speedMps * 3.6;
-    let etaText = '—';
-    if (kmh > 5) {
-      const hours = distKm / kmh;
-      const minsTotal = Math.round(hours * 60);
-      if (minsTotal >= 60) {
-        const h = Math.floor(minsTotal / 60);
-        const m = minsTotal % 60;
-        etaText = `${h}h ${m}m`;
-      } else {
-        etaText = `${minsTotal}m`;
-      }
-    }
-    document.getElementById('eta-dest').textContent = '🚩 ' + (dest.name || 'Destination');
-    document.getElementById('eta-dist').textContent = Utils.fmtDist(distKm);
-    document.getElementById('eta-time').textContent = etaText;
-    bar.style.display = 'flex';
   },
 
   /** v22.37: GPS health indicator — multi-state strip.
