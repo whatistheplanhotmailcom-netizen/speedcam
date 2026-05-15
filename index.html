@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Road Alert">
-<title>Road Alert v22.39</title>
+<title>Road Alert v22.40</title>
 
 <link rel="manifest" href='data:application/json,{"name":"Road Alert","short_name":"RoadAlert","start_url":".","display":"standalone","background_color":"%23f5f1e8","theme_color":"%23f5f1e8","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 192 192%22%3E%3Crect width=%22192%22 height=%22192%22 fill=%22%23f5f1e8%22/%3E%3Ccircle cx=%2296%22 cy=%2296%22 r=%2240%22 fill=%22none%22 stroke=%22%23ef4444%22 stroke-width=%2210%22/%3E%3Ctext x=%2296%22 y=%22112%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-weight=%22800%22 font-size=%2240%22 fill=%22%231c1917%22%3E120%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
@@ -379,6 +379,13 @@ body {
   min-height: 200px;
 }
 #map { width: 100%; height: 100%; background: var(--surface-2); }
+/* v22.40: nav-mode pre-scales the map so rotation corners don't show gaps.
+   sqrt(2) ≈ 1.42 is enough to cover any rotation angle. transition smooths
+   the heading change so the map doesn't jerk around. */
+body[data-nav="on"] #map {
+  transform-origin: 50% 50%;
+  transition: transform 0.4s ease-out;
+}
 .map-overlay-btns {
   position: absolute;
   right: 8px;
@@ -1058,7 +1065,7 @@ body[data-nav="on"] .ra-current::after { display: block; }
     <div class="brand">
       <span class="dot"></span>
       <span>Road Alert</span>
-      <span class="version">v22.39</span>
+      <span class="version">v22.40</span>
     </div>
     <span class="topbar-spacer"></span>
     <div class="topbar-actions">
@@ -2581,15 +2588,18 @@ const MapView = {
       });
       // v22.39: long-press (700ms tap on empty map) opens the Capture menu
       // at the touched location. Markers swallow these events, so this only
-      // fires on blank map.  contextmenu (long-press on iOS Safari) also wired.
+      // fires on blank map.
+      // v22.40: simplified — Leaflet's 'mousedown' fires on touch too (it
+      // synthesizes mouse events). One handler is enough; touchstart was
+      // double-arming the timer and causing weird interactions.
       this.m.on('contextmenu', e => this.startCaptureAt(e.latlng));
-      this.m.on('mousedown touchstart', e => {
+      this.m.on('mousedown', e => {
         clearTimeout(this.longPressTimer);
-        const latlng = e.latlng || (e.originalEvent && this.m.mouseEventToLatLng(e.originalEvent));
+        const latlng = e.latlng;
         if (!latlng) return;
         this.longPressTimer = setTimeout(() => this.startCaptureAt(latlng), 700);
       });
-      this.m.on('mouseup mousemove dragstart touchend touchmove', () => clearTimeout(this.longPressTimer));
+      this.m.on('mouseup mousemove dragstart', () => clearTimeout(this.longPressTimer));
       this.updatePoints();
       setTimeout(() => this.m.invalidateSize(true), 200);
     } catch (e) {
@@ -2732,8 +2742,16 @@ const MapView = {
       this._smoothedHeading = avg;
     }
     const heading = this._smoothedHeading;
-    const pane = this.m.getPane('mapPane');
-    if (pane) pane.style.transform = pane.style.transform.replace(/rotate\([^)]+\)/, '') + ` rotate(${-heading}deg)`;
+    // v22.40: apply rotation to the map CONTAINER, not Leaflet's internal mapPane.
+    // Leaflet writes its own translate3d on mapPane on every pan; mixing our
+    // rotate() in caused the rotation to interact wrong with the translate
+    // origin, making the map flip sideways/upside down during movement.
+    // Rotating the container leaves Leaflet's transforms alone.
+    // Scale 1.42 (sqrt 2) so rotation corners don't show gaps in the wrapper.
+    const container = this.m.getContainer();
+    if (container) {
+      container.style.transform = `scale(1.42) rotate(${-heading}deg)`;
+    }
     // Counter-rotate the user marker so the "nose" arrow always points up
     if (this.currentMarker) {
       const el = this.currentMarker.getElement();
@@ -2745,8 +2763,12 @@ const MapView = {
   /** v22.23: clear map rotation and reset marker. Called when nav mode is turned off. */
   clearHeadingRotation() {
     if (!this.m) return;
-    const pane = this.m.getPane('mapPane');
-    if (pane) pane.style.transform = pane.style.transform.replace(/\s*rotate\([^)]+\)/, '');
+    // v22.40: clear rotation on container (not mapPane)
+    const container = this.m.getContainer();
+    if (container) {
+      container.style.transform = '';
+      container.style.transformOrigin = '';
+    }
     if (this.currentMarker) {
       const el = this.currentMarker.getElement();
       const inner = el && el.querySelector('.ra-current');
